@@ -1,8 +1,7 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { RestaurantScopeProvider } from "@/lib/restaurant-context";
-import appCss from "../styles.css?url";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -38,45 +37,51 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "My Restro — Restaurant Management Ecosystem" },
-      { name: "description", content: "Complete restaurant management platform for owners, staff, customers, and shareholders." },
-      { property: "og:title", content: "My Restro — Restaurant Management Ecosystem" },
-      { property: "og:description", content: "Complete restaurant management platform for owners, staff, customers, and shareholders." },
+      {
+        name: "description",
+        content:
+          "Complete restaurant management platform for owners, staff, customers, and shareholders.",
+      },
+      {
+        property: "og:title",
+        content: "My Restro — Restaurant Management Ecosystem",
+      },
+      {
+        property: "og:description",
+        content:
+          "Complete restaurant management platform for owners, staff, customers, and shareholders.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "My Restro — Restaurant Management Ecosystem" },
-      { name: "twitter:description", content: "Complete restaurant management platform for owners, staff, customers, and shareholders." },
+      {
+        name: "twitter:title",
+        content: "My Restro — Restaurant Management Ecosystem",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Complete restaurant management platform for owners, staff, customers, and shareholders.",
+      },
       { name: "twitter:card", content: "summary" },
     ],
     links: [
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon", sizes: "32x32" },
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
     ],
   }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
 });
 
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <RestaurantScopeProvider>{children}</RestaurantScopeProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-        <Scripts />
-      </body>
-    </html>
-  );
-}
-
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <>
+      <HeadContent />
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RestaurantScopeProvider>
+            <Outlet />
+          </RestaurantScopeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </>
+  );
 }
