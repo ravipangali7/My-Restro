@@ -1,0 +1,77 @@
+import { type ReactNode, useCallback, useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import { AppSidebar, type NavItem } from "./AppSidebar";
+import { TopAppBar } from "./TopAppBar";
+import { BottomNav } from "./BottomNav";
+import { MOBILE_NAV_ID, MobileNavDrawer } from "./MobileNavDrawer";
+import { useAuth } from "@/lib/auth-context";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
+
+interface BottomTab {
+  title: string;
+  to: string;
+  icon: LucideIcon;
+}
+
+interface DashboardLayoutProps {
+  children: ReactNode;
+  title: string;
+  sidebarItems: NavItem[];
+  bottomTabs?: BottomTab[];
+}
+
+export function DashboardLayout({ children, title, sidebarItems, bottomTabs }: DashboardLayoutProps) {
+  const { logout } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+  const toggleMobileNav = useCallback(() => setMobileNavOpen((v) => !v), []);
+  const requestLogout = useCallback(() => setLogoutConfirmOpen(true), []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onWide = () => {
+      if (mq.matches) setMobileNavOpen(false);
+    };
+    mq.addEventListener("change", onWide);
+    return () => mq.removeEventListener("change", onWide);
+  }, []);
+
+  return (
+    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-surface">
+      <AppSidebar items={sidebarItems} onLogout={requestLogout} />
+      <MobileNavDrawer
+        open={mobileNavOpen}
+        onClose={closeMobileNav}
+        items={sidebarItems}
+        onLogout={requestLogout}
+        brandTitle={title}
+      />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <TopAppBar
+          title={title}
+          showMobileMenu
+          onMenuToggle={toggleMobileNav}
+          mobileMenuExpanded={mobileNavOpen}
+          mobileMenuControlsId={MOBILE_NAV_ID}
+        />
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 lg:p-6 pb-20 lg:pb-6">
+          {children}
+        </main>
+      </div>
+      {bottomTabs && <BottomNav tabs={bottomTabs} />}
+      <ConfirmModal
+        open={logoutConfirmOpen}
+        title="Logout"
+        message="Are you sure you want to logout?"
+        confirmLabel="Logout"
+        variant="danger"
+        onConfirm={() => {
+          setLogoutConfirmOpen(false);
+          void logout();
+        }}
+        onCancel={() => setLogoutConfirmOpen(false)}
+      />
+    </div>
+  );
+}

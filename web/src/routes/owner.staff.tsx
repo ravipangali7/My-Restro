@@ -1,0 +1,266 @@
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { RouteFormModal } from "@/components/shared/RouteFormModal";
+import { DataTable } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import {
+  useCreateOwnerStaffNotification,
+  useDeleteStaff,
+  useOwnerStaffByRestaurant,
+  useRestaurants,
+} from "@/hooks/use-rest-api";
+import { useRestaurantScope } from "@/lib/restaurant-context";
+import { STAFF_PATH } from "@/lib/portal-routes";
+import { Bell, Plus, Trash2 } from "lucide-react";
+
+type StaffRow = {
+  id: number;
+  user: number;
+  user_name?: string;
+  user_phone?: string;
+  restaurant?: number;
+  restaurant_name?: string;
+  role: string;
+  joined_at: string;
+  salary: string | number;
+  salary_per_day: string | number;
+  is_suspend: boolean;
+};
+
+type StaffColumn = { header: string; accessor: keyof StaffRow | ((row: StaffRow) => ReactNode) };
+
+export const Route = createFileRoute("/owner/staff")({ component: StaffPage });
+
+function StaffPage() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const isBaseRoute = pathname === "/owner/staff";
+  const isFormRoute = pathname === "/owner/staff/new";
+
+  const { restaurantIds, restaurantId: scopeRestaurantId } = useRestaurantScope();
+  const { data: restaurantsRaw = [] } = useRestaurants();
+  const restaurants = restaurantsRaw as { id: number; name: string }[];
+  const { sections, isPending } = useOwnerStaffByRestaurant();
+  const deleteStaff = useDeleteStaff();
+  const createStaffNotif = useCreateOwnerStaffNotification();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyTitle, setNotifyTitle] = useState("");
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [notifyLink, setNotifyLink] = useState<string>(STAFF_PATH.home);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+
+  const restaurantLabel = (rid: number) => restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
+
+  const tableColumns: StaffColumn[] = [
+    { header: "User", accessor: (s: StaffRow) => s.user_name || `User #${s.user}` },
+    { header: "Phone", accessor: (s: StaffRow) => s.user_phone || "—" },
+    ...(restaurantIds.length > 1
+      ? []
+      : [
+          {
+            header: "Restaurant",
+            accessor: (s: StaffRow) => (
+              <span className="text-sm text-foreground">
+                {s.restaurant_name ?? (s.restaurant != null ? `Restaurant #${s.restaurant}` : "—")}
+              </span>
+            ),
+          },
+        ]),
+    { header: "Staff position", accessor: (s: StaffRow) => <StatusBadge status={s.role} /> },
+    { header: "Joined", accessor: "joined_at" },
+    { header: "Salary", accessor: (s: StaffRow) => `₹${Number(s.salary).toLocaleString()}` },
+    { header: "Status", accessor: (s: StaffRow) => <StatusBadge status={s.is_suspend ? "inactive" : "active"} /> },
+    {
+      header: "Actions",
+      accessor: (s: StaffRow) => (
+        <div className="flex gap-1">
+          <Link
+            to="/owner/staff/$id"
+            params={{ id: String(s.id) }}
+            className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            View
+          </Link>
+          <Link
+            to="/owner/staff/$id/edit"
+            params={{ id: String(s.id) }}
+            className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Edit
+          </Link>
+          <button
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
+              const rid = s.restaurant;
+              if (rid == null) return;
+              setDeletingId(s.id);
+              try {
+                await deleteStaff.mutateAsync({ staffId: s.id, restaurantId: rid });
+              } finally {
+                setDeletingId(null);
+              }
+            }}
+            disabled={deletingId === s.id}
+            className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium hover:bg-error/20 disabled:opacity-50"
+          >
+            <span className="inline-flex items-center gap-1">
+              <Trash2 size={12} /> {deletingId === s.id ? "Deleting..." : "Delete"}
+            </span>
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="font-display font-semibold text-lg text-foreground">Staff</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setNotifyError(null);
+              setNotifyOpen(true);
+            }}
+            disabled={restaurantIds.length === 0 || scopeRestaurantId == null}
+            className="h-10 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-sm hover:bg-accent/60 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Bell size={14} /> Notify team
+          </button>
+          <Link
+            to="/owner/staff/new"
+            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
+          >
+            <Plus size={14} /> Add Staff
+          </Link>
+        </div>
+      </div>
+      {notifyOpen ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notify staff"
+          onClick={() => setNotifyOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display font-semibold text-base text-foreground mb-1">Notify staff</h3>
+            <p className="text-xs text-text-muted mb-4">
+              Sends an in-app notification to every team member at{" "}
+              {scopeRestaurantId != null ? restaurantLabel(scopeRestaurantId) : "this restaurant"}.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-title">
+                  Title (optional)
+                </label>
+                <input
+                  id="staff-notif-title"
+                  value={notifyTitle}
+                  onChange={(e) => setNotifyTitle(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  placeholder="e.g. Shift change"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-message">
+                  Message
+                </label>
+                <textarea
+                  id="staff-notif-message"
+                  value={notifyMessage}
+                  onChange={(e) => setNotifyMessage(e.target.value)}
+                  rows={3}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-y min-h-[72px]"
+                  placeholder="What should staff know?"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-link">
+                  Opens when tapped (path)
+                </label>
+                <input
+                  id="staff-notif-link"
+                  value={notifyLink}
+                  onChange={(e) => setNotifyLink(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-xs"
+                  placeholder={STAFF_PATH.home}
+                />
+              </div>
+            </div>
+            {notifyError ? <p className="mt-2 text-xs text-error">{notifyError}</p> : null}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setNotifyOpen(false)}
+                className="h-9 px-3 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent/50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={createStaffNotif.isPending || scopeRestaurantId == null || !notifyMessage.trim()}
+                onClick={async () => {
+                  if (scopeRestaurantId == null) return;
+                  setNotifyError(null);
+                  try {
+                    await createStaffNotif.mutateAsync({
+                      restaurant_id: scopeRestaurantId,
+                      title: notifyTitle.trim() || undefined,
+                      message: notifyMessage.trim(),
+                      link: notifyLink.trim() || STAFF_PATH.home,
+                    });
+                    setNotifyOpen(false);
+                    setNotifyTitle("");
+                    setNotifyMessage("");
+                    setNotifyLink(STAFF_PATH.home);
+                  } catch (e) {
+                    setNotifyError(e instanceof Error ? e.message : "Could not send.");
+                  }
+                }}
+                className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-600 disabled:opacity-50"
+              >
+                {createStaffNotif.isPending ? "Sending…" : "Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {isPending ? (
+        <p className="text-sm text-text-muted">Loading staff…</p>
+      ) : restaurantIds.length === 0 ? (
+        <p className="text-sm text-text-muted">No restaurants assigned.</p>
+      ) : restaurantIds.length > 1 ? (
+        <div className="space-y-8">
+          {sections.map(({ restaurantId: rid, staff }) => (
+            <section key={rid}>
+              <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
+              {(staff as StaffRow[]).length === 0 ? (
+                <p className="text-sm text-text-muted">No staff at this restaurant.</p>
+              ) : (
+                <DataTable columns={[...tableColumns]} data={staff as StaffRow[]} />
+              )}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <DataTable columns={[...tableColumns]} data={(sections[0]?.staff as StaffRow[]) ?? []} />
+      )}
+      {isFormRoute ? (
+        <RouteFormModal title="Staff form" onClose={() => navigate({ to: "/owner/staff" })}>
+          <Outlet />
+        </RouteFormModal>
+      ) : !isBaseRoute ? <Outlet /> : null}
+    </>
+  );
+}

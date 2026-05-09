@@ -1,0 +1,149 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { StatCard } from "@/components/shared/StatCard";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ViewField, ViewSection } from "@/components/shared/ViewField";
+import { DataTable } from "@/components/shared/DataTable";
+import { useProductItems, useProductRawMaterials, useProducts, useRawMaterials, useStockLogs, useSuppliers, useUnits } from "@/hooks/use-rest-api";
+import { restaurantDisplayName } from "@/lib/restaurant-table-column";
+import { useRestaurantScope } from "@/lib/restaurant-context";
+import { ArrowLeft, Package, AlertTriangle } from "lucide-react";
+
+export const Route = createFileRoute("/owner/rawmaterials_/$id")({ component: RawMaterialViewPage });
+
+function RawMaterialViewPage() {
+  const { id } = Route.useParams();
+  const { restaurantId } = useRestaurantScope();
+  const { data: rawMaterials } = useRawMaterials(restaurantId);
+  const { data: suppliers } = useSuppliers(restaurantId);
+  const { data: units } = useUnits(restaurantId);
+  const { data: stockLogs } = useStockLogs(restaurantId);
+  const { data: prms } = useProductRawMaterials(restaurantId);
+  const { data: products } = useProducts(restaurantId);
+  const { data: productItems } = useProductItems(restaurantId);
+
+  const mat = useMemo(() => {
+    const list = (rawMaterials as { id: number }[] | undefined) ?? [];
+    return list.find((rm) => String(rm.id) === id);
+  }, [rawMaterials, id]);
+
+  const supplier = useMemo(() => {
+    const sid = (mat as { supplier?: number } | undefined)?.supplier;
+    if (sid == null) return undefined;
+    return (suppliers as { id: number; name: string }[] | undefined)?.find((s) => s.id === sid);
+  }, [mat, suppliers]);
+
+  const unit = useMemo(() => {
+    const uid = (mat as { unit?: number } | undefined)?.unit;
+    if (uid == null) return undefined;
+    return (units as { id: number; name: string; symbol: string }[] | undefined)?.find((u) => u.id === uid);
+  }, [mat, units]);
+
+  const mid = (mat as { id?: number } | undefined)?.id;
+  const stockLogsForMat = useMemo(() => {
+    if (mid == null || !stockLogs) return [];
+    return (stockLogs as { raw_material: number }[]).filter((sl) => sl.raw_material === mid);
+  }, [mid, stockLogs]);
+
+  const usedInProducts = useMemo(() => {
+    if (mid == null || !prms) return [];
+    return (prms as { raw_material: number }[]).filter((prm) => prm.raw_material === mid);
+  }, [mid, prms]);
+
+  const productName = (pid: number) =>
+    (products as { id: number; name: string }[] | undefined)?.find((p) => p.id === pid)?.name ?? "—";
+
+  const itemUnitLabel = (productItemId: number) => {
+    const pi = (productItems as { id: number; unit: number }[] | undefined)?.find((x) => x.id === productItemId);
+    if (!pi) return "—";
+    return (units as { id: number; symbol: string }[] | undefined)?.find((u) => u.id === pi.unit)?.symbol ?? "—";
+  };
+
+  if (!mat) {
+    return <p className="text-sm text-text-muted">Raw material not found.</p>;
+  }
+
+  const m = mat as unknown as {
+    name: string;
+    stock: number;
+    min_stock: number;
+    price: number;
+    restaurant?: number;
+    restaurant_name?: string;
+  };
+
+  return (
+    <>
+      <Link to="/owner/rawmaterials" className="flex items-center gap-1 text-sm text-text-secondary hover:text-foreground mb-4">
+        <ArrowLeft size={16} /> Back to Raw Materials
+      </Link>
+
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center">
+          <Package size={24} className="text-primary" />
+        </div>
+        <div>
+          <h2 className="font-display font-bold text-xl text-foreground">{m.name}</h2>
+          {Number(m.stock) <= Number(m.min_stock) && (
+            <span className="flex items-center gap-1 text-xs text-error font-semibold">
+              <AlertTriangle size={12} /> Low Stock
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <StatCard icon={Package} label="Current Stock" value={`${m.stock} ${unit?.symbol || ""}`} />
+        <StatCard icon={AlertTriangle} label="Min Stock" value={`${m.min_stock} ${unit?.symbol || ""}`} />
+      </div>
+
+      <ViewSection title="Details">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ViewField label="Restaurant" value={restaurantDisplayName(m)} />
+          <ViewField label="Supplier" value={supplier?.name || "—"} />
+          <ViewField label="Unit" value={unit?.name || "—"} />
+          <ViewField label="Price" value={`₹${Number(m.price).toLocaleString()}`} />
+        </div>
+      </ViewSection>
+
+      {usedInProducts.length > 0 && (
+        <ViewSection title="Used In Products">
+          <DataTable
+            columns={[
+              { header: "Product", accessor: (prm) => productName((prm as { product: number }).product) },
+              {
+                header: "Quantity",
+                accessor: (prm) =>
+                  `${(prm as { raw_material_quantity: number }).raw_material_quantity} ${unit?.symbol || ""}`,
+              },
+            ]}
+            data={usedInProducts}
+          />
+        </ViewSection>
+      )}
+
+      <ViewSection title="Stock Log">
+        <DataTable
+          columns={[
+            { header: "Date", accessor: "created_at" },
+            { header: "Type", accessor: (sl) => <StatusBadge status={(sl as { type: string }).type} /> },
+            {
+              header: "Quantity",
+              accessor: (sl) => `${(sl as { quantity: number }).quantity} ${unit?.symbol || ""}`,
+            },
+            {
+              header: "Source",
+              accessor: (sl) =>
+                (sl as { purchase?: number; order?: number }).purchase
+                  ? "Purchase"
+                  : (sl as { order?: number }).order
+                    ? "Order"
+                    : "Manual",
+            },
+          ]}
+          data={stockLogsForMat}
+        />
+      </ViewSection>
+    </>
+  );
+}

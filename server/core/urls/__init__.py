@@ -1,0 +1,101 @@
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+
+from core.api.write_views import (
+    create_bulk_notification,
+    create_superadmin_bulk_notification,
+    restaurant_detail,
+    restaurant_pay_due,
+    user_detail,
+)
+from core.api.catalog_views import combo_set_detail, product_detail, product_item_detail, product_raw_material_detail
+from core.api.inventory_views import (
+    category_detail,
+    list_categories,
+    list_raw_materials,
+    raw_material_detail,
+    recognize_raw_material,
+)
+from core.api.read_views import (
+    expense_detail,
+    geocode_search,
+    get_platform_defaults,
+    list_bulk_notifications,
+    list_combo_sets,
+    list_customers,
+    list_expenses,
+    ledger_detail,
+    list_ledgers,
+    list_product_items,
+    list_product_raw_materials,
+    list_products,
+    list_restaurants,
+    list_staff,
+    search_staff_by_phone,
+    create_staff,
+    staff_detail,
+    list_stock_logs,
+    list_suppliers,
+    supplier_detail,
+    list_tables,
+    table_detail,
+    list_transactions,
+    list_units,
+    unit_detail,
+    list_users,
+    super_settings_detail,
+)
+from core.api.views import OrderViewSet, PurchaseViewSet, ShareholderWithdrawalViewSet
+
+router = DefaultRouter()
+router.register(r"orders", OrderViewSet, basename="order")
+router.register(r"purchases", PurchaseViewSet, basename="purchase")
+router.register(r"shareholder-withdrawals", ShareholderWithdrawalViewSet, basename="shareholder-withdrawal")
+
+urlpatterns = [
+    path("auth/", include("core.urls.auth_urls")),
+    path("restaurants/", list_restaurants),
+    path("geocode/", geocode_search),
+    path("restaurants/<int:pk>/pay-due/", restaurant_pay_due),
+    path("restaurants/<int:pk>/", restaurant_detail),
+    path("users/", list_users),
+    path("users/<int:pk>/", user_detail),
+    path("categories/", list_categories),
+    path("categories/<int:pk>/", category_detail),
+    path("products/", list_products),
+    path("products/<int:pk>/", product_detail),
+    path("product-items/", list_product_items),
+    path("product-items/<int:pk>/", product_item_detail),
+    path("units/", list_units),
+    path("units/<int:pk>/", unit_detail),
+    path("tables/", list_tables),
+    path("tables/<int:pk>/", table_detail),
+    path("suppliers/", list_suppliers),
+    path("suppliers/<int:pk>/", supplier_detail),
+    path("raw-materials/", list_raw_materials),
+    path("raw-materials/recognize/", recognize_raw_material),
+    path("raw-materials/<int:pk>/", raw_material_detail),
+    path("expenses/", list_expenses),
+    path("expenses/<int:pk>/", expense_detail),
+    path("transactions/", list_transactions),
+    path("ledgers/", list_ledgers),
+    path("ledgers/<int:pk>/", ledger_detail),
+    path("stock-logs/", list_stock_logs),
+    path("combo-sets/", list_combo_sets),
+    path("combo-sets/<int:pk>/", combo_set_detail),
+    path("staff/", list_staff),
+    path("staff/search/", search_staff_by_phone),
+    path("staff/create/", create_staff),
+    path("staff/<int:pk>/", staff_detail),
+    path("customers/", list_customers),
+    path("product-raw-materials/", list_product_raw_materials),
+    path("product-raw-materials/<int:pk>/", product_raw_material_detail),
+    path("super-settings/", super_settings_detail),
+    path("platform-defaults/", get_platform_defaults),
+    path("bulk-notifications/superadmin-create/", create_superadmin_bulk_notification),
+    path("bulk-notifications/create/", create_bulk_notification),
+    path("bulk-notifications/", list_bulk_notifications),
+    path("", include(router.urls)),
+    path("admin/", include("core.urls.admin_urls")),
+    path("client/", include("core.urls.client_urls")),
+]
