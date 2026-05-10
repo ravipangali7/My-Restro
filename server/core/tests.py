@@ -1753,3 +1753,26 @@ class OwnerRestaurantCreatePerTxApiTests(APITestCase):
         s.per_transaction_fee = Decimal("11.00")
         s.save(update_fields=["per_transaction_fee", "updated_at"])
         self.assertEqual(effective_per_transaction_fee(r), Decimal("11.00"))
+
+
+class OwnerProfileImagePatchTests(APITestCase):
+    def test_owner_multipart_patch_saves_profile_image(self):
+        User = get_user_model()
+        owner = User.objects.create(phone="9000000555", name="Photo Owner", role=UserRole.OWNER)
+        self.assertFalse(bool(owner.image))
+        self.client.force_authenticate(user=owner)
+        img = SimpleUploadedFile(
+            "face.png",
+            b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            content_type="image/png",
+        )
+        resp = self.client.patch(
+            f"/api/users/{owner.pk}/",
+            {"name": "Photo Owner", "phone": owner.phone, "image": img},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        body = resp.json()
+        self.assertIsNotNone(body.get("image"))
+        owner.refresh_from_db()
+        self.assertTrue(bool(getattr(owner.image, "name", None)))

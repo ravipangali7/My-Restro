@@ -5,7 +5,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import F
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -338,6 +339,7 @@ def _patch_user_response(request, pk: int) -> Response:
 
 
 @api_view(["DELETE", "PATCH"])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 @permission_classes([IsAuthenticated])
 def user_detail(request, pk: int):
     if request.method == "PATCH":

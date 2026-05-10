@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, type AuthUser } from "@/lib/auth-context";
 import { User, Phone, LogOut, Save } from "lucide-react";
 import { apiPatch, apiPatchForm, resolveMediaUrl } from "@/lib/api";
@@ -8,11 +9,13 @@ import { ConfirmModal } from "@/components/shared/ConfirmModal";
 export const Route = createFileRoute("/owner/profile")({ component: OwnerProfile });
 
 function OwnerProfile() {
+  const queryClient = useQueryClient();
   const { userName, phone, logout, user, token, refreshUser } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [phoneInput, setPhoneInput] = useState(user?.phone ?? "");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [avatarBust, setAvatarBust] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,7 +24,11 @@ function OwnerProfile() {
     setPhoneInput(user?.phone ?? "");
   }, [user?.name, user?.phone]);
 
-  const avatarUrl = resolveMediaUrl(user?.image ?? null);
+  const baseAvatarUrl = resolveMediaUrl(user?.image ?? null);
+  const avatarUrl =
+    baseAvatarUrl && avatarBust > 0
+      ? `${baseAvatarUrl}${baseAvatarUrl.includes("?") ? "&" : "?"}v=${avatarBust}`
+      : baseAvatarUrl;
 
   const onPickImage = () => fileInputRef.current?.click();
 
@@ -29,25 +36,27 @@ function OwnerProfile() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !user?.id || !token) return;
+    const trimmedName = name.trim();
+    const trimmedPhone = phoneInput.trim();
+    if (!trimmedName) {
+      setSaveError("Name cannot be empty.");
+      return;
+    }
+    if (!trimmedPhone) {
+      setSaveError("Phone cannot be empty.");
+      return;
+    }
     setSaveError(null);
     setSaving(true);
     try {
       const fd = new FormData();
-      const trimmedName = name.trim();
-      const trimmedPhone = phoneInput.trim();
-      if (!trimmedName) {
-        setSaveError("Name cannot be empty.");
-        return;
-      }
-      if (!trimmedPhone) {
-        setSaveError("Phone cannot be empty.");
-        return;
-      }
       fd.append("name", trimmedName);
       fd.append("phone", trimmedPhone);
       fd.append("image", file);
       await apiPatchForm<AuthUser>(`/api/users/${user.id}/`, fd, token);
       await refreshUser();
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      setAvatarBust((b) => b + 1);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not update photo.");
     } finally {
