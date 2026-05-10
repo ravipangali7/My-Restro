@@ -1,4 +1,17 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "http://127.0.0.1:8000";
+/**
+ * API origin for fetch(). Empty string = same-origin (`/api/...`, `/media/...`).
+ * - Dev: Vite proxies `/api` and `/media` to Django (vite.config.ts).
+ * - Prod: your web server must reverse-proxy those paths to Django. Browsers block
+ *   HTTPS sites from calling `http://127.0.0.1:...` (mixed content), so never default to that in prod.
+ * Override anytime with `VITE_API_BASE_URL` (e.g. `https://api.example.com`).
+ */
+function resolveApiBaseUrl(): string {
+  const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  return "";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const TOKEN_KEY = "myrestro_token";
 

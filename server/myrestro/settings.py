@@ -34,8 +34,13 @@ ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://mithobasai.com",
+    "https://www.mithobasai.com",
 ]
-
+_extra_csrf = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS_EXTRA", "").split(",") if o.strip()]
+CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS + [o for o in _extra_csrf if o not in CSRF_TRUSTED_ORIGINS]
 
 # Application definition
 
@@ -75,7 +80,14 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
-CORS_ALLOW_ALL_ORIGINS = True
+# Comma-separated origins, e.g. "https://mithobasai.com,https://www.mithobasai.com".
+# If unset, allow all (fine for local dev). For production behind HTTPS, prefer an explicit list.
+_cors_allowed = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if _cors_allowed:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = _cors_allowed
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 
 ROOT_URLCONF = 'myrestro.urls'
