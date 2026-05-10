@@ -2,6 +2,32 @@ from django.db.models import Q
 
 from core.models import Order, Restaurant, Staff, StaffRole, User, UserRole
 
+# ``User.phone`` / ``Otp.phone`` column size; normalized values longer than this must be rejected
+# before save (PostgreSQL raises on overflow; otherwise clients see an opaque 500).
+USER_PHONE_MAX_LEN = 32
+
+# Shareholders with many withdrawals: matching each id with two ``Q`` branches explodes SQL size;
+# use chunked ``remarks__regex`` instead (portable via Django's regex lookup).
+_SHARE_WITHDRAWAL_REMARK_RE_CHUNK = 150
+
+
+def _share_withdrawal_transaction_q(withdrawal_ids: list[int]) -> Q:
+    """Match ledger rows for ``Share withdrawal #<id>`` (optional em-dash note suffix)."""
+    from core.models import TransactionCategory
+
+    if not withdrawal_ids:
+        return Q(pk__in=[])
+    combined = Q()
+    for i in range(0, len(withdrawal_ids), _SHARE_WITHDRAWAL_REMARK_RE_CHUNK):
+        chunk = withdrawal_ids[i : i + _SHARE_WITHDRAWAL_REMARK_RE_CHUNK]
+        # Prefer longer numeric ids in the alternation so ``#12`` is not satisfied by ``#1``.
+        ids_sorted = sorted({int(wid) for wid in chunk}, key=lambda n: len(str(n)), reverse=True)
+        alt = "|".join(str(n) for n in ids_sorted)
+        # Em dash (U+2014) after the space, matching transaction labels elsewhere in the codebase.
+        pat = rf"^Share withdrawal #({alt})( —.*)?$"
+        combined |= Q(category=TransactionCategory.SHARE_WITHDRAWAL, remarks__regex=pat)
+    return combined
+
 
 def normalize_phone(phone: str) -> str:
     digits = "".join(c for c in phone.strip() if c.isdigit())
@@ -77,12 +103,7 @@ def restaurant_ids_for_user(user: User) -> list[int]:
             withdrawal_ids = list(ShareholderWithdrawal.objects.filter(user=user).values_list("id", flat=True))
             q = Q(created_by=user, category__in=cats)
             if withdrawal_ids:
-                wq = Q()
-                for wid in withdrawal_ids:
-                    base = f"Share withdrawal #{wid}"
-                    wq |= Q(category=TransactionCategory.SHARE_WITHDRAWAL, remarks=base)
-                    wq |= Q(category=TransactionCategory.SHARE_WITHDRAWAL, remarks__startswith=f"{base} —")
-                q |= wq
+                q |= _share_withdrawal_transaction_q(withdrawal_ids)
             rids = list(Transaction.objects.filter(q).values_list("restaurant_id", flat=True).distinct())
             order_rids = Order.objects.filter(customer=user).values_list("restaurant_id", flat=True)
             return sorted(set(rids) | set(order_rids))

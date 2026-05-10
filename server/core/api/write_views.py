@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.api.list_serializers import BulkNotificationListSerializer, RestaurantListSerializer, UserListSerializer
-from core.auth.portal import normalize_phone, user_can_manage_restaurant
+from core.auth.portal import USER_PHONE_MAX_LEN, normalize_phone, user_can_manage_restaurant
 from core.serializers.me import UserMeSerializer
 from core.models import (
     BulkNotification,
@@ -86,6 +86,11 @@ def _create_user_response(request):
 
     if not phone or not name:
         return Response({"detail": "phone and name are required."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(phone) > USER_PHONE_MAX_LEN:
+        return Response(
+            {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     if target_role is None:
         return Response({"detail": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -212,6 +217,11 @@ def _patch_user_response(request, pk: int) -> Response:
             ph = normalize_phone(str(data.get("phone", "")))
             if not ph:
                 return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if len(ph) > USER_PHONE_MAX_LEN:
+                return Response(
+                    {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if User.objects.filter(phone=ph).exclude(pk=u.id).exists():
                 return Response(
                     {"detail": "A user with this phone already exists."},
@@ -236,6 +246,11 @@ def _patch_user_response(request, pk: int) -> Response:
             ph = normalize_phone(str(data.get("phone", "")))
             if not ph:
                 return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if len(ph) > USER_PHONE_MAX_LEN:
+                return Response(
+                    {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if User.objects.filter(phone=ph).exclude(pk=u.id).exists():
                 return Response(
                     {"detail": "A user with this phone already exists."},

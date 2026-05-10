@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from core.auth.portal import normalize_phone, phone_significant_digits_len
+from core.auth.portal import USER_PHONE_MAX_LEN, normalize_phone, phone_significant_digits_len
 from core.models import Otp, User, UserRole
 from core.serializers.me import UserMeSerializer
 from core.services.sms import send_otp_sms
@@ -33,6 +33,11 @@ def request_otp(request):
         purpose = "login"
     if not phone:
         return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(phone) > USER_PHONE_MAX_LEN:
+        return Response(
+            {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if phone_significant_digits_len(phone) < 10:
         return Response(
@@ -103,6 +108,11 @@ def verify_otp(request):
 
     if not phone or not otp:
         return Response({"detail": "phone and otp are required."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(phone) > USER_PHONE_MAX_LEN:
+        return Response(
+            {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if phone_significant_digits_len(phone) < 10:
         return Response(

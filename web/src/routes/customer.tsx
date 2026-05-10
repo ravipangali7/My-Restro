@@ -30,7 +30,7 @@ function CustomerLayout() {
 
   return (
     <PortalGate allow={["customer"]} allowGuest>
-      <div className="min-h-screen bg-surface pb-20">
+      <div className="min-h-screen bg-surface pb-24">
         <div className="sticky top-0 z-30 flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-card/95 backdrop-blur-sm">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <button

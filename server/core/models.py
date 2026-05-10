@@ -158,7 +158,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
-    phone = models.CharField(max_length=20, unique=True, db_index=True)
+    phone = models.CharField(max_length=32, unique=True, db_index=True)
     name = models.CharField(max_length=150)
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.CUSTOMER)
     is_shareholder = models.BooleanField(default=False)
@@ -196,7 +196,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 class Otp(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otps", blank=True, null=True)
-    phone = models.CharField(max_length=20, db_index=True)
+    phone = models.CharField(max_length=32, db_index=True)
     otp = models.CharField(max_length=10)
     purpose = models.CharField(max_length=50)
     is_used = models.BooleanField(default=False)
