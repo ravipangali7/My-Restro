@@ -31,6 +31,8 @@ from core.models import (
 class RestaurantListSerializer(serializers.ModelSerializer):
     reference_distance_m = serializers.SerializerMethodField()
     effective_per_transaction_fee = serializers.SerializerMethodField()
+    effective_subscription_fee_per_month = serializers.SerializerMethodField()
+    effective_sms_per_usage = serializers.SerializerMethodField()
     due_sms_usage = serializers.SerializerMethodField()
     due_service_charge = serializers.SerializerMethodField()
 
@@ -58,7 +60,11 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             "is_open",
             "is_active",
             "per_transaction_fee",
+            "subscription_fee_per_month",
+            "sms_per_usage",
             "effective_per_transaction_fee",
+            "effective_subscription_fee_per_month",
+            "effective_sms_per_usage",
             "can_delivery",
             "delivery_fee_per_km",
             "delivery_radius_km",
@@ -67,9 +73,19 @@ class RestaurantListSerializer(serializers.ModelSerializer):
         )
 
     def get_effective_per_transaction_fee(self, obj: Restaurant):
-        from core.services.transactions import effective_per_transaction_fee
+        from core.services.platform_pricing import effective_per_transaction_fee
 
         return effective_per_transaction_fee(obj)
+
+    def get_effective_subscription_fee_per_month(self, obj: Restaurant):
+        from core.services.platform_pricing import effective_subscription_fee_per_month
+
+        return effective_subscription_fee_per_month(obj)
+
+    def get_effective_sms_per_usage(self, obj: Restaurant):
+        from core.services.platform_pricing import effective_sms_per_usage
+
+        return effective_sms_per_usage(obj)
 
     def get_reference_distance_m(self, obj: Restaurant):
         if obj.latitude is None or obj.longitude is None:
@@ -237,7 +253,7 @@ class TransactionListSerializer(serializers.ModelSerializer):
             return r_fee
         if platform_ptf is not None:
             return platform_ptf or Decimal("0.00")
-        from core.services.transactions import effective_per_transaction_fee
+        from core.services.platform_pricing import effective_per_transaction_fee
 
         return effective_per_transaction_fee(obj.restaurant)
 

@@ -227,6 +227,20 @@ class Restaurant(TimeStampedModel, ActiveModel):
     subscription_end = models.DateField(blank=True, null=True)
     is_open = models.BooleanField(default=True)
     per_transaction_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    subscription_fee_per_month = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="If set, overrides platform monthly subscription reference for this venue only.",
+    )
+    sms_per_usage = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="If set, overrides platform SMS unit rate for this venue only.",
+    )
     can_delivery = models.BooleanField(default=False)
     delivery_fee_per_km = models.DecimalField(
         max_digits=10,

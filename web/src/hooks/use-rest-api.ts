@@ -869,6 +869,7 @@ export function useUpdateSuperSettings() {
       qc.setQueryData(["super-settings", token], data);
       qc.setQueryData(["platform-defaults", token], subset);
       void qc.invalidateQueries({ queryKey: ["platform-defaults"] });
+      void qc.invalidateQueries({ queryKey: ["restaurants"] });
     },
   });
 }

@@ -4,16 +4,8 @@ from django.db.models import F
 
 from core.models import PaymentStatus, Restaurant, Transaction, TransactionCategory, TransactionType
 
+from core.services.platform_pricing import effective_per_transaction_fee
 from core.services.restaurant_due import apply_due_balance_deactivation
-from core.services.super_settings import get_super_setting
-
-
-def effective_per_transaction_fee(restaurant) -> Decimal:
-    fee = restaurant.per_transaction_fee or Decimal("0.00")
-    if fee > 0:
-        return fee
-    setting = get_super_setting()
-    return setting.per_transaction_fee or Decimal("0.00")
 
 
 def _platform_fee_remarks(order_id: str) -> str:

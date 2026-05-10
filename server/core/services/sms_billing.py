@@ -1,4 +1,4 @@
-"""Bill platform SMS usage (OTP) to owners or restaurants using SuperSetting.sms_per_usage."""
+"""Bill platform SMS usage (OTP): owner OTP uses the global rate; staff and order SMS use the venue effective rate."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from django.db.models import F
 
 from core.auth.portal import primary_staff_membership
 from core.models import PaymentStatus, Restaurant, Staff, Transaction, TransactionCategory, TransactionType, UserRole
+from core.services.platform_pricing import effective_sms_per_usage
 from core.services.restaurant_due import apply_due_balance_deactivation
 from core.services.super_settings import get_super_setting
 
@@ -39,11 +40,6 @@ def record_sms_otp_charge_after_sent(*, phone: str, purpose: str, restaurant_id_
     if purpose != "login":
         return
 
-    setting = get_super_setting()
-    rate = setting.sms_per_usage or Decimal("0.00")
-    if rate <= Decimal("0.00"):
-        return
-
     User = get_user_model()
     user = User.objects.select_for_update().filter(phone=phone).first()
     if user is None:
@@ -51,6 +47,10 @@ def record_sms_otp_charge_after_sent(*, phone: str, purpose: str, restaurant_id_
 
     role = getattr(user, "role", None)
     if role == UserRole.OWNER:
+        setting = get_super_setting()
+        rate = setting.sms_per_usage or Decimal("0.00")
+        if rate <= Decimal("0.00"):
+            return
         User.objects.filter(pk=user.pk).update(due_balance=F("due_balance") + rate)
         return
 
@@ -66,6 +66,9 @@ def record_sms_otp_charge_after_sent(*, phone: str, purpose: str, restaurant_id_
             return
 
         restaurant = Restaurant.objects.select_for_update().get(pk=staff_row.restaurant_id)
+        rate = effective_sms_per_usage(restaurant)
+        if rate <= Decimal("0.00"):
+            return
         remarks = "SMS OTP — login verification"
         Transaction.objects.create(
             restaurant=restaurant,
@@ -93,13 +96,12 @@ def record_restaurant_order_status_sms_charge(
     new_status: str,
     created_by=None,
 ) -> None:
-    """After a successful order-status SMS, add ``sms_per_usage`` to the restaurant's due balance."""
-    setting = get_super_setting()
-    rate = setting.sms_per_usage or Decimal("0.00")
+    """After a successful order-status SMS, add the effective SMS rate to the restaurant's due balance."""
+    restaurant = Restaurant.objects.select_for_update().get(pk=restaurant_id)
+    rate = effective_sms_per_usage(restaurant)
     if rate <= Decimal("0.00"):
         return
 
-    restaurant = Restaurant.objects.select_for_update().get(pk=restaurant_id)
     rate_q = rate.quantize(Decimal("0.01"))
     remarks = f"SMS — order {order_id} {old_status}->{new_status} @ {rate_q} ea"
     if len(remarks) > 255:

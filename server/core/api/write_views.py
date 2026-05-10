@@ -528,6 +528,30 @@ def _create_restaurant_response(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    sub_fee_override = None
+    sms_override = None
+    if actor_role == UserRole.SUPER_ADMIN:
+        if request.data.get("subscription_fee_per_month") not in (None, ""):
+            try:
+                sub_fee_override = Decimal(str(request.data.get("subscription_fee_per_month")))
+            except Exception:
+                return Response({"detail": "Invalid subscription_fee_per_month."}, status=status.HTTP_400_BAD_REQUEST)
+            if sub_fee_override < 0:
+                return Response(
+                    {"detail": "subscription_fee_per_month must be non-negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if request.data.get("sms_per_usage") not in (None, ""):
+            try:
+                sms_override = Decimal(str(request.data.get("sms_per_usage")))
+            except Exception:
+                return Response({"detail": "Invalid sms_per_usage."}, status=status.HTTP_400_BAD_REQUEST)
+            if sms_override < 0:
+                return Response(
+                    {"detail": "sms_per_usage must be non-negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
     r = Restaurant(
         user=owner,
         name=name,
@@ -541,6 +565,8 @@ def _create_restaurant_response(request):
         proximity_alert_radius_m=proximity_r,
         due_balance=due_bal if actor_role == UserRole.SUPER_ADMIN else Decimal("0.00"),
         per_transaction_fee=ptf,
+        subscription_fee_per_month=sub_fee_override,
+        sms_per_usage=sms_override,
         subscription_start=sub_start if actor_role == UserRole.SUPER_ADMIN else None,
         subscription_end=sub_end if actor_role == UserRole.SUPER_ADMIN else None,
         is_open=is_open,
@@ -772,6 +798,38 @@ def _patch_restaurant_response(request, pk: int):
             r.per_transaction_fee = Decimal(str(data.get("per_transaction_fee")))
         except Exception:
             return Response({"detail": "Invalid per_transaction_fee."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if "subscription_fee_per_month" in data:
+        raw_sub = data.get("subscription_fee_per_month")
+        if raw_sub in (None, ""):
+            r.subscription_fee_per_month = None
+        else:
+            try:
+                sv = Decimal(str(raw_sub))
+            except Exception:
+                return Response({"detail": "Invalid subscription_fee_per_month."}, status=status.HTTP_400_BAD_REQUEST)
+            if sv < 0:
+                return Response(
+                    {"detail": "subscription_fee_per_month must be non-negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            r.subscription_fee_per_month = sv
+
+    if "sms_per_usage" in data:
+        raw_sms = data.get("sms_per_usage")
+        if raw_sms in (None, ""):
+            r.sms_per_usage = None
+        else:
+            try:
+                smsv = Decimal(str(raw_sms))
+            except Exception:
+                return Response({"detail": "Invalid sms_per_usage."}, status=status.HTTP_400_BAD_REQUEST)
+            if smsv < 0:
+                return Response(
+                    {"detail": "sms_per_usage must be non-negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            r.sms_per_usage = smsv
 
     if "due_balance" in data and data.get("due_balance") not in (None, ""):
         try:

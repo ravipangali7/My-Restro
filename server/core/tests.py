@@ -1801,6 +1801,20 @@ class OtpSmsBillingApiTests(APITestCase):
         self.assertEqual(tx.amount, Decimal("2.50"))
 
     @patch("core.views.client.auth_views.send_otp_sms", return_value=True)
+    def test_staff_login_otp_respects_restaurant_sms_override(self, _mock_send):
+        self.restaurant.sms_per_usage = Decimal("0.40")
+        self.restaurant.save(update_fields=["sms_per_usage", "updated_at"])
+        before = self.restaurant.due_balance
+        res = self.client.post(
+            "/api/auth/request-otp/",
+            {"phone": self.staff_user.phone, "purpose": "login"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.due_balance, before + Decimal("0.40"))
+
+    @patch("core.views.client.auth_views.send_otp_sms", return_value=True)
     def test_customer_login_otp_not_billed(self, _mock_send):
         User = get_user_model()
         cust = User.objects.create(phone="9000001003", name="Sms Cust", role=UserRole.CUSTOMER)
@@ -1826,7 +1840,7 @@ class OwnerRestaurantCreatePerTxApiTests(APITestCase):
         s.save(update_fields=["per_transaction_fee", "updated_at"])
 
     def test_owner_post_restaurant_without_ptf_stores_zero_and_follows_updated_global(self):
-        from core.services.transactions import effective_per_transaction_fee
+        from core.services.platform_pricing import effective_per_transaction_fee
 
         self.client.force_authenticate(user=self.owner)
         res = self.client.post(
@@ -1919,6 +1933,22 @@ class OrderStatusCustomerSideEffectsTests(TestCase):
         self.assertTrue(
             BulkNotification.objects.filter(type=BulkNotificationType.PUSH, title__icontains=self.order.order_id).exists()
         )
+
+    @patch("core.services.order_status_customer_notify.send_plain_sms", return_value=True)
+    def test_accepted_transition_sms_uses_restaurant_sms_override(self, mock_sms):
+        from core.services.order_status_customer_notify import run_order_status_change_customer_side_effects
+
+        self.restaurant.sms_per_usage = Decimal("9.99")
+        self.restaurant.save(update_fields=["sms_per_usage", "updated_at"])
+        before = self.restaurant.due_balance
+        run_order_status_change_customer_side_effects(
+            order_id=self.order.pk,
+            old_status=OrderStatus.PENDING,
+            new_status=OrderStatus.ACCEPTED,
+        )
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.due_balance, before + Decimal("9.99"))
+        mock_sms.assert_called_once()
 
     @patch("core.services.order_status_customer_notify.send_plain_sms", return_value=False)
     def test_sms_failure_skips_billing(self, _mock_sms):

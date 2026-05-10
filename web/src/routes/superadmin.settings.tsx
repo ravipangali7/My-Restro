@@ -83,7 +83,10 @@ function SettingsPage() {
               onChange={(e) => setSubscriptionFee(e.target.value)}
               className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
             />
-            <p className="mt-1 text-xs text-text-muted">Shown to restaurant owners as the reference monthly subscription.</p>
+            <p className="mt-1 text-xs text-text-muted">
+              Default monthly subscription reference for venues that do not have their own rate set on the restaurant record.
+              Individual restaurant overrides always take precedence.
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium text-text-secondary mb-1.5 block">Per Transaction Fee (₹)</label>
@@ -96,7 +99,8 @@ function SettingsPage() {
               className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
             />
             <p className="mt-1 text-xs text-text-muted">
-              Flat fee added when an order is created, when this restaurant&apos;s own per-transaction fee is zero.
+              Default flat fee per order for venues whose per-transaction fee is zero (not individually set). If a restaurant has
+              a positive custom per-transaction fee, that fee is charged instead and this global value does not apply.
             </p>
           </div>
           <div>
@@ -125,13 +129,13 @@ function SettingsPage() {
               className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
             />
             <p className="mt-1 text-xs text-text-muted">
-              Saved platform rate:{" "}
+              Default rate per successful billable SMS for venues without a custom SMS rate. Saved value:{" "}
               <span className="font-mono text-foreground">
                 ₹{toNum(display.sms_per_usage).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>{" "}
-              per successful SMS (updates when you save). Charged when Twilio delivers: superadmin campaigns (platform
-              balance), owner login OTP (owner due), staff login OTP (restaurant due), and customer order status texts
-              (restaurant due). Without Twilio in local debug, SMS is skipped and nothing is billed.
+              </span>
+              . Staff login OTP and order-status SMS use each restaurant&apos;s custom rate when set; owner login OTP and
+              superadmin SMS campaigns use this global rate. Updates apply as soon as you save; restaurant lists refetch so
+              owner screens show current effective rates.
             </p>
           </div>
           <div>

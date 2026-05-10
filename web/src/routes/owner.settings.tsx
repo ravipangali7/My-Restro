@@ -23,6 +23,11 @@ interface RestaurantDTO {
   delivery_fee_per_km: string | number;
   delivery_radius_km: string | number;
   per_transaction_fee: string | number;
+  subscription_fee_per_month?: string | number | null;
+  sms_per_usage?: string | number | null;
+  effective_per_transaction_fee?: string | number;
+  effective_subscription_fee_per_month?: string | number;
+  effective_sms_per_usage?: string | number;
   subscription_start: string | null;
   subscription_end: string | null;
 }
@@ -230,27 +235,41 @@ function SettingsPage() {
             </p>
           </div>
           <div>
-            <label className="text-sm font-medium text-text-secondary mb-1.5 block">Per Transaction Fee</label>
+            <label className="text-sm font-medium text-text-secondary mb-1.5 block">Per-order platform fee (effective)</label>
             <input
               type="text"
-              value={`${restaurant.per_transaction_fee}`}
+              value={`₹${Number(restaurant.effective_per_transaction_fee ?? restaurant.per_transaction_fee ?? 0).toLocaleString()}`}
               readOnly
               className="w-full h-11 px-4 rounded-xl border border-border bg-surface-alt text-sm text-text-muted outline-none"
             />
             <p className="mt-1.5 text-xs text-text-muted">
-              Platform default (used when this restaurant&apos;s fee is zero):{" "}
+              {Number(restaurant.per_transaction_fee ?? 0) > 0
+                ? "This venue uses its own per-order fee set by the platform team; the global platform default does not apply."
+                : "No venue-specific per-order fee — the super admin platform default applies."}{" "}
               <span className="font-medium text-text-secondary">
-                {pd != null ? `₹${Number(pd.per_transaction_fee).toLocaleString()}` : "—"}
+                {pd != null ? `Global default: ₹${Number(pd.per_transaction_fee).toLocaleString()}.` : ""}
               </span>
             </p>
           </div>
           <div className="rounded-xl border border-border/80 bg-surface-alt/50 p-4 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Platform pricing</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Platform pricing for this venue</p>
             <p className="text-sm text-text-muted">
-              Monthly subscription (reference):{" "}
+              Monthly subscription (reference, effective):{" "}
               <span className="font-medium text-foreground">
-                {pd != null ? `₹${Number(pd.subscription_fee_per_month).toLocaleString()}` : "—"}
+                ₹
+                {Number(
+                  restaurant.effective_subscription_fee_per_month ?? pd?.subscription_fee_per_month ?? 0,
+                ).toLocaleString()}
               </span>
+              {restaurant.subscription_fee_per_month != null ? (
+                <span className="block mt-1 text-xs">Custom rate for this restaurant; global default is not used.</span>
+              ) : (
+                <span className="block mt-1 text-xs">
+                  {pd != null
+                    ? `Uses platform default (₹${Number(pd.subscription_fee_per_month).toLocaleString()}) until a custom rate is set.`
+                    : null}
+                </span>
+              )}
             </p>
             <p className="text-sm text-text-muted">
               Due alert threshold:{" "}
@@ -259,10 +278,19 @@ function SettingsPage() {
               </span>
             </p>
             <p className="text-sm text-text-muted">
-              SMS cost per use:{" "}
+              SMS cost per successful billable SMS (effective):{" "}
               <span className="font-medium text-foreground">
-                {pd != null ? `₹${Number(pd.sms_per_usage).toLocaleString()}` : "—"}
+                ₹{Number(restaurant.effective_sms_per_usage ?? pd?.sms_per_usage ?? 0).toLocaleString()}
               </span>
+              {restaurant.sms_per_usage != null ? (
+                <span className="block mt-1 text-xs">Custom SMS rate for this restaurant; global default is not used.</span>
+              ) : (
+                <span className="block mt-1 text-xs">
+                  {pd != null
+                    ? `Uses platform default (₹${Number(pd.sms_per_usage).toLocaleString()}) for this venue until a custom rate is set. Owner login OTP billing still uses the global rate.`
+                    : null}
+                </span>
+              )}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -177,6 +177,8 @@ class RestaurantAdmin(BaseAdmin):
         "delivery_radius_km",
         "due_balance",
         "per_transaction_fee",
+        "subscription_fee_per_month",
+        "sms_per_usage",
         "subscription_start",
         "subscription_end",
     )
@@ -197,6 +199,8 @@ class RestaurantAdmin(BaseAdmin):
                     "is_active",
                     "due_balance",
                     "per_transaction_fee",
+                    "subscription_fee_per_month",
+                    "sms_per_usage",
                     "subscription_start",
                     "subscription_end",
                 )

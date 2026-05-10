@@ -23,6 +23,8 @@ type R = {
   due_balance: number;
   is_open: boolean;
   per_transaction_fee: number;
+  subscription_fee_per_month?: number | string | null;
+  sms_per_usage?: number | string | null;
   can_delivery: boolean;
   delivery_radius_km?: number;
   address?: string;
@@ -276,7 +278,14 @@ function RestaurantsPage() {
                 const phone = restaurantPhone.trim();
                 const slug = restaurantSlug.trim();
                 const address = String(fd.get("address") ?? "").trim();
-                const perTx = Number(fd.get("per_transaction_fee") ?? 2.5);
+                const perTxRaw = String(fd.get("per_transaction_fee") ?? "").trim();
+                const perTx = perTxRaw === "" ? 0 : Number(perTxRaw);
+                if (!Number.isFinite(perTx) || perTx < 0) {
+                  setSubmitError("Per transaction fee must be a non-negative number (0 = use platform default).");
+                  return;
+                }
+                const subFeeRaw = String(fd.get("subscription_fee_per_month") ?? "").trim();
+                const smsRaw = String(fd.get("sms_per_usage") ?? "").trim();
                 const subStart = String(fd.get("subscription_start") ?? "").trim();
                 const subEnd = String(fd.get("subscription_end") ?? "").trim();
                 const dueBalRaw = fd.get("due_balance");
@@ -314,6 +323,8 @@ function RestaurantsPage() {
                   data.append("address", address);
                   data.append("due_balance", String(due_balance));
                   data.append("per_transaction_fee", String(perTx));
+                  data.append("subscription_fee_per_month", subFeeRaw);
+                  data.append("sms_per_usage", smsRaw);
                   data.append("subscription_start", subStart);
                   data.append("subscription_end", subEnd);
                   data.append("is_open", formIsOpen ? "true" : "false");
@@ -505,10 +516,56 @@ function RestaurantsPage() {
                   id="rest-ptf"
                   name="per_transaction_fee"
                   type="number"
-                  step="0.1"
-                  defaultValue={editRestaurant?.per_transaction_fee != null ? String(editRestaurant.per_transaction_fee) : "2.5"}
+                  min={0}
+                  step="0.01"
+                  defaultValue={
+                    editRestaurant?.per_transaction_fee != null ? String(editRestaurant.per_transaction_fee) : "0"
+                  }
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
+                <p className="mt-1 text-xs text-text-muted">0 = charge the platform default from Settings for each order.</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-text-secondary mb-1.5 block" htmlFor="rest-sub-fee">
+                  Subscription fee / month (₹) — optional override
+                </label>
+                <input
+                  id="rest-sub-fee"
+                  name="subscription_fee_per_month"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  defaultValue={
+                    editRestaurant?.subscription_fee_per_month != null &&
+                    String(editRestaurant.subscription_fee_per_month).trim() !== ""
+                      ? String(editRestaurant.subscription_fee_per_month)
+                      : ""
+                  }
+                  placeholder="Leave blank for platform default"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-text-secondary mb-1.5 block" htmlFor="rest-sms">
+                  SMS usage cost (₹) — optional override
+                </label>
+                <input
+                  id="rest-sms"
+                  name="sms_per_usage"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  defaultValue={
+                    editRestaurant?.sms_per_usage != null && String(editRestaurant.sms_per_usage).trim() !== ""
+                      ? String(editRestaurant.sms_per_usage)
+                      : ""
+                  }
+                  placeholder="Leave blank for platform default"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+                <p className="mt-1 text-xs text-text-muted">
+                  Applies to staff OTP and order-status SMS for this venue. Owner OTP still uses the global rate from Settings.
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-text-secondary mb-1.5 block" htmlFor="rest-due">

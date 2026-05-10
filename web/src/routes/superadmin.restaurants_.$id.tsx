@@ -59,12 +59,25 @@ function RestaurantViewPage() {
     address: string;
     due_balance: number;
     per_transaction_fee: number;
+    subscription_fee_per_month?: number | string | null;
+    sms_per_usage?: number | string | null;
+    effective_per_transaction_fee?: number | string;
+    effective_subscription_fee_per_month?: number | string;
+    effective_sms_per_usage?: number | string;
     can_delivery: boolean;
     delivery_radius_km?: number;
     subscription_start?: string;
     subscription_end?: string;
     latitude?: number;
     longitude?: number;
+  };
+
+  const fmtInr = (v: number | string | null | undefined) =>
+    v != null && String(v).trim() !== "" ? `₹${Number(v).toLocaleString()}` : "—";
+  const overrideOrDefault = (raw: number | string | null | undefined, eff: number | string | null | undefined) => {
+    const has = raw != null && String(raw).trim() !== "" && Number(raw) !== 0;
+    if (has) return `${fmtInr(raw)} (venue override)`;
+    return `${fmtInr(eff)} (platform default)`;
   };
 
   const logoSrc = resolveMediaUrl(r.logo);
@@ -107,8 +120,34 @@ function RestaurantViewPage() {
           <ViewField label="Address" value={r.address || "—"} />
           <ViewField label="Due Balance" value={`₹${Number(r.due_balance).toLocaleString()}`} />
           <ViewField
-            label="Per Transaction Fee"
-            value={Number(r.per_transaction_fee) > 0 ? `₹${Number(r.per_transaction_fee).toLocaleString()}` : "— (platform default)"}
+            label="Per Transaction Fee (effective)"
+            value={fmtInr(r.effective_per_transaction_fee ?? r.per_transaction_fee)}
+          />
+          <ViewField
+            label="Subscription / month (effective)"
+            value={fmtInr(r.effective_subscription_fee_per_month)}
+          />
+          <ViewField
+            label="SMS per use (effective)"
+            value={fmtInr(r.effective_sms_per_usage)}
+          />
+          <ViewField
+            label="Venue overrides (blank = use platform Settings)"
+            value={
+              <span className="text-sm">
+                Per order: {overrideOrDefault(r.per_transaction_fee, r.effective_per_transaction_fee)}
+                <br />
+                Subscription:{" "}
+                {r.subscription_fee_per_month != null && String(r.subscription_fee_per_month).trim() !== ""
+                  ? `${fmtInr(r.subscription_fee_per_month)} (venue override)`
+                  : `${fmtInr(r.effective_subscription_fee_per_month)} (platform default)`}
+                <br />
+                SMS:{" "}
+                {r.sms_per_usage != null && String(r.sms_per_usage).trim() !== ""
+                  ? `${fmtInr(r.sms_per_usage)} (venue override)`
+                  : `${fmtInr(r.effective_sms_per_usage)} (platform default)`}
+              </span>
+            }
           />
           <ViewField label="Can Delivery" value={r.can_delivery ? "Yes" : "No"} />
           <ViewField
