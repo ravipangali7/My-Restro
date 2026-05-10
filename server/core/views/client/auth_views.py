@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from core.auth.portal import normalize_phone
+from core.auth.portal import normalize_phone, phone_significant_digits_len
 from core.models import Otp, User, UserRole
 from core.serializers.me import UserMeSerializer
 from core.services.sms import send_otp_sms
@@ -34,9 +34,17 @@ def request_otp(request):
     if not phone:
         return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+    if phone_significant_digits_len(phone) < 10:
+        return Response(
+            {
+                "detail": "Enter a full phone number with country code (at least 10 digits), e.g. +919876543210.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     existing = User.objects.filter(phone=phone).exists()
     if purpose == "login" and not existing:
-        return Response({"detail": "No account exists for this phone."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": "No account exists for this phone."}, status=status.HTTP_400_BAD_REQUEST)
     if purpose == "register" and existing:
         return Response({"detail": "This phone is already registered."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -96,6 +104,14 @@ def verify_otp(request):
     if not phone or not otp:
         return Response({"detail": "phone and otp are required."}, status=status.HTTP_400_BAD_REQUEST)
 
+    if phone_significant_digits_len(phone) < 10:
+        return Response(
+            {
+                "detail": "Enter a full phone number with country code (at least 10 digits), e.g. +919876543210.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if purpose == "register" and not name:
         return Response({"detail": "name is required for registration."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -103,7 +119,7 @@ def verify_otp(request):
 
     if purpose == "login":
         if existing is None:
-            return Response({"detail": "No account exists for this phone."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "No account exists for this phone."}, status=status.HTTP_400_BAD_REQUEST)
         user = existing
     else:
         if existing is not None:

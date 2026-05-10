@@ -37,6 +37,10 @@ function httpErrorMessage(errBody: string, status: number): string {
   try {
     const parsed = JSON.parse(errBody) as { detail?: unknown };
     if (typeof parsed.detail === "string") return parsed.detail;
+    if (Array.isArray(parsed.detail)) {
+      const parts = parsed.detail.map((d) => (typeof d === "string" ? d : JSON.stringify(d)));
+      if (parts.length) return parts.join(" ");
+    }
   } catch {
     /* use fallback */
   }

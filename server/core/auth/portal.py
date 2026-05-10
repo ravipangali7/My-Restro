@@ -12,6 +12,11 @@ def normalize_phone(phone: str) -> str:
     return digits
 
 
+def phone_significant_digits_len(normalized_phone: str) -> int:
+    """Count digits in a normalized phone (E.164 or plain digit string)."""
+    return len("".join(c for c in normalized_phone if c.isdigit()))
+
+
 def primary_staff_membership(user: User) -> Staff | None:
     if user.role != UserRole.STAFF:
         return None
