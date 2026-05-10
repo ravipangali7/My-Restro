@@ -1,4 +1,5 @@
 import { StatCard } from "@/components/shared/StatCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useBulkNotifications,
@@ -8,6 +9,7 @@ import {
   useExpenses,
   useLedgers,
   useOrders,
+  useOrdersAcrossRestaurantIds,
   usePlatformDefaults,
   useProducts,
   usePurchases,
@@ -39,7 +41,7 @@ import {
   Users,
   UtensilsCrossed,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -857,21 +859,198 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
   );
 }
 
+const DASHBOARD_ALL_VENUES_VALUE = "__all_venues__";
+
+function AllVenuesComparisonPanel({
+  restaurantIds,
+  restaurants,
+  onDrillIntoRestaurant,
+}: {
+  restaurantIds: number[];
+  restaurants: { id: number; name: string }[];
+  onDrillIntoRestaurant: (id: number) => void;
+}) {
+  const orderQueries = useOrdersAcrossRestaurantIds(restaurantIds, restaurantIds.length > 0);
+
+  const rows = useMemo(() => {
+    return restaurantIds.map((rid, i) => {
+      const q = orderQueries[i];
+      const normalizedOrders = ((q?.data as DashboardOrder[]) ?? []) as DashboardOrder[];
+      const days = lastNDaysLabels(7);
+      const dayKeySet = new Set(days.map((d) => d.key));
+      let revenue7d = 0;
+      let ordersIn7d = 0;
+      for (const order of normalizedOrders) {
+        if (!order.created_at) continue;
+        const key = new Date(order.created_at).toISOString().slice(0, 10);
+        if (!dayKeySet.has(key)) continue;
+        revenue7d += Number(order.total ?? 0);
+        ordersIn7d += 1;
+      }
+      const pending = normalizedOrders.filter((o) => String(o.status).toLowerCase() === "pending").length;
+      const name = restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
+      const loading = q?.isPending ?? true;
+      const avgTicket = ordersIn7d > 0 ? revenue7d / ordersIn7d : 0;
+      return {
+        rid,
+        name,
+        orderCount: normalizedOrders.length,
+        revenue7d,
+        ordersIn7d,
+        pending,
+        avgTicket,
+        loading,
+      };
+    });
+  }, [restaurantIds, restaurants, orderQueries]);
+
+  const chartData = useMemo(
+    () =>
+      rows.map((r) => ({
+        name: r.name.length > 18 ? `${r.name.slice(0, 16)}…` : r.name,
+        revenue: r.revenue7d,
+        fullName: r.name,
+      })),
+    [rows],
+  );
+
+  const totals = useMemo(() => {
+    return rows.reduce(
+      (acc, r) => {
+        acc.revenue += r.revenue7d;
+        acc.orders7d += r.ordersIn7d;
+        acc.totalOrders += r.orderCount;
+        acc.pending += r.pending;
+        return acc;
+      },
+      { revenue: 0, orders7d: 0, totalOrders: 0, pending: 0 },
+    );
+  }, [rows]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <StatCard icon={Store} label="Locations compared" value={String(restaurantIds.length)} />
+        <StatCard icon={ShoppingBag} label="Orders (all locations)" value={String(totals.totalOrders)} />
+        <StatCard icon={TrendingUp} label="Revenue (7 days, all)" value={formatInr(totals.revenue)} />
+        <StatCard icon={PieChartIcon} label="Pending (all)" value={String(totals.pending)} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title="Revenue by location" description="Last 7 days — quick visual comparison." icon={BarChart2} className="lg:col-span-1">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--text-muted)" tickFormatter={(v) => `₹${v}`} />
+              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} stroke="var(--text-muted)" />
+              <Tooltip
+                formatter={(value: number) => [formatInr(Number(value)), "Revenue (7d)"]}
+                labelFormatter={(_, payload) => {
+                  const p = payload?.[0]?.payload as { fullName?: string; name?: string } | undefined;
+                  return p?.fullName ?? p?.name ?? "";
+                }}
+              />
+              <Bar dataKey="revenue" fill="#F83232" radius={[0, 6, 6, 0]} name="Revenue" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        <Panel title="Per-location metrics" description="Open a location for full dashboard tabs." icon={Store}>
+          <MiniTable
+            empty="No restaurants to compare."
+            columns={[
+              { key: "name", header: "Restaurant" },
+              { key: "orders", header: "Orders", className: "text-right tabular-nums" },
+              { key: "rev", header: "Revenue (7d)", className: "text-right tabular-nums" },
+              { key: "pend", header: "Pending", className: "text-right tabular-nums" },
+              { key: "avg", header: "Avg ticket (7d)", className: "text-right tabular-nums hidden sm:table-cell" },
+              { key: "action", header: "" },
+            ]}
+            rows={rows.map((r) => ({
+              name: (
+                <span className="font-medium text-foreground">
+                  {r.loading ? <span className="text-text-muted">…</span> : r.name}
+                </span>
+              ),
+              orders: r.loading ? "…" : String(r.orderCount),
+              rev: r.loading ? "…" : formatInr(r.revenue7d),
+              pend: r.loading ? "…" : String(r.pending),
+              avg: r.loading ? "…" : formatInr(Math.round(r.avgTicket)),
+              action: (
+                <button
+                  type="button"
+                  onClick={() => onDrillIntoRestaurant(r.rid)}
+                  className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+                >
+                  View
+                </button>
+              ),
+            }))}
+          />
+        </Panel>
+      </div>
+
+      <p className="text-xs text-text-muted">
+        Comparison uses order history per location. Other areas (inventory, ledger) stay on the single-location view when
+        you pick a restaurant above.
+      </p>
+    </div>
+  );
+}
+
 export function OwnerHomeDashboard() {
-  const { restaurantId, restaurantIds } = useRestaurantScope();
+  const { restaurantId, setRestaurantId, restaurantIds } = useRestaurantScope();
   const { data: restaurants = [] } = useRestaurants();
   const { data: platformDefaults } = usePlatformDefaults();
   const [tab, setTab] = useState("overview");
   const multiVenue = restaurantIds.length > 1;
+  const [compareAllVenues, setCompareAllVenues] = useState(false);
+
+  useEffect(() => {
+    if (!multiVenue) setCompareAllVenues(false);
+  }, [multiVenue]);
+
+  const restaurantList = restaurants as { id: number; name: string }[];
+  const ownedRestaurants = useMemo(() => {
+    const fromList = restaurantList
+      .filter((r) => restaurantIds.includes(r.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (fromList.length > 0) return fromList;
+    return restaurantIds.map((id) => ({ id, name: `Restaurant #${id}` }));
+  }, [restaurantList, restaurantIds]);
+
+  const selectValue = compareAllVenues && multiVenue ? DASHBOARD_ALL_VENUES_VALUE : String(restaurantId ?? "");
+
+  const onVenueSelect = useCallback(
+    (value: string) => {
+      if (value === DASHBOARD_ALL_VENUES_VALUE) {
+        setCompareAllVenues(true);
+        return;
+      }
+      setCompareAllVenues(false);
+      const id = Number(value);
+      if (Number.isFinite(id) && id > 0) setRestaurantId(id);
+    },
+    [setRestaurantId],
+  );
+
+  const drillIntoRestaurant = useCallback(
+    (id: number) => {
+      setCompareAllVenues(false);
+      setRestaurantId(id);
+    },
+    [setRestaurantId],
+  );
 
   const venueLabel = useMemo(() => {
     if (restaurantId == null) return null;
-    const r = (restaurants as { id: number; name: string }[]).find((x) => x.id === restaurantId);
+    const r = restaurantList.find((x) => x.id === restaurantId);
     return r?.name ?? `Restaurant #${restaurantId}`;
-  }, [restaurantId, restaurants]);
+  }, [restaurantId, restaurantList]);
 
   const dueAlert = useMemo(() => {
     if (restaurantId == null) return null;
+    if (compareAllVenues && multiVenue) return null;
     const pd = platformDefaults as PlatformDefaultsDTO | undefined;
     const threshold = pd != null ? Number(pd.due_threshold) : NaN;
     if (!Number.isFinite(threshold) || threshold <= 0) return null;
@@ -879,7 +1058,7 @@ export function OwnerHomeDashboard() {
     const due = r != null ? Number(r.due_balance ?? 0) : NaN;
     if (!Number.isFinite(due) || due < threshold) return null;
     return { due, threshold };
-  }, [restaurantId, restaurants, platformDefaults]);
+  }, [restaurantId, restaurants, platformDefaults, compareAllVenues, multiVenue]);
 
   if (restaurantId == null) {
     return <p className="text-sm text-text-muted p-4">No restaurant context.</p>;
@@ -901,55 +1080,94 @@ export function OwnerHomeDashboard() {
       ) : null}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
         <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-50/90 to-transparent" aria-hidden />
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary relative">Owner overview</p>
-        <h2 className="font-display font-bold text-xl sm:text-2xl text-foreground mt-1 relative">Dashboard</h2>
-        {venueLabel ? (
-          <p className="text-sm text-text-secondary mt-2 max-w-2xl relative">
-            Figures below follow your active restaurant scope: <span className="font-semibold text-foreground">{venueLabel}</span>
-            {multiVenue ? (
-              <>
-                . Switch locations from{" "}
-                <Link to="/owner/settings" className="text-primary font-medium hover:underline">
-                  Settings
-                </Link>{" "}
-                when you manage more than one site.
-              </>
-            ) : (
-              "."
-            )}
-          </p>
-        ) : null}
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Owner overview</p>
+            <h2 className="font-display font-bold text-xl sm:text-2xl text-foreground mt-1">Dashboard</h2>
+            {compareAllVenues && multiVenue ? (
+              <p className="text-sm text-text-secondary mt-2 max-w-2xl">
+                You are viewing a <span className="font-semibold text-foreground">combined comparison</span> of every
+                location. Choose a restaurant in the selector to load detailed tabs for that site only.
+              </p>
+            ) : venueLabel ? (
+              <p className="text-sm text-text-secondary mt-2 max-w-2xl">
+                Figures below are for <span className="font-semibold text-foreground">{venueLabel}</span> only.
+                {multiVenue ? (
+                  <>
+                    {" "}
+                    Use the restaurant selector to compare all locations or switch sites. Default scope for the rest of
+                    the portal also updates when you pick a location here or in{" "}
+                    <Link to="/owner/settings" className="text-primary font-medium hover:underline">
+                      Settings
+                    </Link>
+                    .
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+          {ownedRestaurants.length > 0 ? (
+            <div className="w-full shrink-0 lg:w-72">
+              <label htmlFor="dashboard-restaurant-scope" className="text-xs font-semibold text-text-secondary block mb-1.5">
+                Restaurant
+              </label>
+              <Select value={selectValue} onValueChange={onVenueSelect}>
+                <SelectTrigger id="dashboard-restaurant-scope" className="w-full rounded-xl bg-background">
+                  <SelectValue placeholder="Choose restaurant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {multiVenue ? (
+                    <SelectItem value={DASHBOARD_ALL_VENUES_VALUE}>All restaurants (compare)</SelectItem>
+                  ) : null}
+                  {ownedRestaurants.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-        <TabsList className="h-auto w-full flex flex-wrap gap-1.5 justify-start rounded-xl bg-muted/70 p-1.5 sm:inline-flex sm:w-auto">
-          <TabsTrigger value="overview" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="operations" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
-            Orders &amp; alerts
-          </TabsTrigger>
-          <TabsTrigger value="catalog" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
-            Menu &amp; inventory
-          </TabsTrigger>
-          <TabsTrigger value="finance" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
-            People &amp; finance
-          </TabsTrigger>
-        </TabsList>
+      {compareAllVenues && multiVenue ? (
+        <AllVenuesComparisonPanel
+          restaurantIds={restaurantIds}
+          restaurants={restaurantList}
+          onDrillIntoRestaurant={drillIntoRestaurant}
+        />
+      ) : (
+        <Tabs value={tab} onValueChange={setTab} className="space-y-5">
+          <TabsList className="h-auto w-full flex flex-wrap gap-1.5 justify-start rounded-xl bg-muted/70 p-1.5 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="overview" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="operations" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
+              Orders &amp; alerts
+            </TabsTrigger>
+            <TabsTrigger value="catalog" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
+              Menu &amp; inventory
+            </TabsTrigger>
+            <TabsTrigger value="finance" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
+              People &amp; finance
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
-          <OverviewTab restaurantId={restaurantId} />
-        </TabsContent>
-        <TabsContent value="operations" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
-          <OperationsTab restaurantId={restaurantId} />
-        </TabsContent>
-        <TabsContent value="catalog" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
-          <CatalogTab restaurantId={restaurantId} />
-        </TabsContent>
-        <TabsContent value="finance" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
-          <FinanceTab restaurantId={restaurantId} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="overview" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
+            <OverviewTab restaurantId={restaurantId} />
+          </TabsContent>
+          <TabsContent value="operations" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
+            <OperationsTab restaurantId={restaurantId} />
+          </TabsContent>
+          <TabsContent value="catalog" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
+            <CatalogTab restaurantId={restaurantId} />
+          </TabsContent>
+          <TabsContent value="finance" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
+            <FinanceTab restaurantId={restaurantId} />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
