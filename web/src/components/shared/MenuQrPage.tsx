@@ -3,6 +3,15 @@ import { Link } from "@tanstack/react-router";
 import { Copy, Download, ExternalLink, QrCode } from "lucide-react";
 import { jsPDF } from "jspdf";
 
+/** Matches `:root` in `styles.css` (MyRestro light theme) for print-friendly PDFs. */
+const PDF_THEME = {
+  foreground: [26, 26, 26] as const,
+  textSecondary: [90, 90, 90] as const,
+  textMuted: [154, 154, 154] as const,
+  primary: [248, 50, 50] as const,
+  primary50: [255, 241, 241] as const,
+} as const;
+
 type MenuQrPageProps = {
   title: string;
   subtitle: string;
@@ -87,11 +96,8 @@ async function embedLogoCenterInQrPng(qrPngDataUrl: string, logoUrl: string | nu
     const px = (outSize - patch) / 2;
     const py = (outSize - patch) / 2;
     ctx.fillStyle = "#ffffff";
-    roundRectPath(ctx, px, py, patch, patch, 10);
+    roundRectPath(ctx, px, py, patch, patch, Math.round(outSize * 0.028));
     ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.08)";
-    ctx.lineWidth = Math.max(1, outSize / 300);
-    ctx.stroke();
     const inset = patch * 0.13;
     ctx.drawImage(logoImg, px + inset, py + inset, patch - inset * 2, patch - inset * 2);
     return canvas.toDataURL("image/png");
@@ -162,45 +168,106 @@ export function MenuQrPage({
     try {
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
       const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const centerX = pageWidth / 2;
+      const marginX = 52;
+      const contentW = pageWidth - marginX * 2;
 
-      let cursorY = 72;
+      const [fgR, fgG, fgB] = PDF_THEME.foreground;
+      const [secR, secG, secB] = PDF_THEME.textSecondary;
+      const [mutedR, mutedG, mutedB] = PDF_THEME.textMuted;
+      const [prR, prG, prB] = PDF_THEME.primary;
+      const [p50R, p50G, p50B] = PDF_THEME.primary50;
+
+      // Brand accent (full bleed top stripe — no box border)
+      pdf.setFillColor(prR, prG, prB);
+      pdf.rect(0, 0, pageWidth, 5, "F");
+
+      let cursorY = 56;
+      const headerLogoSize = 76;
+      let headerLogoLoaded = false;
       if (restaurantLogoUrl) {
         try {
           const logoData = await loadImageDataUrl(restaurantLogoUrl);
-          const logoSize = 64;
-          pdf.addImage(logoData, "PNG", centerX - logoSize / 2, cursorY, logoSize, logoSize);
-          cursorY += logoSize + 14;
+          pdf.addImage(logoData, "PNG", centerX - headerLogoSize / 2, cursorY, headerLogoSize, headerLogoSize);
+          headerLogoLoaded = true;
+          cursorY += headerLogoSize + 20;
         } catch {
-          // Continue without header logo if loading fails due to missing image/CORS.
+          headerLogoLoaded = false;
         }
       }
 
+      if (!headerLogoLoaded) {
+        const letter = (displayName.trim()[0] ?? "?").toUpperCase();
+        const lx = centerX - headerLogoSize / 2;
+        pdf.setFillColor(p50R, p50G, p50B);
+        pdf.roundedRect(lx, cursorY, headerLogoSize, headerLogoSize, 16, 16, "F");
+        pdf.setTextColor(prR, prG, prB);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(34);
+        pdf.text(letter, centerX, cursorY + headerLogoSize / 2 + 12, { align: "center" });
+        cursorY += headerLogoSize + 20;
+      }
+
+      pdf.setTextColor(fgR, fgG, fgB);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(22);
-      pdf.text(displayName, centerX, cursorY, { align: "center" });
-      cursorY += 18;
+      pdf.setFontSize(20);
+      const titleLines = pdf.splitTextToSize(displayName || "Menu", contentW);
+      pdf.text(titleLines, centerX, cursorY, { align: "center" });
+      cursorY += titleLines.length * 24 + 6;
 
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(11);
-      pdf.setTextColor(90, 90, 90);
-      pdf.text("Scan to view menu", centerX, cursorY + 8, { align: "center" });
-      pdf.setTextColor(0, 0, 0);
+      pdf.setTextColor(secR, secG, secB);
+      const tag = "Scan to order · Add items with your name & phone — no app or login required";
+      const tagLines = pdf.splitTextToSize(tag, contentW);
+      pdf.text(tagLines, centerX, cursorY, { align: "center" });
+      cursorY += tagLines.length * 14 + 28;
 
       const qrDataRaw = await loadImageDataUrl(qrImageUrl);
       const qrData =
         restaurantLogoUrl != null && restaurantLogoUrl !== ""
           ? await embedLogoCenterInQrPng(qrDataRaw, restaurantLogoUrl, 640)
           : qrDataRaw;
-      const qrSize = 300;
-      const qrY = cursorY + 28;
-      pdf.addImage(qrData, "PNG", centerX - qrSize / 2, qrY, qrSize, qrSize);
 
-      const linkY = qrY + qrSize + 24;
-      pdf.setFontSize(10);
-      pdf.setTextColor(70, 70, 70);
-      const wrappedUrl = pdf.splitTextToSize(menuUrl, pageWidth - 96);
-      pdf.text(wrappedUrl, centerX, linkY, { align: "center" });
+      const qrSize = 292;
+      const panelPadY = 36;
+      const panelPadX = 40;
+      const panelW = Math.min(qrSize + panelPadX * 2, contentW);
+      const panelH = qrSize + panelPadY * 2;
+      const panelX = centerX - panelW / 2;
+
+      pdf.setFillColor(p50R, p50G, p50B);
+      pdf.roundedRect(panelX, cursorY, panelW, panelH, 18, 18, "F");
+
+      const qrX = centerX - qrSize / 2;
+      const qrY = cursorY + panelPadY;
+      pdf.addImage(qrData, "PNG", qrX, qrY, qrSize, qrSize);
+
+      cursorY += panelH + 28;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(mutedR, mutedG, mutedB);
+      const hint = "Tip: Print at 100% scale for reliable scanning.";
+      pdf.text(hint, centerX, cursorY, { align: "center" });
+      cursorY += 16;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(secR, secG, secB);
+      const wrappedUrl = pdf.splitTextToSize(menuUrl, contentW - 8);
+      pdf.text(wrappedUrl, centerX, cursorY, { align: "center" });
+      cursorY += wrappedUrl.length * 12 + 8;
+
+      try {
+        const origin = new URL(menuUrl).origin.replace(/^https?:\/\//, "");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(mutedR, mutedG, mutedB);
+        pdf.text(origin, centerX, pageHeight - 40, { align: "center" });
+      } catch {
+        /* ignore */
+      }
 
       pdf.save(`menu-qr-${restaurantId}.pdf`);
     } finally {
@@ -229,17 +296,17 @@ export function MenuQrPage({
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-            <div className="rounded-2xl border border-dashed border-primary/35 bg-primary-50/40 p-4">
+            <div className="rounded-2xl bg-primary-50/70 p-5">
               <div className="mx-auto flex w-full max-w-[280px] flex-col items-center">
-                <div className="relative w-full rounded-xl bg-white p-2 shadow-sm">
+                <div className="relative w-full rounded-2xl bg-white p-2.5 shadow-sm ring-1 ring-black/[0.04]">
                   <img
                     src={qrImageUrl}
                     alt={`Menu QR for ${restaurantName ?? `restaurant ${restaurantId}`}`}
-                    className="block h-auto w-full rounded-lg"
+                    className="block h-auto w-full rounded-xl"
                   />
                   {restaurantLogoUrl ? (
                     <div
-                      className="pointer-events-none absolute left-1/2 top-1/2 flex size-[22%] min-h-[44px] min-w-[44px] max-h-[72px] max-w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-black/10 bg-white shadow-sm"
+                      className="pointer-events-none absolute left-1/2 top-1/2 flex size-[22%] min-h-[44px] min-w-[44px] max-h-[72px] max-w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]"
                       aria-hidden
                     >
                       <img
