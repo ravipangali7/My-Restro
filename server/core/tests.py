@@ -115,7 +115,6 @@ class OrderServiceTests(TestCase):
         )
 
         self.assertEqual(order.sub_total, Decimal("180.00"))
-        self.assertEqual(order.service_charge, Decimal("10.00"))
         self.assertEqual(order.total, Decimal("190.00"))
 
     def test_menu_offer_savings_on_discounted_line(self):

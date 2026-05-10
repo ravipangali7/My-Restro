@@ -143,10 +143,9 @@ def create_order_with_items(
     effective_fee = effective_per_transaction_fee(restaurant)
     service_charge = effective_fee.quantize(Decimal("0.01")) if effective_fee > 0 else Decimal("0.00")
     order.sub_total = sub_total
-    order.service_charge = service_charge
     order.delivery_fee = delivery_fee
     order.total = max(Decimal("0.00"), sub_total - order_discount) + service_charge + delivery_fee
-    order.save(update_fields=["sub_total", "discount", "service_charge", "delivery_fee", "total", "updated_at"])
+    order.save(update_fields=["sub_total", "discount", "delivery_fee", "total", "updated_at"])
 
     record_platform_transaction_fee_for_order(order)
     attach_order_bill_image(order)
@@ -156,10 +155,12 @@ def create_order_with_items(
 def recalculate_order_totals(order: Order) -> Order:
     """Recompute sub_total and total from persisted line items and order.discount."""
     sub_total = sum((li.total for li in order.items.all()), Decimal("0.00"))
+    effective_fee = effective_per_transaction_fee(order.restaurant)
+    service_charge = effective_fee.quantize(Decimal("0.01")) if effective_fee > 0 else Decimal("0.00")
     order.sub_total = sub_total
     order.total = (
         max(Decimal("0.00"), sub_total - order.discount)
-        + (order.service_charge or Decimal("0.00"))
+        + service_charge
         + (order.delivery_fee or Decimal("0.00"))
     )
     order.save(update_fields=["sub_total", "total", "updated_at"])

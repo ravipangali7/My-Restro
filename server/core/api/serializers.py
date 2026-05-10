@@ -144,6 +144,7 @@ class OrderSerializer(serializers.ModelSerializer):
     table_image = serializers.SerializerMethodField()
     bill_available = serializers.SerializerMethodField()
     amount_remaining = serializers.SerializerMethodField()
+    service_charge = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -189,7 +190,18 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("order_id", "sub_total", "service_charge", "total", "amount_paid")
+        read_only_fields = ("order_id", "sub_total", "total", "amount_paid")
+
+    def get_service_charge(self, obj):
+        sub_total = obj.sub_total if obj.sub_total is not None else Decimal("0.00")
+        discount = obj.discount if obj.discount is not None else Decimal("0.00")
+        delivery_fee = obj.delivery_fee if obj.delivery_fee is not None else Decimal("0.00")
+        total = obj.total if obj.total is not None else Decimal("0.00")
+        before_service_charge = max(Decimal("0.00"), sub_total - discount) + delivery_fee
+        service_charge = total - before_service_charge
+        if service_charge < 0:
+            service_charge = Decimal("0.00")
+        return str(service_charge.quantize(Decimal("0.01")))
 
     def get_amount_remaining(self, obj):
         total = obj.total if obj.total is not None else Decimal("0.00")
