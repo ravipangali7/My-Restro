@@ -21,6 +21,8 @@ import {
   Grid3X3,
   Bell,
   Store,
+  Home,
+  User,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -61,9 +63,14 @@ export const ownerSidebarItems: NavItem[] = [
   { title: "Settings", to: "/owner/settings", icon: Settings },
 ];
 
+/** Mobile bottom bar (mirrors customer app: five tabs with center hub on Staff). */
 export const ownerBottomTabs: { title: string; to: string; icon: LucideIcon }[] = [
-  { title: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { title: "Orders", to: "/owner/orders", icon: ShoppingBag },
-  { title: "Menu", to: "/owner/categories", icon: UtensilsCrossed },
-  { title: "More", to: "/owner/settings", icon: Settings },
+  { title: "Home", to: "/dashboard", icon: Home },
+  { title: "Restaurant", to: "/owner/restaurants", icon: Store },
+  { title: "Staff", to: "/owner/staff", icon: Users },
+  { title: "Ledger", to: "/owner/ledger", icon: BookOpen },
+  { title: "Profile", to: "/owner/profile", icon: User },
 ];
+
+/** Path of the elevated center tab in `BottomNav` (same pattern as customer Orders). */
+export const ownerBottomNavFeaturedTo = "/owner/staff" as const;
