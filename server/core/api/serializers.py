@@ -100,13 +100,19 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return "Item"
 
     def get_line_image(self, obj):
+        name = None
         if obj.comboset_id:
-            return self._image_storage_name(obj.comboset.image)
-        if obj.product_item_id and getattr(obj.product_item, "product_id", None):
-            return self._image_storage_name(obj.product_item.product.image)
-        if obj.product_id:
-            return self._image_storage_name(obj.product.image)
-        return None
+            name = self._image_storage_name(obj.comboset.image)
+        elif obj.product_item_id and getattr(obj.product_item, "product_id", None):
+            name = self._image_storage_name(obj.product_item.product.image)
+        elif obj.product_id:
+            name = self._image_storage_name(obj.product.image)
+        if not name:
+            return None
+        request = self.context.get("request")
+        if not request:
+            return name
+        return absolute_media_url(request, name)
 
     @staticmethod
     def _image_storage_name(fieldfile):

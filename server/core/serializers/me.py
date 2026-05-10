@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.auth.portal import default_restaurant_id_for_user, portal_role_for_user, restaurant_ids_for_user
+from core.media_urls import absolute_media_url
 from core.models import Staff, User
 
 
@@ -17,6 +18,7 @@ class UserMeSerializer(serializers.ModelSerializer):
     restaurant_ids = serializers.SerializerMethodField()
     default_restaurant_id = serializers.SerializerMethodField()
     staff_memberships = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -48,3 +50,14 @@ class UserMeSerializer(serializers.ModelSerializer):
     def get_staff_memberships(self, obj: User):
         rows = Staff.objects.filter(user=obj).select_related("restaurant")
         return StaffMembershipSerializer(rows, many=True).data
+
+    def get_image(self, obj: User) -> str | None:
+        if not getattr(obj, "image", None) or not obj.image:
+            return None
+        name = getattr(obj.image, "name", "") or ""
+        if not name:
+            return None
+        request = self.context.get("request")
+        if not request:
+            return obj.image.url
+        return absolute_media_url(request, name)

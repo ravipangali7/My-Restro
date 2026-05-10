@@ -21,10 +21,31 @@ export function getApiBaseUrl(): string {
 
 /** Turn API image paths into a usable URL (handles absolute URLs from DRF). */
 export function resolveMediaUrl(path: string | null | undefined): string | null {
-  if (path == null || path === "") return null;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path == null) return null;
+  const raw = String(path).trim();
+  if (raw === "") return null;
+
+  // Protocol-relative URLs (`//host/...`) — browsers need an explicit scheme.
+  if (raw.startsWith("//")) {
+    const scheme =
+      typeof window !== "undefined" && window.location?.protocol === "http:" ? "http:" : "https:";
+    return `${scheme}${raw}`;
+  }
+
+  let resolved = raw;
+  // Avoid mixed-content blocking when the API returns `http://` on an HTTPS site.
+  if (
+    resolved.startsWith("http://") &&
+    typeof window !== "undefined" &&
+    window.location?.protocol === "https:"
+  ) {
+    resolved = `https://${resolved.slice("http://".length)}`;
+  }
+
+  if (resolved.startsWith("http://") || resolved.startsWith("https://")) return resolved;
+
   const base = API_BASE_URL.replace(/\/$/, "");
-  let p = path.startsWith("/") ? path : `/${path}`;
+  let p = resolved.startsWith("/") ? resolved : `/${resolved}`;
   // Raw queryset `.values("image")` (e.g. client home) returns the path relative to MEDIA_ROOT
   // (`products/…`, `categories/…`). DRF often returns `media/…` or a full URL. Files are served
   // under Django's MEDIA_URL (`/media/…` on this project).
