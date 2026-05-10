@@ -1,6 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import {
+  OwnerEntityCard,
+  OwnerEntityCardStack,
+  ownerListActionClass,
+  ownerListActionSecondaryClass,
+} from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
