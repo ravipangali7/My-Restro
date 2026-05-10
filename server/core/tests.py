@@ -1594,6 +1594,61 @@ class ClientHomeInactiveRestaurantApiTests(APITestCase):
         self.assertEqual(data["restaurant"]["is_open"], False)
 
 
+class ClientPublicMenuOrderApiTests(APITestCase):
+    """POST /api/client/orders/ allows anonymous guests to order from the menu QR flow."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create(phone="9000000902", name="Owner QR", role=UserRole.OWNER)
+        self.restaurant = Restaurant.objects.create(user=self.owner, name="QR Order Cafe", is_active=True)
+        self.unit = Unit.objects.create(restaurant=self.restaurant, name="Piece", symbol="pc")
+        self.cat = Category.objects.create(restaurant=self.restaurant, name="Mains")
+        self.product = Product.objects.create(restaurant=self.restaurant, category=self.cat, name="Thali")
+        self.item = ProductItem.objects.create(
+            product=self.product,
+            unit=self.unit,
+            price=Decimal("100.00"),
+            discount_type=DiscountType.PERCENTAGE,
+            discount=Decimal("0.00"),
+        )
+        self.table = Table.objects.create(restaurant=self.restaurant, name="T1", capacity=4)
+
+    def _payload(self, **overrides):
+        base = {
+            "restaurant": self.restaurant.pk,
+            "lines": [{"product_item_id": self.item.pk, "quantity": "1"}],
+            "order_type": "table",
+            "table": self.table.pk,
+            "people_for": 2,
+            "payment_method": "cash",
+            "guest_customer_name": "Guest Pat",
+            "guest_customer_phone": "9800000000",
+        }
+        base.update(overrides)
+        return base
+
+    def test_anonymous_table_order_creates_guest_order(self):
+        url = "/api/client/orders/"
+        res = self.client.post(url, self._payload(), format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        data = res.json()
+        self.assertEqual(data.get("guest_customer_name"), "Guest Pat")
+        self.assertEqual(data.get("guest_customer_phone"), "9800000000")
+        self.assertIsNone(data.get("customer"))
+
+    def test_delivery_rejected_for_public_endpoint(self):
+        res = self.client.post(
+            "/api/client/orders/",
+            self._payload(order_type="delivery", table=None, latitude="27.71", longitude="85.32"),
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_table_order_without_table_returns_400(self):
+        res = self.client.post("/api/client/orders/", self._payload(table=None), format="json")
+        self.assertEqual(res.status_code, 400)
+
+
 class AuthOtpSmsFallbackApiTests(APITestCase):
     """When SMS cannot be sent, DEBUG, SMS_OTP_ALLOW_INSECURE_FALLBACK, or SMS_OTP_DEV_AUTO_FALLBACK returns a verifiable OTP."""
 

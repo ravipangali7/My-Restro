@@ -319,7 +319,7 @@ function OwnerRestaurantDetailPage() {
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-foreground">Menu QR</span>
               <span className="mt-0.5 block text-xs text-text-secondary">
-                Open and share this restaurant&apos;s customer menu QR.
+                Open and share this restaurant&apos;s scan-to-order menu QR.
               </span>
             </span>
           </Link>

@@ -215,11 +215,7 @@ export function StaffPosView({
   };
 
   const placeOrder = async () => {
-    if (mode === "public") {
-      setOrderError("This shared link is for viewing the menu only. To place orders, open Staff POS while signed in.");
-      return;
-    }
-    if (restaurantId == null || !token) return;
+    if (restaurantId == null) return;
     setOrderError(null);
     if (cart.length === 0) {
       setOrderError("Add at least one item to the cart.");
@@ -229,7 +225,7 @@ export function StaffPosView({
       setOrderError("Select a table for dine-in orders.");
       return;
     }
-    if (orderType === "delivery") {
+    if (mode !== "public" && orderType === "delivery") {
       const dLat = Number.parseFloat(deliveryLatitude);
       const dLng = Number.parseFloat(deliveryLongitude);
       if (!Number.isFinite(dLat) || !Number.isFinite(dLng)) {
@@ -243,6 +239,42 @@ export function StaffPosView({
         return;
       }
     }
+
+    if (mode === "public") {
+      setPlacing(true);
+      try {
+        await apiPost(
+          "/api/client/orders/",
+          {
+            restaurant: restaurantId,
+            lines: cart.map((c) => ({
+              product_item_id: c.productItemId,
+              quantity: String(c.quantity),
+            })),
+            order_type: orderType,
+            table: (orderType === "table" || orderType === "packing") ? selectedTable : null,
+            people_for: peopleFor,
+            payment_method: paymentMethod,
+            guest_customer_name: customerName.trim(),
+            guest_customer_phone: customerPhone.trim(),
+          },
+          null,
+        );
+        setCart([]);
+        setLinkedCustomerId(null);
+        setCustomerName("");
+        setCustomerPhone("");
+        setPaymentMethod("cash");
+        void queryClient.invalidateQueries({ queryKey: ["client-home", restaurantId] });
+      } catch (e) {
+        setOrderError(e instanceof Error ? e.message : "Could not place order.");
+      } finally {
+        setPlacing(false);
+      }
+      return;
+    }
+
+    if (!token) return;
     setPlacing(true);
     try {
       await apiPost(
@@ -656,11 +688,11 @@ export function StaffPosView({
           </div>
           <button
             type="button"
-            disabled={placing || cart.length === 0 || mode === "public"}
+            disabled={placing || cart.length === 0}
             onClick={() => void placeOrder()}
             className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 mt-2 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {placing ? "Placing…" : mode === "public" ? "Place Order (staff login required)" : "Place Order"}
+            {placing ? "Placing…" : "Place Order"}
           </button>
         </div>
       </div>
@@ -671,8 +703,7 @@ export function StaffPosView({
     return (
       <div className="flex min-h-screen flex-col bg-surface">
         <div className="w-full shrink-0 border-b border-border bg-primary-50/80 px-4 py-2 text-center text-xs text-text-secondary">
-          Shared waiter menu — browse and build a cart here. To submit orders, sign in and use{" "}
-          <span className="font-semibold text-foreground">Staff POS</span>.
+          Scan-to-order menu — add items, enter your name and phone, then place your order. No account required.
         </div>
         {inner}
       </div>

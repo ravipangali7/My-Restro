@@ -268,8 +268,8 @@ export function MenuQrPage({
                 <div>
                   <h2 className="font-display text-lg font-semibold text-foreground">Menu QR</h2>
                   <p className="mt-1 text-sm text-text-secondary">
-                    Place this QR on tables, billing counter, and packaging so staff can open the same POS-style menu
-                    in the browser without logging in.
+                    Place this QR on tables, the counter, or packaging. The link stays the same over time: scanning it
+                    opens the menu so guests can order with their name and phone—no login or app install required.
                   </p>
                 </div>
               </div>

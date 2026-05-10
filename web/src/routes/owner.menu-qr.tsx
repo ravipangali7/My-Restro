@@ -29,7 +29,7 @@ function OwnerMenuQrRoute() {
   return (
     <MenuQrPage
       title="Menu QR"
-      subtitle="Generate and share a QR that opens the restaurant’s POS-style waiter menu in the browser—no login required."
+      subtitle="Generate and share a QR that opens the restaurant menu in the browser so guests can order with name and phone—no account required."
       backTo="/owner/restaurants"
       backLabel="Back to Restaurants"
       restaurantId={selectedRestaurantId}

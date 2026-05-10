@@ -114,9 +114,13 @@ function httpErrorMessage(errBody: string, status: number): string {
   return fallback;
 }
 
+/**
+ * @param token Auth token, or `undefined` to fall back to stored token, or `null` for an unauthenticated request
+ * (no Authorization header, even if a token exists in storage — used for public menu QR checkout and public listings).
+ */
 function authHeaders(token: string | null | undefined): HeadersInit {
   const headers: Record<string, string> = { Accept: "application/json" };
-  const t = token ?? getStoredToken();
+  const t = token === undefined ? getStoredToken() : token;
   if (t) headers.Authorization = `Token ${t}`;
   return headers;
 }

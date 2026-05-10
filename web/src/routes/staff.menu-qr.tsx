@@ -21,7 +21,7 @@ function StaffMenuQrRoute() {
   return (
     <MenuQrPage
       title="Menu QR"
-      subtitle="Use this QR in dine-in areas so waiters can open the same POS-style menu in a browser without logging in."
+      subtitle="Use this QR in dine-in areas so guests can open the menu in a browser and place orders with name and phone—no account required."
       backTo={role === "cashier" ? STAFF_PATH.cashierDashboard : STAFF_PATH.home}
       backLabel="Back to Dashboard"
       restaurantId={restaurantId ?? null}
