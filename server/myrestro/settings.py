@@ -21,7 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&0$*^ddssgu7wv6h5qgw_ad44j1k25++$+5obl!wm5%-&g71(c'
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-&0$*^ddssgu7wv6h5qgw_ad44j1k25++$+5obl!wm5%-&g71(c",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "False").strip().lower() in {"1", "true", "yes", "on"}
@@ -191,3 +194,14 @@ TWILIO_MESSAGING_SERVICE_SID = os.environ.get("TWILIO_MESSAGING_SERVICE_SID", ""
 SMS_OTP_ALLOW_INSECURE_FALLBACK = os.environ.get(
     "SMS_OTP_ALLOW_INSECURE_FALLBACK", ""
 ).strip().lower() in {"1", "true", "yes", "on"}
+
+# Local dev: when Twilio fails, return debug_otp like DEBUG mode. Auto-on only while SECRET_KEY
+# is still the default django-insecure value; set SMS_OTP_DEV_AUTO_FALLBACK=false to force off, or
+# true to force on (e.g. custom SECRET_KEY locally).
+_sms_dev_auto_raw = os.environ.get("SMS_OTP_DEV_AUTO_FALLBACK", "").strip().lower()
+if _sms_dev_auto_raw in {"1", "true", "yes", "on"}:
+    SMS_OTP_DEV_AUTO_FALLBACK = True
+elif _sms_dev_auto_raw in {"0", "false", "no", "off"}:
+    SMS_OTP_DEV_AUTO_FALLBACK = False
+else:
+    SMS_OTP_DEV_AUTO_FALLBACK = str(SECRET_KEY).strip().startswith("django-insecure")

@@ -57,19 +57,30 @@ def request_otp(request):
     otp_row = Otp.objects.create(phone=phone, otp=code, purpose=purpose, is_used=False)
 
     sms_sent = send_otp_sms(phone, code)
-    payload = {"detail": "OTP sent.", "phone": phone}
+    payload = {"detail": "OTP sent.", "phone": phone, "sms_sent": sms_sent}
 
-    allow_otp_without_sms = settings.DEBUG or getattr(
-        settings, "SMS_OTP_ALLOW_INSECURE_FALLBACK", False
+    allow_otp_without_sms = (
+        settings.DEBUG
+        or getattr(settings, "SMS_OTP_ALLOW_INSECURE_FALLBACK", False)
+        or getattr(settings, "SMS_OTP_DEV_AUTO_FALLBACK", False)
     )
 
     if not sms_sent:
         if allow_otp_without_sms:
             payload["debug_otp"] = code
+            payload["sms_sent"] = False
+            payload["detail"] = (
+                "Verification code is ready. SMS was not delivered in this environment; "
+                "use the code returned for this request."
+            )
             if getattr(settings, "SMS_OTP_ALLOW_INSECURE_FALLBACK", False) and not settings.DEBUG:
                 logger.warning(
                     "SMS_OTP_ALLOW_INSECURE_FALLBACK enabled: OTP not sent via SMS; "
                     "client received debug_otp for this request (staging only)."
+                )
+            elif getattr(settings, "SMS_OTP_DEV_AUTO_FALLBACK", False) and not settings.DEBUG:
+                logger.info(
+                    "SMS_OTP_DEV_AUTO_FALLBACK: OTP not sent via SMS; client received debug_otp."
                 )
         else:
             otp_row.delete()

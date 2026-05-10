@@ -45,6 +45,29 @@ export function setStoredToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly body: string;
+
+  constructor(message: string, status: number, body: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+/** Maps failed `/api/auth/request-otp/` responses to a concise message (avoids raw API SMS config text). */
+export function formatRequestOtpSendError(error: unknown): string {
+  if (error instanceof ApiError && error.status === 503) {
+    if (import.meta.env.DEV) {
+      return "SMS could not be sent from the API. Enable DJANGO_DEBUG, SMS_OTP_DEV_AUTO_FALLBACK, or Twilio on the server, then try again.";
+    }
+    return "SMS could not be sent from the server. Contact support or your administrator.";
+  }
+  return error instanceof Error ? error.message : "Could not send OTP.";
+}
+
 function httpErrorMessage(errBody: string, status: number): string {
   const fallback = errBody || `API request failed with status ${status}`;
   try {
@@ -75,7 +98,7 @@ export async function apiGet<T>(path: string, token?: string | null): Promise<T>
   }
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(httpErrorMessage(errBody, response.status));
+    throw new ApiError(httpErrorMessage(errBody, response.status), response.status, errBody);
   }
   return (await response.json()) as T;
 }
@@ -92,7 +115,7 @@ export async function apiPost<T>(path: string, body: unknown, token?: string | n
   }
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(httpErrorMessage(errBody, response.status));
+    throw new ApiError(httpErrorMessage(errBody, response.status), response.status, errBody);
   }
   return (await response.json()) as T;
 }
@@ -109,7 +132,7 @@ export async function apiPatch<T>(path: string, body: unknown, token?: string | 
   }
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(httpErrorMessage(errBody, response.status));
+    throw new ApiError(httpErrorMessage(errBody, response.status), response.status, errBody);
   }
   return (await response.json()) as T;
 }
@@ -127,7 +150,7 @@ export async function apiPostForm<T>(path: string, formData: FormData, token?: s
   }
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(httpErrorMessage(errBody, response.status));
+    throw new ApiError(httpErrorMessage(errBody, response.status), response.status, errBody);
   }
   return (await response.json()) as T;
 }
@@ -145,7 +168,7 @@ export async function apiPatchForm<T>(path: string, formData: FormData, token?: 
   }
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(httpErrorMessage(errBody, response.status));
+    throw new ApiError(httpErrorMessage(errBody, response.status), response.status, errBody);
   }
   return (await response.json()) as T;
 }
@@ -161,6 +184,6 @@ export async function apiDelete(path: string, token?: string | null): Promise<vo
   }
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(httpErrorMessage(errBody, response.status));
+    throw new ApiError(httpErrorMessage(errBody, response.status), response.status, errBody);
   }
 }

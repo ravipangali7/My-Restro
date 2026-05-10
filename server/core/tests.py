@@ -1582,7 +1582,7 @@ class ClientHomeInactiveRestaurantApiTests(APITestCase):
 
 
 class AuthOtpSmsFallbackApiTests(APITestCase):
-    """When SMS cannot be sent, DEBUG or SMS_OTP_ALLOW_INSECURE_FALLBACK still returns a verifiable OTP."""
+    """When SMS cannot be sent, DEBUG, SMS_OTP_ALLOW_INSECURE_FALLBACK, or SMS_OTP_DEV_AUTO_FALLBACK returns a verifiable OTP."""
 
     def setUp(self):
         User = get_user_model()
@@ -1600,6 +1600,7 @@ class AuthOtpSmsFallbackApiTests(APITestCase):
         body = res.json()
         self.assertIn("debug_otp", body)
         self.assertEqual(len(body["debug_otp"]), 6)
+        self.assertEqual(body.get("sms_sent"), False)
 
         verify = self.client.post(
             "/api/auth/verify-otp/",
@@ -1624,9 +1625,14 @@ class AuthOtpSmsFallbackApiTests(APITestCase):
         self.assertEqual(res.status_code, 201, res.content)
         body = res.json()
         self.assertIn("debug_otp", body)
+        self.assertEqual(body.get("sms_sent"), False)
 
     @patch("core.views.client.auth_views.send_otp_sms", return_value=False)
-    @override_settings(DEBUG=False, SMS_OTP_ALLOW_INSECURE_FALLBACK=False)
+    @override_settings(
+        DEBUG=False,
+        SMS_OTP_ALLOW_INSECURE_FALLBACK=False,
+        SMS_OTP_DEV_AUTO_FALLBACK=False,
+    )
     def test_request_otp_production_mode_503_when_sms_skipped(self, _mock_send):
         res = self.client.post(
             "/api/auth/request-otp/",
@@ -1634,6 +1640,23 @@ class AuthOtpSmsFallbackApiTests(APITestCase):
             format="json",
         )
         self.assertEqual(res.status_code, 503, res.content)
+
+    @patch("core.views.client.auth_views.send_otp_sms", return_value=False)
+    @override_settings(
+        DEBUG=False,
+        SMS_OTP_ALLOW_INSECURE_FALLBACK=False,
+        SMS_OTP_DEV_AUTO_FALLBACK=True,
+    )
+    def test_request_otp_dev_auto_fallback_returns_debug_otp_when_sms_skipped(self, _mock_send):
+        res = self.client.post(
+            "/api/auth/request-otp/",
+            {"phone": self.user.phone, "purpose": "login"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        body = res.json()
+        self.assertIn("debug_otp", body)
+        self.assertEqual(body.get("sms_sent"), False)
 
 
 class OtpSmsBillingApiTests(APITestCase):

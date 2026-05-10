@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { resolvePostAuthDestination } from "@/lib/portal-routes";
-import { apiPost } from "@/lib/api";
+import { apiPost, formatRequestOtpSendError } from "@/lib/api";
 import type { AuthUser } from "@/lib/auth-context";
 import { Phone, UserPlus } from "lucide-react";
 
@@ -22,6 +22,7 @@ interface RequestOtpResponse {
   detail: string;
   phone: string;
   debug_otp?: string;
+  sms_sent?: boolean;
 }
 
 function RegisterPage() {
@@ -62,7 +63,7 @@ function RegisterPage() {
       setDevOtpHint(res.debug_otp ?? null);
       setStep("otp");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send OTP.");
+      setError(formatRequestOtpSendError(e));
     } finally {
       setBusy(false);
     }
@@ -157,7 +158,7 @@ function RegisterPage() {
               )}
               {devOtpHint && (
                 <p className="text-xs text-foreground border border-primary/25 bg-primary-50 px-3 py-2 rounded-lg mb-4">
-                  Local dev (SMS not sent): use{" "}
+                  SMS was not delivered — use this code (development / testing):{" "}
                   <span className="font-mono font-semibold text-primary">{devOtpHint}</span>
                 </p>
               )}
