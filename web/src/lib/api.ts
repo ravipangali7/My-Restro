@@ -1,12 +1,22 @@
 /**
- * API origin for fetch(). Empty string = same-origin (`/api/...`, `/media/...`).
+ * API origin for fetch() and `resolveMediaUrl()` (e.g. `https://api.example.com/media/...`).
+ * Empty string = same-origin (`/api/...`, `/media/...`).
  * - Dev: Vite proxies `/api` and `/media` to Django (vite.config.ts).
- * - Prod: your web server must reverse-proxy those paths to Django. Browsers block
- *   HTTPS sites from calling `http://127.0.0.1:...` (mixed content), so never default to that in prod.
- * Override anytime with `VITE_API_BASE_URL` (e.g. `https://api.example.com`).
+ * - Prod: set `VITE_API_BASE_URL` to your API host so JSON + media both hit Django (avoids broken
+ *   `/media` when the SPA is served from a different domain than the API).
+ * Bare hostnames (`api.example.com`) are normalized to `https://api.example.com`.
  */
+function normalizeApiOrigin(raw: string | undefined): string {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (!s) return "";
+  const noTrailingSlash = s.replace(/\/+$/, "");
+  if (/^https?:\/\//i.test(noTrailingSlash)) return noTrailingSlash;
+  return `https://${noTrailingSlash}`;
+}
+
 function resolveApiBaseUrl(): string {
-  const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "");
+  const fromEnv = normalizeApiOrigin(import.meta.env.VITE_API_BASE_URL as string | undefined);
   if (fromEnv) return fromEnv;
   return "";
 }
