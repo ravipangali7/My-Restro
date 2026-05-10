@@ -143,10 +143,11 @@ function SuppliersPage() {
       {
         header: "Image",
         className: "w-28",
+        mobileHidden: true,
         accessor: (row: SupplierRow) => {
           const url = resolveMediaUrl(row.image);
           return url ? (
-            <img src={url} alt="" className="h-12 w-16 rounded-lg object-cover border border-border bg-surface" />
+            <img src={url} alt="" className="h-12 w-16 rounded-lg border border-border bg-surface object-cover" />
           ) : (
             <span className="text-xs text-text-muted">No image</span>
           );
@@ -156,20 +157,20 @@ function SuppliersPage() {
       ...(showRestaurantColInTable && showAllFlat ? [restaurantTableColumn<SupplierRow>()] : []),
       { header: "Phone", accessor: "phone" as const },
       {
-        header: "Actions",
+        header: "Manage",
         accessor: (row: SupplierRow) => (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               onClick={() => openEdit(row as unknown as Record<string, unknown>)}
-              className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info"
+              className="rounded-lg bg-info/10 px-2 py-1 text-xs text-info"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => void handleDelete(Number(row.id))}
-              className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error"
+              className="rounded-lg bg-error/10 px-2 py-1 text-xs text-error"
             >
               Delete
             </button>
@@ -185,10 +186,11 @@ function SuppliersPage() {
       {
         header: "Image",
         className: "w-28",
+        mobileHidden: true,
         accessor: (row: SupplierRow) => {
           const url = resolveMediaUrl(row.image);
           return url ? (
-            <img src={url} alt="" className="h-12 w-16 rounded-lg object-cover border border-border bg-surface" />
+            <img src={url} alt="" className="h-12 w-16 rounded-lg border border-border bg-surface object-cover" />
           ) : (
             <span className="text-xs text-text-muted">No image</span>
           );
@@ -197,20 +199,20 @@ function SuppliersPage() {
       { header: "Name", accessor: "name" as const },
       { header: "Phone", accessor: "phone" as const },
       {
-        header: "Actions",
+        header: "Manage",
         accessor: (row: SupplierRow) => (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               onClick={() => openEdit(row as unknown as Record<string, unknown>)}
-              className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info"
+              className="rounded-lg bg-info/10 px-2 py-1 text-xs text-info"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => void handleDelete(Number(row.id))}
-              className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error"
+              className="rounded-lg bg-error/10 px-2 py-1 text-xs text-error"
             >
               Delete
             </button>

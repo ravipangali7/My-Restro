@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/shared/DataTable";
 import { usePurchases, useRawMaterials, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -22,9 +22,25 @@ type PurchaseRow = {
   items?: { id: number; raw_material: number; price: string | number; quantity: string | number; total: string | number }[];
 };
 
-export const Route = createFileRoute("/owner/purchases")({ component: PurchasesPage });
+function parseEditSearch(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number.parseInt(v, 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+export const Route = createFileRoute("/owner/purchases")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: parseEditSearch(search.edit),
+  }),
+  component: PurchasesPage,
+});
 
 function PurchasesPage() {
+  const navigate = useNavigate();
+  const { edit: editFromSearch } = Route.useSearch();
   const { token, user } = useAuth();
   const qc = useQueryClient();
   const { restaurantId, restaurantIds, setRestaurantId } = useRestaurantScope();
@@ -92,6 +108,20 @@ function PurchasesPage() {
     );
     setShowForm(true);
   };
+
+  useEffect(() => {
+    if (editFromSearch == null) return;
+    if (isLoading && purchases == null) return;
+    const list = (purchases as PurchaseRow[] | undefined) ?? [];
+    const row = list.find((r) => r.id === editFromSearch);
+    if (!row) {
+      void navigate({ to: "/owner/purchases", search: {}, replace: true });
+      return;
+    }
+    openEdit(row);
+    void navigate({ to: "/owner/purchases", search: {}, replace: true });
+  }, [editFromSearch, isLoading, navigate, purchases]);
+
   const refresh = () => void qc.invalidateQueries({ queryKey: ["purchases"] });
   const calcSubtotal = () =>
     purchaseItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
@@ -190,38 +220,12 @@ function PurchasesPage() {
             { header: "Purchase ID", accessor: "purchase_id" },
             ...(showRestaurantCol ? [restaurantTableColumn<PurchaseRow>()] : []),
             { header: "Supplier", accessor: (p) => supplierName(p.supplier) },
-            { header: "Subtotal", accessor: (p) => `₹${Number(p.subtotal).toLocaleString()}` },
-            {
-              header: "Discount",
-              accessor: (p) => (p.discount_type === "percentage" ? `${p.discount}%` : `₹${p.discount}`),
-            },
             { header: "Total", accessor: (p) => `₹${Number(p.total).toLocaleString()}` },
-            { header: "Items", accessor: (p) => p.items?.length ?? 0 },
-            {
-              header: "Actions",
-              accessor: (p) => (
-                <div className="flex gap-1">
-                  <Link
-                    to="/owner/purchases/$id"
-                    params={{ id: String(p.id) }}
-                    className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-                  >
-                    View
-                  </Link>
-                  <button
-                    onClick={() => openEdit(p)}
-                    className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => void handleDelete(p.id)} className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium">
-                    Delete
-                  </button>
-                </div>
-              ),
-            },
           ]}
           data={rows}
+          onRowClick={(p) => {
+            void navigate({ to: "/owner/purchases/$id", params: { id: String(p.id) } });
+          }}
         />
       )}
 

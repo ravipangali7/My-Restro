@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -27,6 +27,7 @@ interface TxRow {
 type OrderWithVenue = OrderLinkFields & { restaurant?: number };
 
 function TransactionsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { restaurantId, restaurantIds } = useRestaurantScope();
   const { data: restaurants } = useRestaurants();
@@ -144,37 +145,34 @@ function TransactionsPage() {
           { header: "Amount", accessor: (t) => `₹${Number(t.amount).toLocaleString()}` },
           { header: "Payment", accessor: (t) => <StatusBadge status={t.payment_status} /> },
           { header: "Flow", accessor: (t) => <StatusBadge status={t.transaction_type} /> },
-          { header: "Category", accessor: (t) => <StatusBadge status={t.category} /> },
           {
-            header: "Related order",
+            header: "Category",
+            mobileHidden: true,
+            accessor: (t) => <StatusBadge status={t.category} />,
+          },
+          {
+            header: "Order",
+            mobileHidden: true,
             accessor: (t) => {
               const o = resolvePaidOrderForTransaction(t, ordersForLinks);
               if (!o) return <span className="text-text-muted">—</span>;
               return (
-                <div className="flex flex-col gap-1 text-xs">
-                  <Link to="/owner/orders/$id" params={{ id: String(o.id) }} className="text-primary font-medium hover:underline">
-                    {o.order_id}
-                  </Link>
-                  <span className="text-text-secondary">₹{Number(o.total).toLocaleString()}</span>
-                  <div className="flex flex-wrap gap-1">
-                    <StatusBadge status={o.payment_status} />
-                    {o.payment_method ? <StatusBadge status={o.payment_method} /> : null}
-                  </div>
-                </div>
+                <Link
+                  to="/owner/orders/$id"
+                  params={{ id: String(o.id) }}
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {o.order_id}
+                </Link>
               );
             },
           },
-          { header: "Remarks", accessor: "remarks" },
-          {
-            header: "Actions",
-            accessor: (t) => (
-              <Link to="/owner/transactions/$id" params={{ id: String(t.id) }} className="text-xs text-primary font-medium">
-                View
-              </Link>
-            ),
-          },
         ]}
         data={filteredRows}
+        onRowClick={(t) => {
+          void navigate({ to: "/owner/transactions/$id", params: { id: String(t.id) } });
+        }}
       />
     </>
   );

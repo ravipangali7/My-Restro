@@ -1,11 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AddRestaurantModal } from "@/components/owner/AddRestaurantModal";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
-import { Eye, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/owner/restaurants")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -73,7 +73,8 @@ function OwnerRestaurantsPage() {
       <DataTable
         columns={[
           {
-            header: "Image",
+            header: "Logo",
+            mobileHidden: true,
             accessor: (r: RestaurantRow) => {
               const src = resolveMediaUrl(r.logo);
               if (!src) {
@@ -83,17 +84,13 @@ function OwnerRestaurantsPage() {
                 <img
                   src={src}
                   alt=""
-                  className="w-9 h-9 rounded-lg object-cover border border-border bg-card"
+                  className="h-9 w-9 rounded-lg border border-border bg-card object-cover"
                 />
               );
             },
           },
           { header: "Name", accessor: "name" },
           { header: "Phone", accessor: "phone" },
-          {
-            header: "Slug",
-            accessor: (r) => (r.slug ? String(r.slug) : "—"),
-          },
           {
             header: "Status",
             accessor: (r) =>
@@ -103,50 +100,11 @@ function OwnerRestaurantsPage() {
                 <StatusBadge status="active" />
               ),
           },
-          {
-            header: "Main coordinates",
-            accessor: (r: RestaurantRow) =>
-              r.latitude != null && r.longitude != null
-                ? `${Number(r.latitude).toFixed(5)}, ${Number(r.longitude).toFixed(5)}`
-                : "—",
-          },
-          {
-            header: "Reference pin",
-            accessor: (r: RestaurantRow) =>
-              r.reference_latitude != null && r.reference_longitude != null
-                ? `${Number(r.reference_latitude).toFixed(5)}, ${Number(r.reference_longitude).toFixed(5)}`
-                : "—",
-          },
-          {
-            header: "Pin distance",
-            accessor: (r: RestaurantRow) =>
-              r.reference_distance_m != null ? `${r.reference_distance_m.toFixed(1)} m` : "—",
-          },
-          {
-            header: "Alert radius",
-            accessor: (r: RestaurantRow) => `${Number(r.proximity_alert_radius_m)} m`,
-          },
-          {
-            header: "Delivery radius",
-            accessor: (r: RestaurantRow) =>
-              r.delivery_radius_km != null ? `${Number(r.delivery_radius_km).toLocaleString()} km` : "—",
-          },
-          {
-            header: "Action",
-            accessor: (r: RestaurantRow) => (
-              <Link
-                to="/owner/restaurants/$restaurantId"
-                params={{ restaurantId: String(r.id) }}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-foreground hover:bg-muted"
-                title="View restaurant details"
-                aria-label={`View details for ${r.name}`}
-              >
-                <Eye size={16} strokeWidth={2.25} aria-hidden />
-              </Link>
-            ),
-          },
         ]}
-        data={rows as Record<string, unknown>[]}
+        data={rows}
+        onRowClick={(r) => {
+          void navigate({ to: "/owner/restaurants/$restaurantId", params: { restaurantId: String(r.id) } });
+        }}
       />
       <AddRestaurantModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>

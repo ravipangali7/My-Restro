@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
@@ -7,12 +7,19 @@ import { DataTable } from "@/components/shared/DataTable";
 import { useProductItems, useProductRawMaterials, useProducts, useRawMaterials, useStockLogs, useSuppliers, useUnits } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { ArrowLeft, Package, AlertTriangle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiDelete } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { ArrowLeft, Package, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/owner/rawmaterials_/$id")({ component: RawMaterialViewPage });
 
 function RawMaterialViewPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const [deleting, setDeleting] = useState(false);
   const { restaurantId } = useRestaurantScope();
   const { data: rawMaterials } = useRawMaterials(restaurantId);
   const { data: suppliers } = useSuppliers(restaurantId);
@@ -78,17 +85,48 @@ function RawMaterialViewPage() {
         <ArrowLeft size={16} /> Back to Raw Materials
       </Link>
 
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center">
-          <Package size={24} className="text-primary" />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+            <Package size={24} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground">{m.name}</h2>
+            {Number(m.stock) <= Number(m.min_stock) && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-error">
+                <AlertTriangle size={12} /> Low Stock
+              </span>
+            )}
+          </div>
         </div>
-        <div>
-          <h2 className="font-display font-bold text-xl text-foreground">{m.name}</h2>
-          {Number(m.stock) <= Number(m.min_stock) && (
-            <span className="flex items-center gap-1 text-xs text-error font-semibold">
-              <AlertTriangle size={12} /> Low Stock
-            </span>
-          )}
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/owner/rawmaterials"
+            search={{ edit: Number(id) }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent/60"
+          >
+            <Pencil size={14} aria-hidden /> Edit
+          </Link>
+          <button
+            type="button"
+            disabled={deleting || !token}
+            onClick={async () => {
+              if (!token || !window.confirm(`Delete raw material “${m.name}”? This cannot be undone.`)) return;
+              const rid = m.restaurant ?? restaurantId;
+              if (rid == null) return;
+              setDeleting(true);
+              try {
+                await apiDelete(`/api/raw-materials/${id}/`, token);
+                void queryClient.invalidateQueries({ queryKey: ["raw-materials", rid] });
+                void navigate({ to: "/owner/rawmaterials" });
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
+          >
+            <Trash2 size={14} aria-hidden /> {deleting ? "Deleting…" : "Delete"}
+          </button>
         </div>
       </div>
 

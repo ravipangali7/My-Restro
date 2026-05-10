@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
@@ -8,14 +8,30 @@ import { DataTable } from "@/components/shared/DataTable";
 import { useOrderDetail, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { orderCustomerDisplay } from "@/lib/order-customer-display";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
-import { ArrowLeft, ShoppingBag, DollarSign, Users, Clock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { downloadOrderBillBlob, downloadOrderBillImage, fetchOrderBillImage } from "@/lib/order-bill";
+import { ArrowLeft, ShoppingBag, DollarSign, Users, Clock, Eye, FileDown } from "lucide-react";
 
 export const Route = createFileRoute("/owner/orders_/$id")({ component: OrderViewPage });
+
+type BillPreviewState =
+  | null
+  | { session: number; orderLabel: string; status: "loading" }
+  | { session: number; orderLabel: string; status: "ready"; blob: Blob; objectUrl: string }
+  | { session: number; orderLabel: string; status: "error"; errorMessage: string };
 
 interface OrderDetail {
   id: number;
   order_id: string;
   order_type: string;
+  bill_available?: boolean;
   restaurant?: number;
   restaurant_name?: string;
   customer: number | null;
@@ -57,6 +73,39 @@ function OrderViewPage() {
   const transitionOrder = useTransitionOrderStatus();
   const order = data as OrderDetail | undefined;
   const [rejectReason, setRejectReason] = useState("");
+  const [billDownloading, setBillDownloading] = useState(false);
+  const [billPreview, setBillPreview] = useState<BillPreviewState>(null);
+  const billPreviewSessionRef = useRef(0);
+
+  const openBillPreview = () => {
+    if (!order) return;
+    billPreviewSessionRef.current += 1;
+    const session = billPreviewSessionRef.current;
+    setBillPreview({ session, orderLabel: order.order_id, status: "loading" });
+    void fetchOrderBillImage(order.id)
+      .then((blob) => {
+        if (billPreviewSessionRef.current !== session) return;
+        const objectUrl = URL.createObjectURL(blob);
+        setBillPreview({ session, orderLabel: order.order_id, status: "ready", blob, objectUrl });
+      })
+      .catch((e) => {
+        if (billPreviewSessionRef.current !== session) return;
+        setBillPreview({
+          session,
+          orderLabel: order.order_id,
+          status: "error",
+          errorMessage: e instanceof Error ? e.message : "Could not load bill.",
+        });
+      });
+  };
+
+  const closeBillPreview = () => {
+    billPreviewSessionRef.current += 1;
+    setBillPreview((prev) => {
+      if (prev?.status === "ready") URL.revokeObjectURL(prev.objectUrl);
+      return null;
+    });
+  };
 
   if (isLoading) {
     return <p className="text-sm text-text-muted">Loading order…</p>;
@@ -118,6 +167,40 @@ function OrderViewPage() {
         <StatCard icon={Users} label="People" value={order.people_for} />
         <StatCard icon={Clock} label="Payment" value={order.payment_method} />
       </StatCardsGrid>
+
+      {order.bill_available ? (
+        <ViewSection title="Bill">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              title="Preview bill"
+              onClick={() => openBillPreview()}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-primary-50 hover:text-primary"
+            >
+              <Eye size={16} aria-hidden />
+              Preview bill
+            </button>
+            <button
+              type="button"
+              title="Download bill"
+              disabled={billDownloading}
+              onClick={() => {
+                setBillDownloading(true);
+                void downloadOrderBillImage(order.id, order.order_id)
+                  .catch((e) => {
+                    console.error(e);
+                    window.alert(e instanceof Error ? e.message : "Could not download bill.");
+                  })
+                  .finally(() => setBillDownloading(false));
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-primary-50 hover:text-primary disabled:opacity-50"
+            >
+              <FileDown size={16} aria-hidden />
+              {billDownloading ? "Downloading…" : "Download bill"}
+            </button>
+          </div>
+        </ViewSection>
+      ) : null}
 
       <ViewSection title="Order Details">
         <div className="mb-4 p-3 rounded-xl border border-border bg-surface">
@@ -248,6 +331,55 @@ function OrderViewPage() {
           data={items}
         />
       </ViewSection>
+
+      <Dialog
+        open={billPreview != null}
+        onOpenChange={(open) => {
+          if (!open) closeBillPreview();
+        }}
+      >
+        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+          <DialogHeader className="border-b border-border px-6 py-4 pr-14 text-left">
+            <DialogTitle className="font-display text-lg">Bill preview</DialogTitle>
+            <DialogDescription>{billPreview ? `Order ${billPreview.orderLabel}` : ""}</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-[12rem] flex-1 overflow-auto bg-muted/30 px-6 py-4">
+            {billPreview?.status === "loading" ? (
+              <p className="text-sm text-muted-foreground">Loading bill…</p>
+            ) : null}
+            {billPreview?.status === "error" ? <p className="text-sm text-error">{billPreview.errorMessage}</p> : null}
+            {billPreview?.status === "ready" ? (
+              <img
+                src={billPreview.objectUrl}
+                alt={`Bill for order ${billPreview.orderLabel}`}
+                className="mx-auto max-h-[70vh] w-full max-w-full object-contain"
+              />
+            ) : null}
+          </div>
+          {billPreview?.status === "ready" ? (
+            <DialogFooter className="border-t border-border bg-card px-6 py-4 sm:justify-between">
+              <button
+                type="button"
+                onClick={() => closeBillPreview()}
+                className="h-10 rounded-lg border border-border px-4 text-sm font-semibold text-text-secondary hover:bg-surface-alt"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  downloadOrderBillBlob(billPreview.blob, billPreview.orderLabel);
+                }}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                <FileDown size={16} aria-hidden />
+                Download
+              </button>
+            </DialogFooter>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
+

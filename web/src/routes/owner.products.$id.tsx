@@ -1,5 +1,6 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
@@ -13,15 +14,21 @@ import {
 } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { ArrowLeft, Package, Leaf, Circle } from "lucide-react";
+import { apiDelete } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { ArrowLeft, Package, Leaf, Circle, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/owner/products/$id")({ component: ProductViewPage });
 
 function ProductViewPage() {
   const { id } = Route.useParams();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
   const isEditRoute = pathname.endsWith("/edit");
-  const { restaurantId } = useRestaurantScope();
+  const { restaurantId, restaurantIds } = useRestaurantScope();
+  const [deleting, setDeleting] = useState(false);
   const { data: products } = useProducts(restaurantId);
   const { data: categories } = useCategories(restaurantId);
   const { data: productItems } = useProductItems(restaurantId);
@@ -71,6 +78,7 @@ function ProductViewPage() {
   }
 
   const pr = product as unknown as {
+    id: number;
     name: string;
     is_veg: boolean;
     is_active: boolean;
@@ -78,30 +86,66 @@ function ProductViewPage() {
     restaurant_name?: string;
   };
 
+  const productId = Number(id);
+  const scopeRid = pr.restaurant ?? restaurantId ?? restaurantIds[0] ?? null;
+
   return (
     <>
       <Link to="/owner/products" className="flex items-center gap-1 text-sm text-text-secondary hover:text-foreground mb-4">
         <ArrowLeft size={16} /> Back to Products
       </Link>
 
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center">
-          <Package size={24} className="text-primary" />
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-xl text-foreground">{pr.name}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            {pr.is_veg ? (
-              <span className="flex items-center gap-1 text-xs text-success font-semibold">
-                <Leaf size={12} /> Veg
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-error font-semibold">
-                <Circle size={12} className="fill-error" /> Non-Veg
-              </span>
-            )}
-            <StatusBadge status={pr.is_active ? "active" : "inactive"} />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+            <Package size={24} className="text-primary" />
           </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground">{pr.name}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {pr.is_veg ? (
+                <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                  <Leaf size={12} /> Veg
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs font-semibold text-error">
+                  <Circle size={12} className="fill-error" /> Non-Veg
+                </span>
+              )}
+              <StatusBadge status={pr.is_active ? "active" : "inactive"} />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/owner/products/$id/edit"
+            params={{ id: String(productId) }}
+            state={{ editorRestaurantId: scopeRid ?? undefined }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent/60"
+          >
+            <Pencil size={14} aria-hidden /> Edit
+          </Link>
+          <button
+            type="button"
+            disabled={deleting || !token || scopeRid == null}
+            onClick={async () => {
+              const pid = productId;
+              if (!token || !Number.isFinite(pid)) return;
+              if (!window.confirm(`Delete product “${pr.name}”? This cannot be undone.`)) return;
+              setDeleting(true);
+              try {
+                await apiDelete(`/api/products/${pid}/`, token);
+                void queryClient.invalidateQueries({ queryKey: ["products", scopeRid] });
+                void queryClient.invalidateQueries({ queryKey: ["product-items", scopeRid] });
+                void navigate({ to: "/owner/products" });
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
+          >
+            <Trash2 size={14} aria-hidden /> {deleting ? "Deleting…" : "Delete"}
+          </button>
         </div>
       </div>
 

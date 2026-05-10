@@ -1,14 +1,14 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useQueryClient, useQueries } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { DataTable } from "@/components/shared/DataTable";
 import { useRestaurants } from "@/hooks/use-rest-api";
-import { apiDelete, apiGet, resolveMediaUrl } from "@/lib/api";
+import { apiGet, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/owner/products")({ component: ProductsPage });
 
@@ -23,21 +23,18 @@ interface ProductRow {
   restaurant_name?: string;
 }
 
-interface ProductItemRow {
-  id: number;
-  product: number;
-}
-
 function ProductsPage() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const goToProduct = (p: ProductRow) => {
+    void navigate({ to: "/owner/products/$id", params: { id: String(p.id) } });
+  };
   const isBaseRoute = pathname === "/owner/products";
   const isFormRoute = pathname === "/owner/products/new" || pathname.endsWith("/edit");
   /** Nested `/owner/products/:id` view — render only the child so the list is not duplicated behind the detail page. */
   const isProductViewOnlyRoute = /^\/owner\/products\/\d+$/.test(pathname);
 
   const { token, user } = useAuth();
-  const queryClient = useQueryClient();
   const { restaurantId, restaurantIds } = useRestaurantScope();
   const { data: restaurantsRaw = [] } = useRestaurants();
 
@@ -78,50 +75,25 @@ function ProductsPage() {
     ),
   });
 
-  const itemQueries = useQueries({
-    queries: useMemo(
-      () =>
-        fetchIds.map((rid) => ({
-          queryKey: ["product-items", rid, token] as const,
-          queryFn: () => apiGet<unknown[]>(`/api/product-items/?restaurant_id=${rid}`, token),
-          enabled: Boolean(token && fetchIds.length),
-        })),
-      [fetchIds, token],
-    ),
-  });
-
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-
   const isLoading =
     fetchIds.length > 0 &&
-    (productQueries.some((q) => q.isPending) ||
-      categoryQueries.some((q) => q.isPending) ||
-      itemQueries.some((q) => q.isPending));
+    (productQueries.some((q) => q.isPending) || categoryQueries.some((q) => q.isPending));
 
   const loadError =
-    productQueries.find((q) => q.error)?.error ??
-    categoryQueries.find((q) => q.error)?.error ??
-    itemQueries.find((q) => q.error)?.error;
+    productQueries.find((q) => q.error)?.error ?? categoryQueries.find((q) => q.error)?.error;
 
   const groupedSections = useMemo(() => {
     return fetchIds.map((rid, idx) => {
       const products = (productQueries[idx]?.data ?? []) as ProductRow[];
       const categories = (categoryQueries[idx]?.data ?? []) as { id: number; name: string }[];
-      const items = (itemQueries[idx]?.data ?? []) as ProductItemRow[];
 
       const catName = new Map<number, string>();
       for (const c of categories) catName.set(c.id, c.name);
 
-      const variantCount = new Map<number, number>();
-      for (const pi of items) {
-        const pid = pi.product;
-        variantCount.set(pid, (variantCount.get(pid) ?? 0) + 1);
-      }
-
       const title = restaurantNameById.get(rid) ?? products[0]?.restaurant_name ?? `Restaurant #${rid}`;
-      return { rid, title, rows: products, catName, variantCount };
+      return { rid, title, rows: products, catName };
     });
-  }, [fetchIds, productQueries, categoryQueries, itemQueries, restaurantNameById]);
+  }, [fetchIds, productQueries, categoryQueries, restaurantNameById]);
 
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user) && fetchIds.length <= 1;
 
@@ -145,7 +117,7 @@ function ProductsPage() {
         </Link>
       </div>
       {groupedSections.map((section) => {
-        const { rid, title, rows, catName, variantCount } = section;
+        const { rid, title, rows, catName } = section;
         return (
           <div key={rid} className="mb-10 last:mb-0">
             {fetchIds.length > 1 ? (
@@ -158,6 +130,7 @@ function ProductsPage() {
                 columns={[
                   {
                     header: "",
+                    mobileHidden: true,
                     accessor: (p) => {
                       const url = resolveMediaUrl(p.image);
                       if (!url) {
@@ -183,50 +156,9 @@ function ProductsPage() {
                     header: "Category",
                     accessor: (p) => (p.category != null ? catName.get(p.category) ?? "—" : "—"),
                   },
-                  { header: "Variants", accessor: (p) => String(variantCount.get(p.id) ?? 0) },
-                  {
-                    header: "Actions",
-                    accessor: (p) => (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          to="/owner/products/$id/edit"
-                          params={{ id: String(p.id) }}
-                          state={{ editorRestaurantId: p.restaurant ?? rid }}
-                          className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-surface"
-                        >
-                          <Pencil size={12} /> Edit
-                        </Link>
-                        <Link
-                          to="/owner/products/$id"
-                          params={{ id: String(p.id) }}
-                          className="text-xs font-medium text-primary"
-                        >
-                          View
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!token) return;
-                            const scopeRid = p.restaurant ?? rid;
-                            setDeletingId(p.id);
-                            try {
-                              await apiDelete(`/api/products/${p.id}/`, token);
-                              void queryClient.invalidateQueries({ queryKey: ["products", scopeRid] });
-                              void queryClient.invalidateQueries({ queryKey: ["product-items", scopeRid] });
-                            } finally {
-                              setDeletingId(null);
-                            }
-                          }}
-                          disabled={deletingId === p.id}
-                          className="inline-flex items-center gap-1 rounded-lg bg-error/10 px-2 py-1 text-xs font-medium text-error disabled:opacity-50"
-                        >
-                          <Trash2 size={12} /> {deletingId === p.id ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
-                    ),
-                  },
                 ]}
                 data={rows}
+                onRowClick={goToProduct}
               />
             )}
           </div>

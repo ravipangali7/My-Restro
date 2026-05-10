@@ -1,11 +1,12 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { DataTable } from "@/components/shared/DataTable";
-import { useDeleteTable, useOwnerTablesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
+import { useOwnerTablesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/owner/tables")({ component: TablesPage });
 
@@ -32,71 +33,37 @@ function TablesPage() {
 
   const restaurantLabel = (rid: number) => restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
 
-  const deleteTable = useDeleteTable();
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  type TableColumn = {
+    header: string;
+    accessor: keyof TableRow | ((row: TableRow) => ReactNode);
+    className?: string;
+    mobileHidden?: boolean;
+  };
 
-  const columns = useMemo(
+  const columns: TableColumn[] = useMemo(
     () => [
       {
         header: "Image",
         className: "w-28",
+        mobileHidden: true,
         accessor: (t: TableRow) => {
           const url = resolveMediaUrl(t.image);
           return url ? (
-            <img src={url} alt="" className="h-12 w-16 rounded-lg object-cover border border-border bg-surface" />
+            <img src={url} alt="" className="h-12 w-16 rounded-lg border border-border bg-surface object-cover" />
           ) : (
             <span className="text-xs text-text-muted">No image</span>
           );
         },
       },
-      { header: "Name", accessor: "name" as const },
-      { header: "Capacity", accessor: "capacity" as const },
-      { header: "Floor", accessor: "floor" as const },
-      {
-        header: "Actions",
-        accessor: (t: TableRow) => (
-          <div className="flex items-center gap-2">
-            <Link
-              to="/owner/tables/$id"
-              params={{ id: String(t.id) }}
-              className="text-xs text-primary font-medium"
-              onClick={(e) => e.stopPropagation()}
-            >
-              View
-            </Link>
-            <Link
-              to="/owner/tables/$id/edit"
-              params={{ id: String(t.id) }}
-              className="text-xs text-info font-medium inline-flex items-center gap-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Pencil size={12} /> Edit
-            </Link>
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                const rid = t.restaurant;
-                if (rid == null) return;
-                if (!window.confirm(`Delete table "${t.name}"? This cannot be undone.`)) return;
-                setDeletingId(t.id);
-                try {
-                  await deleteTable.mutateAsync({ tableId: t.id, restaurantId: rid });
-                } finally {
-                  setDeletingId(null);
-                }
-              }}
-              disabled={deletingId === t.id}
-              className="text-xs text-error font-medium inline-flex items-center gap-1 disabled:opacity-50"
-            >
-              <Trash2 size={12} /> {deletingId === t.id ? "Deleting..." : "Delete"}
-            </button>
-          </div>
-        ),
-      },
+      { header: "Name", accessor: "name" },
+      { header: "Capacity", accessor: "capacity" },
     ],
-    [deleteTable, deletingId],
+    [],
   );
+
+  const goToTable = (t: TableRow) => {
+    void navigate({ to: "/owner/tables/$id", params: { id: String(t.id) } });
+  };
 
   if (restaurantIds.length === 0) {
     return <p className="text-sm text-text-muted">No restaurants assigned.</p>;
@@ -104,7 +71,9 @@ function TablesPage() {
   if (error) return <p className="text-sm text-error">Failed to load tables.</p>;
   if (isPending) return <p className="text-sm text-text-muted">Loading…</p>;
 
-  const renderTable = (rows: TableRow[]) => <DataTable<TableRow> columns={columns} data={rows} />;
+  const renderTable = (rows: TableRow[]) => (
+    <DataTable<TableRow> columns={columns} data={rows} onRowClick={goToTable} />
+  );
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { DataTable } from "@/components/shared/DataTable";
 import { useRawMaterials, useStockLogs, useUnits } from "@/hooks/use-rest-api";
@@ -19,6 +19,7 @@ type StockLogRow = RestaurantRowExtras & {
 };
 
 function StockLogPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { restaurantId } = useRestaurantScope();
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user);
@@ -93,20 +94,11 @@ function StockLogPage() {
             header: "Source",
             accessor: (s) => (s.purchase ? "Purchase" : s.order ? "Order" : "Manual"),
           },
-          {
-            header: "Actions",
-            accessor: (s) => (
-              <Link
-                to="/owner/stocklog/$id"
-                params={{ id: String(s.id) }}
-                className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-              >
-                View
-              </Link>
-            ),
-          },
         ]}
         data={filtered}
+        onRowClick={(s) => {
+          void navigate({ to: "/owner/stocklog/$id", params: { id: String(s.id) } });
+        }}
       />
       )}
     </>

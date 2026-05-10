@@ -4,6 +4,8 @@ interface Column<T> {
   header: string;
   accessor: keyof T | ((row: T) => ReactNode);
   className?: string;
+  /** Hide on small screens (still shown in the desktop table). */
+  mobileHidden?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -13,6 +15,8 @@ interface DataTableProps<T> {
 }
 
 export function DataTable<T extends { id: string | number }>({ columns, data, onRowClick }: DataTableProps<T>) {
+  const mobileColumns = columns.filter((c) => !c.mobileHidden);
+
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       {/* Desktop Table */}
@@ -54,18 +58,19 @@ export function DataTable<T extends { id: string | number }>({ columns, data, on
         </table>
       </div>
 
-      {/* Mobile Cards */}
+      {/* Mobile list: only non-hidden columns; tappable when onRowClick is set */}
       <div className="lg:hidden divide-y divide-border">
         {data.map((row) => (
           <div
             key={row.id}
-            className="p-4 space-y-2 active:bg-primary-50/50"
+            className={`p-4 space-y-2 ${onRowClick ? "cursor-pointer active:bg-primary-50/50" : "active:bg-primary-50/50"}`}
             onClick={() => onRowClick?.(row)}
+            role={onRowClick ? "button" : undefined}
           >
-            {columns.map((col, i) => (
-              <div key={i} className="flex justify-between items-start">
-                <span className="text-xs text-text-muted font-medium">{col.header}</span>
-                <span className="text-sm text-foreground text-right">
+            {mobileColumns.map((col, i) => (
+              <div key={i} className="flex justify-between items-start gap-3">
+                <span className="text-xs text-text-muted font-medium shrink-0">{col.header}</span>
+                <span className="text-sm text-foreground text-right min-w-0 break-words">
                   {typeof col.accessor === "function"
                     ? col.accessor(row)
                     : (row[col.accessor] as ReactNode)}

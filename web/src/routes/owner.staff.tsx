@@ -1,18 +1,12 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import {
-  useCreateOwnerStaffNotification,
-  useDeleteStaff,
-  useOwnerStaffByRestaurant,
-  useRestaurants,
-} from "@/hooks/use-rest-api";
+import { useCreateOwnerStaffNotification, useOwnerStaffByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
 import { STAFF_PATH } from "@/lib/portal-routes";
-import { Bell, Plus, Trash2 } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 
 type StaffRow = {
   id: number;
@@ -42,9 +36,7 @@ function StaffPage() {
   const { data: restaurantsRaw = [] } = useRestaurants();
   const restaurants = restaurantsRaw as { id: number; name: string }[];
   const { sections, isPending } = useOwnerStaffByRestaurant();
-  const deleteStaff = useDeleteStaff();
   const createStaffNotif = useCreateOwnerStaffNotification();
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyTitle, setNotifyTitle] = useState("");
   const [notifyMessage, setNotifyMessage] = useState("");
@@ -53,69 +45,30 @@ function StaffPage() {
 
   const restaurantLabel = (rid: number) => restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
 
-  const tableColumns: StaffColumn[] = [
-    { header: "User", accessor: (s: StaffRow) => s.user_name || `User #${s.user}` },
-    { header: "Phone", accessor: (s: StaffRow) => s.user_phone || "—" },
-    ...(restaurantIds.length > 1
-      ? []
-      : [
-          {
-            header: "Restaurant",
-            accessor: (s: StaffRow) => (
-              <span className="text-sm text-foreground">
-                {s.restaurant_name ?? (s.restaurant != null ? `Restaurant #${s.restaurant}` : "—")}
-              </span>
-            ),
-          },
-        ]),
-    { header: "Staff position", accessor: (s: StaffRow) => <StatusBadge status={s.role} /> },
-    { header: "Joined", accessor: "joined_at" },
-    { header: "Salary", accessor: (s: StaffRow) => `₹${Number(s.salary).toLocaleString()}` },
-    { header: "Status", accessor: (s: StaffRow) => <StatusBadge status={s.is_suspend ? "inactive" : "active"} /> },
-    {
-      header: "Actions",
-      accessor: (s: StaffRow) => (
-        <div className="flex gap-1">
-          <Link
-            to="/owner/staff/$id"
-            params={{ id: String(s.id) }}
-            className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            View
-          </Link>
-          <Link
-            to="/owner/staff/$id/edit"
-            params={{ id: String(s.id) }}
-            className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Edit
-          </Link>
-          <button
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              const rid = s.restaurant;
-              if (rid == null) return;
-              setDeletingId(s.id);
-              try {
-                await deleteStaff.mutateAsync({ staffId: s.id, restaurantId: rid });
-              } finally {
-                setDeletingId(null);
-              }
-            }}
-            disabled={deletingId === s.id}
-            className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium hover:bg-error/20 disabled:opacity-50"
-          >
-            <span className="inline-flex items-center gap-1">
-              <Trash2 size={12} /> {deletingId === s.id ? "Deleting..." : "Delete"}
-            </span>
-          </button>
-        </div>
-      ),
-    },
-  ];
+  const tableColumns: StaffColumn[] = useMemo(
+    () => [
+      { header: "Name", accessor: (s: StaffRow) => s.user_name || `User #${s.user}` },
+      ...(restaurantIds.length > 1
+        ? [
+            {
+              header: "Restaurant",
+              accessor: (s: StaffRow) => (
+                <span className="text-sm text-foreground">
+                  {s.restaurant_name ?? (s.restaurant != null ? `Restaurant #${s.restaurant}` : "—")}
+                </span>
+              ),
+            },
+          ]
+        : []),
+      { header: "Role", accessor: (s: StaffRow) => <StatusBadge status={s.role} /> },
+      { header: "Status", accessor: (s: StaffRow) => <StatusBadge status={s.is_suspend ? "inactive" : "active"} /> },
+    ],
+    [restaurantIds.length],
+  );
+
+  const goToStaff = (s: StaffRow) => {
+    void navigate({ to: "/owner/staff/$id", params: { id: String(s.id) } });
+  };
 
   return (
     <>
@@ -248,13 +201,13 @@ function StaffPage() {
               {(staff as StaffRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No staff at this restaurant.</p>
               ) : (
-                <DataTable columns={[...tableColumns]} data={staff as StaffRow[]} />
+                <DataTable columns={[...tableColumns]} data={staff as StaffRow[]} onRowClick={goToStaff} />
               )}
             </section>
           ))}
         </div>
       ) : (
-        <DataTable columns={[...tableColumns]} data={(sections[0]?.staff as StaffRow[]) ?? []} />
+        <DataTable columns={[...tableColumns]} data={(sections[0]?.staff as StaffRow[]) ?? []} onRowClick={goToStaff} />
       )}
       {isFormRoute ? (
         <RouteFormModal title="Staff form" onClose={() => navigate({ to: "/owner/staff" })}>

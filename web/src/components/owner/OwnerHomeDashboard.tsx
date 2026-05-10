@@ -1042,12 +1042,6 @@ export function OwnerHomeDashboard() {
     [setRestaurantId],
   );
 
-  const venueLabel = useMemo(() => {
-    if (restaurantId == null) return null;
-    const r = restaurantList.find((x) => x.id === restaurantId);
-    return r?.name ?? `Restaurant #${restaurantId}`;
-  }, [restaurantId, restaurantList]);
-
   const dueAlert = useMemo(() => {
     if (restaurantId == null) return null;
     if (compareAllVenues && multiVenue) return null;
@@ -1083,28 +1077,6 @@ export function OwnerHomeDashboard() {
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Owner overview</p>
-            <h2 className="font-display font-bold text-xl sm:text-2xl text-foreground mt-1">Dashboard</h2>
-            {compareAllVenues && multiVenue ? (
-              <p className="text-sm text-text-secondary mt-2 max-w-2xl">
-                You are viewing a <span className="font-semibold text-foreground">combined comparison</span> of every
-                location. Choose a restaurant in the selector to load detailed tabs for that site only.
-              </p>
-            ) : venueLabel ? (
-              <p className="text-sm text-text-secondary mt-2 max-w-2xl">
-                Figures below are for <span className="font-semibold text-foreground">{venueLabel}</span> only.
-                {multiVenue ? (
-                  <>
-                    {" "}
-                    Use the restaurant selector to compare all locations or switch sites. Default scope for the rest of
-                    the portal also updates when you pick a location here or in{" "}
-                    <Link to="/owner/settings" className="text-primary font-medium hover:underline">
-                      Settings
-                    </Link>
-                    .
-                  </>
-                ) : null}
-              </p>
-            ) : null}
           </div>
           {ownedRestaurants.length > 0 ? (
             <div className="w-full shrink-0 lg:w-72">

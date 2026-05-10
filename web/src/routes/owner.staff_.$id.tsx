@@ -1,14 +1,13 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
-import { useLedgers, useOrders, useOwnerStaffByRestaurant } from "@/hooks/use-rest-api";
+import { useDeleteStaff, useLedgers, useOrders, useOwnerStaffByRestaurant } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
-import { ArrowLeft, Users, DollarSign, ShoppingBag, Calendar } from "lucide-react";
-
+import { ArrowLeft, Users, DollarSign, ShoppingBag, Calendar, Pencil, Trash2 } from "lucide-react";
 type StaffListRow = { id: number; user: number; restaurant?: number };
 
 type LedgerRow = { id: number; particular?: string; amount: number; type: string };
@@ -21,6 +20,8 @@ function StaffViewPage() {
   const navigate = useNavigate();
   const isEditRoute = pathname.endsWith("/edit");
   const { allStaff, isPending } = useOwnerStaffByRestaurant();
+  const deleteStaff = useDeleteStaff();
+  const [deleting, setDeleting] = useState(false);
 
   const staff = useMemo(() => {
     const list = (allStaff as StaffListRow[]) ?? [];
@@ -51,15 +52,20 @@ function StaffViewPage() {
   }
 
   const s = staff as unknown as {
+    id: number;
     role: string;
     is_suspend: boolean;
     joined_at: string;
     salary: number;
     salary_per_day: number;
     user: number;
+    user_name?: string;
+    user_phone?: string;
     restaurant?: number;
     restaurant_name?: string;
   };
+
+  const displayName = s.user_name?.trim() || `User #${s.user}`;
 
   return (
     <>
@@ -67,16 +73,45 @@ function StaffViewPage() {
         <ArrowLeft size={16} /> Back to Staff
       </Link>
 
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center">
-          <Users size={24} className="text-primary" />
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-xl text-foreground">User #{s.user}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <StatusBadge status={s.role} />
-            <StatusBadge status={s.is_suspend ? "inactive" : "active"} />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+            <Users size={24} className="text-primary" />
           </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground">{displayName}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <StatusBadge status={s.role} />
+              <StatusBadge status={s.is_suspend ? "inactive" : "active"} />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/owner/staff/$id/edit"
+            params={{ id: String(s.id) }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent/60"
+          >
+            <Pencil size={14} aria-hidden /> Edit
+          </Link>
+          <button
+            type="button"
+            disabled={deleting || s.restaurant == null}
+            onClick={async () => {
+              if (s.restaurant == null) return;
+              if (!window.confirm("Remove this staff member from the restaurant?")) return;
+              setDeleting(true);
+              try {
+                await deleteStaff.mutateAsync({ staffId: s.id, restaurantId: s.restaurant });
+                void navigate({ to: "/owner/staff" });
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
+          >
+            <Trash2 size={14} aria-hidden /> {deleting ? "Removing…" : "Remove"}
+          </button>
         </div>
       </div>
 
@@ -88,9 +123,10 @@ function StaffViewPage() {
       </StatCardsGrid>
 
       <ViewSection title="Details">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ViewField label="Restaurant" value={restaurantDisplayName(s)} />
           <ViewField label="User ID" value={String(s.user)} />
+          {s.user_phone ? <ViewField label="Phone" value={s.user_phone} /> : null}
           <ViewField label="Role" value={s.role} />
           <ViewField label="Joined" value={s.joined_at} />
           <ViewField label="Status" value={s.is_suspend ? "Suspended" : "Active"} />

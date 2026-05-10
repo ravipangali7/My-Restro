@@ -29,9 +29,14 @@ interface BottomNavProps {
   tabs: NavTab[];
   /** One tab (e.g. center Orders) stays visually elevated compared to the rest. */
   featuredTo?: string;
+  /**
+   * `hub` — filled order-sheet glyph (customer Orders).
+   * `tab` — the tab’s Lucide icon inside the circle (e.g. owner Staff).
+   */
+  featuredIcon?: "hub" | "tab";
 }
 
-export function BottomNav({ tabs, featuredTo }: BottomNavProps) {
+export function BottomNav({ tabs, featuredTo, featuredIcon = "hub" }: BottomNavProps) {
   const location = useLocation();
   const tabPaths = useMemo(() => tabs.map((t) => t.to), [tabs]);
 
@@ -60,7 +65,15 @@ export function BottomNav({ tabs, featuredTo }: BottomNavProps) {
                       : "shadow-[0_8px_26px_-6px_color-mix(in_oklab,var(--primary)_42%,transparent)] opacity-[0.96] group-hover:opacity-100"
                   } group-active:scale-95`}
                 >
-                  <FeaturedHubGlyph className="size-[1.4rem] sm:size-[1.55rem]" />
+                  {featuredIcon === "hub" ? (
+                    <FeaturedHubGlyph className="size-[1.4rem] sm:size-[1.55rem]" />
+                  ) : (
+                    <tab.icon
+                      className="size-[1.35rem] sm:size-6"
+                      strokeWidth={isActive ? 2.35 : 2}
+                      aria-hidden
+                    />
+                  )}
                   {tab.badge != null && tab.badge > 0 ? (
                     <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-card px-1 text-[9px] font-bold leading-none text-primary tabular-nums ring-2 ring-primary sm:text-[10px]">
                       {tab.badge > 99 ? "99+" : tab.badge}

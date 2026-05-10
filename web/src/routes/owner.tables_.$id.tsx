@@ -1,17 +1,18 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
-import { useOrders, useOwnerTablesByRestaurant } from "@/hooks/use-rest-api";
+import { useDeleteTable, useOrders, useOwnerTablesByRestaurant } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { ArrowLeft, LayoutGrid, MapPin } from "lucide-react";
-
+import { ArrowLeft, LayoutGrid, MapPin, Pencil, Trash2 } from "lucide-react";
 export const Route = createFileRoute("/owner/tables_/$id")({ component: TableViewPage });
 
 function TableViewPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const deleteTable = useDeleteTable();
+  const [deleting, setDeleting] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isEditRoute = pathname.endsWith("/edit");
   const { restaurantIds } = useRestaurantScope();
@@ -69,21 +70,49 @@ function TableViewPage() {
         <ArrowLeft size={16} /> Back to Tables
       </Link>
 
-      <div className="flex items-center gap-4 mb-6">
-        {imageUrl ? (
-          <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-surface">
-            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-4">
+          {imageUrl ? (
+            <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-surface">
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+              <LayoutGrid size={24} className="text-primary" />
+            </div>
+          )}
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground">{t.name}</h2>
+            <p className="text-sm text-text-muted">{[t.restaurant_name, t.floor, t.near_by].filter(Boolean).join(" · ")}</p>
           </div>
-        ) : (
-          <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-            <LayoutGrid size={24} className="text-primary" />
-          </div>
-        )}
-        <div>
-          <h2 className="font-display font-bold text-xl text-foreground">{t.name}</h2>
-          <p className="text-sm text-text-muted">
-            {[t.restaurant_name, t.floor, t.near_by].filter(Boolean).join(" · ")}
-          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/owner/tables/$id/edit"
+            params={{ id: String(id) }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent/60"
+          >
+            <Pencil size={14} aria-hidden /> Edit
+          </Link>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={async () => {
+              const rid = (table as { restaurant?: number }).restaurant;
+              if (rid == null) return;
+              if (!window.confirm(`Delete table "${t.name}"? This cannot be undone.`)) return;
+              setDeleting(true);
+              try {
+                await deleteTable.mutateAsync({ tableId: Number(id), restaurantId: rid });
+                void navigate({ to: "/owner/tables" });
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
+          >
+            <Trash2 size={14} aria-hidden /> {deleting ? "Deleting…" : "Delete"}
+          </button>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ export function OwnerPortalLayout({ children }: { children: ReactNode }) {
         sidebarItems={ownerSidebarItems}
         bottomTabs={ownerBottomTabs}
         bottomNavFeaturedTo={ownerBottomNavFeaturedTo}
+        bottomNavFeaturedIcon="tab"
       >
         {children}
       </DashboardLayout>

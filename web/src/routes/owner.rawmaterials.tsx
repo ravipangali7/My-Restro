@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/shared/DataTable";
@@ -11,11 +11,11 @@ import {
   useSuppliers,
   useUnits,
 } from "@/hooks/use-rest-api";
-import { apiDelete, apiPatch, apiPost } from "@/lib/api";
+import { apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { restaurantTableColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 type Rm = {
   id: number;
@@ -29,9 +29,25 @@ type Rm = {
   restaurant_name?: string;
 };
 
-export const Route = createFileRoute("/owner/rawmaterials")({ component: RawMaterialsPage });
+function parseRmEditSearch(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number.parseInt(v, 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+export const Route = createFileRoute("/owner/rawmaterials")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: parseRmEditSearch(search.edit),
+  }),
+  component: RawMaterialsPage,
+});
 
 function RawMaterialsPage() {
+  const navigate = useNavigate();
+  const { edit: editFromSearch } = Route.useSearch();
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const { restaurantId, restaurantIds, setRestaurantId } = useRestaurantScope();
@@ -103,7 +119,6 @@ function RawMaterialsPage() {
   const [minStock, setMinStock] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [listActionError, setListActionError] = useState<string | null>(null);
 
   const openAdd = () => {
@@ -221,21 +236,6 @@ function RawMaterialsPage() {
     }
   };
 
-  const handleDelete = async (rm: Rm) => {
-    if (!token) return;
-    if (!window.confirm(`Delete raw material "${rm.name}"? This cannot be undone.`)) return;
-    setListActionError(null);
-    setDeletingId(rm.id);
-    try {
-      await apiDelete(`/api/raw-materials/${rm.id}/`, token);
-      await invalidate(rm.restaurant ?? restaurantId);
-    } catch (e) {
-      setListActionError(e instanceof Error ? e.message : "Delete failed.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   const rows = useMemo(() => {
     if (effectiveFilter === "all") {
       const merged: Rm[] = [];
@@ -254,6 +254,19 @@ function RawMaterialsPage() {
     }
     return (rawMaterialsSingle as Rm[] | undefined) ?? [];
   }, [effectiveFilter, rmSections, rawMaterialsSingle, restaurants]);
+
+  useEffect(() => {
+    if (editFromSearch == null) return;
+    if (loadingSingle && effectiveFilter !== "all" && rows.length === 0) return;
+    if (loadingAllRm && effectiveFilter === "all" && rows.length === 0) return;
+    const row = rows.find((r) => r.id === editFromSearch);
+    if (!row) {
+      void navigate({ to: "/owner/rawmaterials", search: {}, replace: true });
+      return;
+    }
+    openEdit(row);
+    void navigate({ to: "/owner/rawmaterials", search: {}, replace: true });
+  }, [editFromSearch, loadingSingle, loadingAllRm, effectiveFilter, rows, navigate]);
 
   const supNameForRow = (rm: Rm) => {
     const id = rm.supplier;
@@ -340,9 +353,6 @@ function RawMaterialsPage() {
         columns={[
           { header: "Name", accessor: "name" },
           ...(showRestaurantCol ? [restaurantTableColumn<Rm>()] : []),
-          { header: "Supplier", accessor: (rm) => supNameForRow(rm) },
-          { header: "Unit", accessor: (rm) => unitSymForRow(rm) },
-          { header: "Price", accessor: (rm) => `₹${Number(rm.price).toLocaleString()}` },
           {
             header: "Stock",
             accessor: (rm) => (
@@ -355,40 +365,11 @@ function RawMaterialsPage() {
               </span>
             ),
           },
-          { header: "Min Stock", accessor: (rm) => String(rm.min_stock) },
-          {
-            header: "Actions",
-            accessor: (rm) => (
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                <Link
-                  to="/owner/rawmaterials/$id"
-                  params={{ id: String(rm.id) }}
-                  className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-                >
-                  View
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => openEdit(rm)}
-                  className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Delete raw material ${rm.name}`}
-                  title="Delete"
-                  disabled={deletingId === rm.id}
-                  onClick={() => void handleDelete(rm)}
-                  className="p-2 rounded-lg text-text-secondary hover:text-error hover:bg-error/10 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 size={16} strokeWidth={2} />
-                </button>
-              </div>
-            ),
-          },
         ]}
         data={rows}
+        onRowClick={(rm) => {
+          void navigate({ to: "/owner/rawmaterials/$id", params: { id: String(rm.id) } });
+        }}
       />
 
       {showForm && (

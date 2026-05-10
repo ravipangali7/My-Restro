@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useComboSets, useProductItems, useProducts, useRestaurants } from "@/hooks/use-rest-api";
-import { apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
+import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { restaurantDisplayName, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -47,6 +47,7 @@ function ComboDetail() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -404,6 +405,31 @@ function ComboDetail() {
           <span className="text-lg font-bold text-primary">{money(finalPrice)}</span>
         </div>
       </div>
+
+      {!isCreate && c ? (
+        <div className="mt-6">
+          <button
+            type="button"
+            disabled={deleting || !token}
+            onClick={async () => {
+              if (!token || !window.confirm("Delete this combo set? This cannot be undone.")) return;
+              const scopeRid = c.restaurant ?? restaurantId ?? restaurantIds[0];
+              if (scopeRid == null) return;
+              setDeleting(true);
+              try {
+                await apiDelete(`/api/combo-sets/${c.id}/`, token);
+                void queryClient.invalidateQueries({ queryKey: ["combo-sets", scopeRid] });
+                void navigate({ to: "/owner/combos" });
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            className="text-sm font-semibold text-error hover:underline disabled:opacity-50"
+          >
+            {deleting ? "Deleting…" : "Delete combo set"}
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-6 flex gap-3">
         <Link

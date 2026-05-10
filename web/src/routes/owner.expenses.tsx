@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/shared/DataTable";
 import { useOwnerExpensesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -9,7 +9,21 @@ import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/re
 import { useRestaurantScope } from "@/lib/restaurant-context";
 import { Plus } from "lucide-react";
 
-export const Route = createFileRoute("/owner/expenses")({ component: ExpensesPage });
+function parseExpenseEditSearch(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number.parseInt(v, 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+export const Route = createFileRoute("/owner/expenses")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: parseExpenseEditSearch(search.edit),
+  }),
+  component: ExpensesPage,
+});
 
 interface ExpRow {
   id: number;
@@ -23,6 +37,8 @@ interface ExpRow {
 }
 
 function ExpensesPage() {
+  const navigate = useNavigate();
+  const { edit: editFromSearch } = Route.useSearch();
   const { token, user } = useAuth();
   const qc = useQueryClient();
   const { restaurantId, restaurantIds } = useRestaurantScope();
@@ -79,6 +95,19 @@ function ExpensesPage() {
     setFormError(null);
     setShowForm(true);
   };
+
+  useEffect(() => {
+    if (editFromSearch == null) return;
+    if (isPending && mergedExpenses.length === 0) return;
+    const row = (mergedExpenses as ExpRow[]).find((e) => e.id === editFromSearch);
+    if (!row) {
+      void navigate({ to: "/owner/expenses", search: {}, replace: true });
+      return;
+    }
+    openEdit(row);
+    void navigate({ to: "/owner/expenses", search: {}, replace: true });
+  }, [editFromSearch, isPending, mergedExpenses, navigate]);
+
   const handleSave = async () => {
     if (!token) return;
     if (!edit && formRestaurantId == null) return setFormError("Select a restaurant.");
@@ -116,27 +145,13 @@ function ExpensesPage() {
   const tableColumns = [
     { header: "Expense ID", accessor: "expense_id" as const },
     ...(!groupByRestaurant && showRestaurantCol ? [restaurantTableColumn<ExpRow>()] : []),
-    { header: "Category", accessor: "category" as const },
     { header: "Date", accessor: (e: ExpRow) => String(e.expense_date ?? "").slice(0, 10) },
-    { header: "Particular", accessor: "particular" as const },
     { header: "Amount", accessor: (e: ExpRow) => `₹${Number(e.amount).toLocaleString()}` },
-    {
-      header: "Actions",
-      accessor: (e: ExpRow) => (
-        <div className="flex gap-1">
-          <Link to="/owner/expenses/$id" params={{ id: String(e.id) }} className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium">
-            View
-          </Link>
-          <button type="button" onClick={() => openEdit(e)} className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium">
-            Edit
-          </button>
-          <button type="button" onClick={() => void handleDelete(e.id)} className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium">
-            Delete
-          </button>
-        </div>
-      ),
-    },
   ];
+
+  const goToExpense = (e: ExpRow) => {
+    void navigate({ to: "/owner/expenses/$id", params: { id: String(e.id) } });
+  };
 
   return (
     <>
@@ -162,14 +177,14 @@ function ExpensesPage() {
                 {sectionRows.length === 0 ? (
                   <p className="text-sm text-text-muted">No expenses for this restaurant.</p>
                 ) : (
-                  <DataTable columns={tableColumns} data={sectionRows} />
+                  <DataTable columns={tableColumns} data={sectionRows} onRowClick={goToExpense} />
                 )}
               </section>
             );
           })}
         </div>
       ) : (
-        <DataTable columns={tableColumns} data={rows} />
+        <DataTable columns={tableColumns} data={rows} onRowClick={goToExpense} />
       )}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

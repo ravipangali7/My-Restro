@@ -29,6 +29,7 @@ from core.models import (
 
 class RestaurantListSerializer(serializers.ModelSerializer):
     reference_distance_m = serializers.SerializerMethodField()
+    effective_per_transaction_fee = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
@@ -52,12 +53,18 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             "is_open",
             "is_active",
             "per_transaction_fee",
+            "effective_per_transaction_fee",
             "can_delivery",
             "delivery_fee_per_km",
             "delivery_radius_km",
             "created_at",
             "updated_at",
         )
+
+    def get_effective_per_transaction_fee(self, obj: Restaurant):
+        from core.services.transactions import effective_per_transaction_fee
+
+        return effective_per_transaction_fee(obj)
 
     def get_reference_distance_m(self, obj: Restaurant):
         if obj.latitude is None or obj.longitude is None:

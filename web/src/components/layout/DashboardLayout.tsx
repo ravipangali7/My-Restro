@@ -20,6 +20,7 @@ interface DashboardLayoutProps {
   bottomTabs?: BottomTab[];
   /** When set, that tab uses the elevated center hub (see `BottomNav` featured treatment). */
   bottomNavFeaturedTo?: string;
+  bottomNavFeaturedIcon?: "hub" | "tab";
 }
 
 export function DashboardLayout({
@@ -28,6 +29,7 @@ export function DashboardLayout({
   sidebarItems,
   bottomTabs,
   bottomNavFeaturedTo,
+  bottomNavFeaturedIcon,
 }: DashboardLayoutProps) {
   const { logout } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -67,7 +69,9 @@ export function DashboardLayout({
           {children}
         </main>
       </div>
-      {bottomTabs && <BottomNav tabs={bottomTabs} featuredTo={bottomNavFeaturedTo} />}
+      {bottomTabs && (
+        <BottomNav tabs={bottomTabs} featuredTo={bottomNavFeaturedTo} featuredIcon={bottomNavFeaturedIcon} />
+      )}
       <ConfirmModal
         open={logoutConfirmOpen}
         title="Logout"

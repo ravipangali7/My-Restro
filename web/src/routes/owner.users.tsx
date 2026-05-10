@@ -73,51 +73,6 @@ function OwnerUsersPage() {
           { header: "Name", accessor: "name" },
           { header: "Phone", accessor: "phone" },
           { header: "Role", accessor: (u) => <StatusBadge status={u.role} /> },
-          {
-            header: "Staff position",
-            accessor: (u) => {
-              const placements = u.staff_placements ?? [];
-              if (u.role !== "staff" || placements.length === 0) {
-                return <span className="text-xs text-text-muted">—</span>;
-              }
-              return (
-                <div className="flex flex-col gap-1 items-start">
-                  {placements.map((p) => (
-                    <StatusBadge key={`${p.restaurant_id}-${p.staff_role}`} status={p.staff_role} />
-                  ))}
-                </div>
-              );
-            },
-          },
-          {
-            header: "Restaurant",
-            accessor: (u) => {
-              const placements = u.staff_placements ?? [];
-              if (u.role !== "staff" || placements.length === 0) {
-                return <span className="text-xs text-text-muted">—</span>;
-              }
-              return (
-                <div className="flex flex-col gap-1 text-xs text-foreground">
-                  {placements.map((p) => (
-                    <span key={`${p.restaurant_id}-r`}>{p.restaurant_name}</span>
-                  ))}
-                </div>
-              );
-            },
-          },
-          {
-            header: "Shareholder",
-            accessor: (u) => (
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  u.is_shareholder ? "bg-success/10 text-success" : "bg-surface-alt text-text-muted"
-                }`}
-              >
-                {u.is_shareholder ? "Yes" : "No"}
-              </span>
-            ),
-          },
-          { header: "Balance", accessor: (u) => `₹${Number(u.balance).toLocaleString()}` },
         ]}
         data={users}
       />

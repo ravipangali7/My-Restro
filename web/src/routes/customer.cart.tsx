@@ -8,8 +8,6 @@ import { useAuth } from "@/lib/auth-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pushOwnerNotification } from "@/lib/owner-notifications";
 import { useClientHome } from "@/hooks/use-rest-api";
-import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
-import { haversineDistanceKm } from "@/lib/geo";
 
 export const Route = createFileRoute("/customer/cart")({
   component: CustomerCart,
@@ -23,26 +21,18 @@ function CustomerCart() {
   const [error, setError] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [orderType, setOrderType] = useState<"table" | "packing" | "delivery">("table");
+  const [orderType, setOrderType] = useState<"table" | "packing">("table");
   const [selectedTable, setSelectedTable] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryLatitude, setDeliveryLatitude] = useState("");
-  const [deliveryLongitude, setDeliveryLongitude] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "online">("online");
 
   const restaurantId = cart[0]?.restaurantId ?? null;
-  const { data: restaurantRows = [], isPending: restaurantsLoading } = useQuery({
+  const { data: restaurantRows = [] } = useQuery({
     queryKey: ["restaurants", "browse"],
     queryFn: () =>
       apiGet<
         Array<{
           id: number;
           name?: string;
-          can_delivery?: boolean;
-          delivery_fee_per_km?: string | number;
-          delivery_radius_km?: string | number;
-          latitude?: string | number | null;
-          longitude?: string | number | null;
+          effective_per_transaction_fee?: string | number;
         }>
       >("/api/restaurants/"),
     staleTime: 60_000,
@@ -77,9 +67,9 @@ function CustomerCart() {
 
   useEffect(() => {
     if (!user) return;
-    setCustomerName((prev) => (prev.trim() ? prev : user.name ?? ""));
-    setCustomerPhone((prev) => (prev.trim() ? prev : user.phone ?? ""));
-  }, [user]);
+    setCustomerName(user.name ?? "");
+    setCustomerPhone(user.phone ?? "");
+  }, [user?.id, user?.name, user?.phone]);
 
   const updateQty = (index: number, delta: number) => {
     setCart((prev) => {
@@ -117,32 +107,11 @@ function CustomerCart() {
     [cart],
   );
 
-  const deliveryFeePreview = useMemo(() => {
-    if (orderType !== "delivery" || !cartRestaurant?.can_delivery) return 0;
-    const rate = Number(cartRestaurant.delivery_fee_per_km ?? 0);
-    const rLat = cartRestaurant.latitude != null ? Number(cartRestaurant.latitude) : NaN;
-    const rLng = cartRestaurant.longitude != null ? Number(cartRestaurant.longitude) : NaN;
-    const dLat = Number.parseFloat(deliveryLatitude);
-    const dLng = Number.parseFloat(deliveryLongitude);
-    if (!Number.isFinite(rate) || rate <= 0) return 0;
-    if (!Number.isFinite(rLat) || !Number.isFinite(rLng) || !Number.isFinite(dLat) || !Number.isFinite(dLng)) return 0;
-    const km = haversineDistanceKm(rLat, rLng, dLat, dLng);
-    return Math.round(km * rate * 100) / 100;
-  }, [orderType, cartRestaurant, deliveryLatitude, deliveryLongitude]);
-
-  const deliveryDistanceKm = useMemo(() => {
-    if (orderType !== "delivery") return null;
-    const rLat = cartRestaurant?.latitude != null ? Number(cartRestaurant.latitude) : NaN;
-    const rLng = cartRestaurant?.longitude != null ? Number(cartRestaurant.longitude) : NaN;
-    const dLat = Number.parseFloat(deliveryLatitude);
-    const dLng = Number.parseFloat(deliveryLongitude);
-    if (!Number.isFinite(rLat) || !Number.isFinite(rLng) || !Number.isFinite(dLat) || !Number.isFinite(dLng)) {
-      return null;
-    }
-    return haversineDistanceKm(rLat, rLng, dLat, dLng);
-  }, [orderType, cartRestaurant, deliveryLatitude, deliveryLongitude]);
-
-  const grandTotal = orderType === "delivery" ? subTotal + deliveryFeePreview : subTotal;
+  const serviceCharge = useMemo(() => {
+    const raw = cartRestaurant?.effective_per_transaction_fee;
+    const n = raw != null ? Number(raw) : 0;
+    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+  }, [cartRestaurant?.effective_per_transaction_fee]);
 
   const placeOrder = async () => {
     if (!token) {
@@ -166,36 +135,6 @@ function CustomerCart() {
       setError("Please select a table for dine-in order.");
       return;
     }
-    if (orderType === "delivery") {
-      if (restaurantsLoading) {
-        setError("Loading restaurant information…");
-        return;
-      }
-      if (!cartRestaurant?.can_delivery) {
-        setError("This restaurant does not offer delivery.");
-        return;
-      }
-      const dLat = Number.parseFloat(deliveryLatitude);
-      const dLng = Number.parseFloat(deliveryLongitude);
-      if (!Number.isFinite(dLat) || !Number.isFinite(dLng)) {
-        setError("Tap the map or drag the pin to set your delivery location.");
-        return;
-      }
-      const rate = Number(cartRestaurant.delivery_fee_per_km ?? 0);
-      if (rate > 0) {
-        const rLat = cartRestaurant.latitude != null ? Number(cartRestaurant.latitude) : NaN;
-        const rLng = cartRestaurant.longitude != null ? Number(cartRestaurant.longitude) : NaN;
-        if (!Number.isFinite(rLat) || !Number.isFinite(rLng)) {
-          setError("This restaurant has not set its location yet; delivery cannot be priced.");
-          return;
-        }
-      }
-      const radiusKm = Number(cartRestaurant.delivery_radius_km ?? 0);
-      if (Number.isFinite(radiusKm) && radiusKm > 0 && Number.isFinite(deliveryDistanceKm) && deliveryDistanceKm >= radiusKm) {
-        setError("You are out of reach of the restaurant delivery radius.");
-        return;
-      }
-    }
     setError(null);
     setPlacing(true);
     try {
@@ -204,12 +143,11 @@ function CustomerCart() {
         {
           restaurant: restaurantId,
           customer: user?.id ?? null,
-          table: orderType === "delivery" ? null : selectedTable ? Number(selectedTable) : null,
+          table: selectedTable ? Number(selectedTable) : null,
           order_type: orderType,
-          address: orderType === "delivery" ? deliveryAddress.trim() : "",
-          latitude: orderType === "delivery" ? Number.parseFloat(deliveryLatitude) : null,
-          longitude: orderType === "delivery" ? Number.parseFloat(deliveryLongitude) : null,
-          payment_method: paymentMethod === "online" ? "e_wallet" : "cash",
+          address: "",
+          latitude: null,
+          longitude: null,
           guest_customer_name: customerName.trim(),
           guest_customer_phone: customerPhone.trim(),
           lines: cart.map((line) =>
@@ -229,9 +167,6 @@ function CustomerCart() {
       clearCustomerCart();
       setCart([]);
       setSelectedTable("");
-      setDeliveryAddress("");
-      setDeliveryLatitude("");
-      setDeliveryLongitude("");
       void queryClient.invalidateQueries({ queryKey: ["orders"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not place order.");
@@ -330,23 +265,17 @@ function CustomerCart() {
             <div>
               <p className="text-xs text-text-muted mb-1 block">Order Type</p>
               <div className="flex gap-2">
-                {(["table", "packing", "delivery"] as const).map((type) => (
+                {(["table", "packing"] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
-                    disabled={type === "delivery" && !cartRestaurant?.can_delivery}
-                    title={
-                      type === "delivery" && !cartRestaurant?.can_delivery
-                        ? "Delivery is not enabled for this restaurant"
-                        : undefined
-                    }
                     onClick={() => {
                       setOrderType(type);
                       setError(null);
                     }}
                     className={`h-9 px-3 rounded-lg border text-sm capitalize ${
                       orderType === type ? "border-primary bg-primary-50 text-primary font-semibold" : "border-border"
-                    } ${type === "delivery" && !cartRestaurant?.can_delivery ? "opacity-50 cursor-not-allowed" : ""}`}
+                    }`}
                   >
                     {type}
                   </button>
@@ -386,89 +315,6 @@ function CustomerCart() {
                 ) : null}
               </div>
             )}
-
-            {orderType === "delivery" && (
-              <div className="space-y-2">
-                <label className="text-xs text-text-muted mb-1 block">Delivery pin (map)</label>
-                <LocationMapPicker
-                  latitude={deliveryLatitude}
-                  longitude={deliveryLongitude}
-                  defaultLatitude={cartRestaurant?.latitude ?? null}
-                  defaultLongitude={cartRestaurant?.longitude ?? null}
-                  placeSearch={{
-                    countryCodes: "np",
-                    placeholder: "Search street, place, or ward in Nepal…",
-                  }}
-                  onPlaceSelected={(displayName) => setDeliveryAddress(displayName)}
-                  onCoordinatesChange={(lat, lng) => {
-                    setDeliveryLatitude(lat);
-                    setDeliveryLongitude(lng);
-                  }}
-                />
-                <div>
-                  <label className="text-xs text-text-muted mb-1 block">Address / landmarks (optional)</label>
-                  <textarea
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    placeholder="Flat, street, gate code, etc."
-                    rows={2}
-                    className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-card resize-y min-h-[2.5rem]"
-                  />
-                </div>
-                {cartRestaurant?.can_delivery ? (
-                  <div className="rounded-lg border border-border bg-surface-alt/40 px-3 py-2.5 space-y-2">
-                    {Number(cartRestaurant.delivery_fee_per_km ?? 0) > 0 ? (
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                        <span className="text-xs text-text-secondary shrink-0">
-                          Rate: ₹{Number(cartRestaurant.delivery_fee_per_km).toLocaleString()} / km
-                        </span>
-                        {deliveryFeePreview > 0 ? (
-                          <span className="text-sm font-semibold text-foreground tabular-nums">
-                            Delivery: ₹{deliveryFeePreview.toLocaleString()}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-text-muted">Set a pin on the map to estimate the charge.</span>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-text-muted">No per-km delivery fee is set for this restaurant.</p>
-                    )}
-                    <p className="text-xs text-text-muted border-t border-border/60 pt-2 leading-relaxed">
-                      <span className="block sm:inline">
-                        Delivery radius: {Number(cartRestaurant.delivery_radius_km ?? 0).toLocaleString()} km
-                      </span>
-                      {Number.isFinite(deliveryDistanceKm) ? (
-                        <span className="block sm:inline sm:before:content-['·'] sm:before:mx-1">
-                          Your distance: {Number(deliveryDistanceKm).toFixed(2)} km
-                        </span>
-                      ) : (
-                        <span className="block sm:inline sm:before:content-['·'] sm:before:mx-1">
-                          Distance updates when you set a pin.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs text-text-muted mb-1 block">Payment Method</p>
-              <div className="flex gap-2">
-                {(["cash", "online"] as const).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setPaymentMethod(method)}
-                    className={`h-9 px-3 rounded-lg border text-sm capitalize ${
-                      paymentMethod === method ? "border-primary bg-primary-50 text-primary font-semibold" : "border-border"
-                    }`}
-                  >
-                    {method}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="mt-4 bg-card rounded-xl border border-border p-4 space-y-3">
@@ -482,15 +328,13 @@ function CustomerCart() {
               <span className="text-text-secondary">Sub Total</span>
               <span className="font-mono">₹{subTotal.toLocaleString()}</span>
             </div>
-            {orderType === "delivery" && deliveryFeePreview > 0 ? (
-              <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Delivery</span>
-                <span className="font-mono">₹{deliveryFeePreview.toLocaleString()}</span>
-              </div>
-            ) : null}
+            <div className="flex justify-between text-sm">
+              <span className="text-text-secondary">Service charge</span>
+              <span className="font-mono">₹{serviceCharge.toLocaleString()}</span>
+            </div>
             <div className="flex justify-between text-md font-bold border-t border-border pt-2">
               <span>Total</span>
-              <span className="font-mono">₹{grandTotal.toLocaleString()}</span>
+              <span className="font-mono">₹{subTotal.toLocaleString()}</span>
             </div>
             <button
               type="button"
@@ -498,7 +342,7 @@ function CustomerCart() {
               onClick={() => void placeOrder()}
               className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-50"
             >
-              {placing ? "Placing..." : paymentMethod === "online" ? "Place Order & Pay" : "Place Order"}
+              {placing ? "Placing..." : "Place Order"}
             </button>
           </div>
         </div>
