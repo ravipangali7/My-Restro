@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { OwnerEntityCard, OwnerEntityCardStack } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCustomers, useLedgers, useStaffMembers, useSuppliers } from "@/hooks/use-rest-api";
@@ -188,7 +188,7 @@ export function LedgerPartiesHub({
                   to={partyDetailTo}
                   params={{ partyType: row.partyType, partyId: row.partyId }}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]"
+                    className={ownerListActionClass}
                 >
                   View ledger
                 </Link>

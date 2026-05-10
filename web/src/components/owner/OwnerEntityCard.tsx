@@ -1,6 +1,16 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+/** Primary text button / link in card action rows (owner lists). */
+export const ownerListActionClass =
+  "inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]";
+/** Secondary / cancel-style control in card action rows. */
+export const ownerListActionSecondaryClass =
+  "inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-text-secondary shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]";
+/** Destructive control (e.g. delete) in card action rows. */
+export const ownerListActionDangerClass =
+  "inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-error shadow-sm hover:border-error/35 hover:bg-error/10";
+
 export interface OwnerEntityCardProps {
   /** Icon or avatar inside the tinted square (left). */
   leading: ReactNode;

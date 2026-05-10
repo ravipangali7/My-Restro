@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useCreateOwnerStaffNotification, useOwnerStaffByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
@@ -91,7 +91,7 @@ function StaffPage() {
               to="/owner/staff/$id"
               params={{ id: String(s.id) }}
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]"
+              className={ownerListActionClass}
             >
               View profile
             </Link>

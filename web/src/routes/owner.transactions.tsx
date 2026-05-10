@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrders, useOrdersAcrossRestaurantIds, useRestaurants, useTransactions } from "@/hooks/use-rest-api";
 import { resolvePaidOrderForTransaction, type OrderLinkFields } from "@/lib/transaction-order-link";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
+import { MapPin, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/owner/transactions")({ component: TransactionsPage });
 
@@ -139,41 +140,70 @@ function TransactionsPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <DataTable
-        columns={[
-          ...(showRestaurantCol ? [restaurantTableColumn<TxRow>()] : []),
-          { header: "Amount", accessor: (t) => `₹${Number(t.amount).toLocaleString()}` },
-          { header: "Payment", accessor: (t) => <StatusBadge status={t.payment_status} /> },
-          { header: "Flow", accessor: (t) => <StatusBadge status={t.transaction_type} /> },
-          {
-            header: "Category",
-            mobileHidden: true,
-            accessor: (t) => <StatusBadge status={t.category} />,
-          },
-          {
-            header: "Order",
-            mobileHidden: true,
-            accessor: (t) => {
-              const o = resolvePaidOrderForTransaction(t, ordersForLinks);
-              if (!o) return <span className="text-text-muted">—</span>;
-              return (
-                <Link
-                  to="/owner/orders/$id"
-                  params={{ id: String(o.id) }}
-                  className="text-xs font-medium text-primary hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {o.order_id}
-                </Link>
-              );
-            },
-          },
-        ]}
-        data={filteredRows}
-        onRowClick={(t) => {
-          void navigate({ to: "/owner/transactions/$id", params: { id: String(t.id) } });
-        }}
-      />
+      {filteredRows.length === 0 ? (
+        <p className="text-sm text-text-muted">No transactions in this view.</p>
+      ) : (
+        <OwnerEntityCardStack>
+          {filteredRows.map((t) => {
+            const o = resolvePaidOrderForTransaction(t, ordersForLinks);
+            const remarks = (t.remarks ?? "").trim();
+            return (
+              <OwnerEntityCard
+                key={t.id}
+                onClick={() => {
+                  void navigate({ to: "/owner/transactions/$id", params: { id: String(t.id) } });
+                }}
+                leading={
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Wallet strokeWidth={2} aria-hidden />
+                  </div>
+                }
+                title={`₹${Number(t.amount).toLocaleString()}`}
+                subtitle={
+                  <span className="line-clamp-2 text-text-secondary">
+                    {remarks || <span className="text-text-muted">No remarks</span>}
+                  </span>
+                }
+                meta={
+                  <>
+                    {showRestaurantCol && t.restaurant_name ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                        <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                        {t.restaurant_name}
+                      </span>
+                    ) : null}
+                    <StatusBadge status={t.payment_status} />
+                    <StatusBadge status={t.transaction_type} />
+                    <StatusBadge status={t.category} />
+                  </>
+                }
+                actions={
+                  <>
+                    <Link
+                      to="/owner/transactions/$id"
+                      params={{ id: String(t.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={ownerListActionClass}
+                    >
+                      View transaction
+                    </Link>
+                    {o ? (
+                      <Link
+                        to="/owner/orders/$id"
+                        params={{ id: String(o.id) }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={ownerListActionClass}
+                      >
+                        Order {o.order_id}
+                      </Link>
+                    ) : null}
+                  </>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
     </>
   );
 }

@@ -1,17 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
 import { useOwnerSuppliersByRestaurant, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import {
-  ownerStaffShowsRestaurantColumn,
-  restaurantTableColumn,
-  type RestaurantRowExtras,
-} from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Plus } from "lucide-react";
+import { MapPin, Phone, Plus, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/owner/suppliers")({ component: SuppliersPage });
 
@@ -138,89 +134,53 @@ function SuppliersPage() {
     }
   };
 
-  const dataColumns = useMemo(
-    () => [
-      {
-        header: "Image",
-        className: "w-28",
-        mobileHidden: true,
-        accessor: (row: SupplierRow) => {
-          const url = resolveMediaUrl(row.image);
-          return url ? (
-            <img src={url} alt="" className="h-12 w-16 rounded-lg border border-border bg-surface object-cover" />
-          ) : (
-            <span className="text-xs text-text-muted">No image</span>
-          );
-        },
-      },
-      { header: "Name", accessor: "name" as const },
-      ...(showRestaurantColInTable && showAllFlat ? [restaurantTableColumn<SupplierRow>()] : []),
-      { header: "Phone", accessor: "phone" as const },
-      {
-        header: "Manage",
-        accessor: (row: SupplierRow) => (
-          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => openEdit(row as unknown as Record<string, unknown>)}
-              className="rounded-lg bg-info/10 px-2 py-1 text-xs text-info"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDelete(Number(row.id))}
-              className="rounded-lg bg-error/10 px-2 py-1 text-xs text-error"
-            >
-              Delete
-            </button>
-          </div>
-        ),
-      },
-    ],
-    [showRestaurantColInTable, showAllFlat],
-  );
-
-  const sectionColumns = useMemo(
-    () => [
-      {
-        header: "Image",
-        className: "w-28",
-        mobileHidden: true,
-        accessor: (row: SupplierRow) => {
-          const url = resolveMediaUrl(row.image);
-          return url ? (
-            <img src={url} alt="" className="h-12 w-16 rounded-lg border border-border bg-surface object-cover" />
-          ) : (
-            <span className="text-xs text-text-muted">No image</span>
-          );
-        },
-      },
-      { header: "Name", accessor: "name" as const },
-      { header: "Phone", accessor: "phone" as const },
-      {
-        header: "Manage",
-        accessor: (row: SupplierRow) => (
-          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => openEdit(row as unknown as Record<string, unknown>)}
-              className="rounded-lg bg-info/10 px-2 py-1 text-xs text-info"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDelete(Number(row.id))}
-              className="rounded-lg bg-error/10 px-2 py-1 text-xs text-error"
-            >
-              Delete
-            </button>
-          </div>
-        ),
-      },
-    ],
-    [],
+  const renderSupplierCards = (list: SupplierRow[], showVenue: boolean) => (
+    <OwnerEntityCardStack>
+      {list.map((row) => {
+        const url = resolveMediaUrl(row.image);
+        const venue =
+          showVenue && row.restaurant != null ? restaurantLabel(row.restaurant) : null;
+        return (
+          <OwnerEntityCard
+            key={row.id}
+            leading={
+              url ? (
+                <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Truck strokeWidth={2} aria-hidden />
+                </div>
+              )
+            }
+            title={row.name}
+            subtitle={
+              <span className="inline-flex items-center gap-1.5">
+                <Phone size={14} className="shrink-0 text-primary" aria-hidden />
+                <span>{row.phone || "—"}</span>
+              </span>
+            }
+            meta={
+              venue ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                  <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                  {venue}
+                </span>
+              ) : null
+            }
+            actions={
+              <>
+                <button type="button" onClick={() => openEdit(row as unknown as Record<string, unknown>)} className={ownerListActionClass}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => void handleDelete(Number(row.id))} className={ownerListActionDangerClass}>
+                  Delete
+                </button>
+              </>
+            }
+          />
+        );
+      })}
+    </OwnerEntityCardStack>
   );
 
   if (restaurantIds.length === 0) return <p className="text-sm text-text-muted">No restaurants assigned.</p>;
@@ -254,7 +214,7 @@ function SuppliersPage() {
       </div>
 
       {showAllFlat ? (
-        <DataTable columns={dataColumns} data={flatData as SupplierRow[]} />
+        renderSupplierCards(flatData as SupplierRow[], showRestaurantColInTable && showAllFlat)
       ) : restaurantIds.length > 1 ? (
         <div className="space-y-8">
           {sections.map(({ restaurantId: rid, suppliers }) => (
@@ -263,7 +223,7 @@ function SuppliersPage() {
               {(suppliers as SupplierRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
               ) : (
-                <DataTable columns={sectionColumns} data={suppliers as SupplierRow[]} />
+                renderSupplierCards(suppliers as SupplierRow[], false)
               )}
             </section>
           ))}
@@ -271,7 +231,7 @@ function SuppliersPage() {
       ) : (sections[0]?.suppliers as SupplierRow[] | undefined)?.length === 0 ? (
         <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
       ) : (
-        <DataTable columns={sectionColumns} data={(sections[0]?.suppliers as SupplierRow[]) ?? []} />
+        renderSupplierCards((sections[0]?.suppliers as SupplierRow[]) ?? [], false)
       )}
 
       {showForm && (

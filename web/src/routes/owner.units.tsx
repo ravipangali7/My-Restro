@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
 import { useOwnerUnitsByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { RestaurantRowExtras } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { MapPin, Plus, Ruler } from "lucide-react";
 
 export const Route = createFileRoute("/owner/units")({ component: UnitsPage });
 
@@ -136,39 +136,48 @@ function UnitsPage() {
     }
   };
 
-  const unitColumns = useMemo(
-    () => [
-      { header: "Name", accessor: "name" as const },
-      { header: "Symbol", accessor: "symbol" as const },
-      {
-        header: "Actions",
-        className: "w-24 text-right lg:text-left",
-        accessor: (u: UnitRow) => (
-          <div className="flex items-center justify-end lg:justify-start gap-1" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              aria-label={`Edit unit ${u.name}`}
-              title="Edit"
-              onClick={() => openEdit(u)}
-              className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary-50/60 transition-colors"
-            >
-              <Pencil size={16} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              aria-label={`Delete unit ${u.name}`}
-              title="Delete"
-              disabled={deletingId === u.id}
-              onClick={() => void handleDelete(u)}
-              className="p-2 rounded-lg text-text-secondary hover:text-error hover:bg-error/10 transition-colors disabled:opacity-50"
-            >
-              <Trash2 size={16} strokeWidth={2} />
-            </button>
-          </div>
-        ),
-      },
-    ],
-    [deletingId, handleDelete, openEdit],
+  const renderUnitCards = (list: UnitRow[]) => (
+    <OwnerEntityCardStack>
+      {list.map((u) => (
+        <OwnerEntityCard
+          key={u.id}
+          leading={
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Ruler strokeWidth={2} aria-hidden />
+            </div>
+          }
+          title={u.name}
+          subtitle={
+            <span className="font-mono text-sm text-text-secondary">
+              Symbol: <span className="font-semibold text-foreground">{u.symbol}</span>
+            </span>
+          }
+          meta={
+            restaurantIds.length > 1 && u.restaurant != null ? (
+              <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                {restaurantLabel(u.restaurant)}
+              </span>
+            ) : null
+          }
+          actions={
+            <>
+              <button type="button" onClick={() => openEdit(u)} className={ownerListActionClass}>
+                Edit
+              </button>
+              <button
+                type="button"
+                disabled={deletingId === u.id}
+                onClick={() => void handleDelete(u)}
+                className={ownerListActionDangerClass}
+              >
+                {deletingId === u.id ? "Deleting…" : "Delete"}
+              </button>
+            </>
+          }
+        />
+      ))}
+    </OwnerEntityCardStack>
   );
 
   if (restaurantIds.length === 0) {
@@ -200,7 +209,7 @@ function UnitsPage() {
               {(units as UnitRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
               ) : (
-                <DataTable columns={unitColumns} data={units as UnitRow[]} />
+                renderUnitCards(units as UnitRow[])
               )}
             </section>
           ))}
@@ -208,7 +217,7 @@ function UnitsPage() {
       ) : (sections[0]?.units as UnitRow[] | undefined)?.length === 0 ? (
         <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
       ) : (
-        <DataTable columns={unitColumns} data={(sections[0]?.units as UnitRow[]) ?? []} />
+        renderUnitCards((sections[0]?.units as UnitRow[]) ?? [])
       )}
 
       {showForm && (

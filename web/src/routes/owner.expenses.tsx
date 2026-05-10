@@ -1,13 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useOwnerExpensesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Plus } from "lucide-react";
+import { Calendar, Plus, Receipt } from "lucide-react";
 
 function parseExpenseEditSearch(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -142,16 +143,67 @@ function ExpensesPage() {
   if (error) return <p className="text-sm text-error">Failed to load expenses.</p>;
   if (isPending) return <p className="text-sm text-text-muted">Loading…</p>;
 
-  const tableColumns = [
-    { header: "Expense ID", accessor: "expense_id" as const },
-    ...(!groupByRestaurant && showRestaurantCol ? [restaurantTableColumn<ExpRow>()] : []),
-    { header: "Date", accessor: (e: ExpRow) => String(e.expense_date ?? "").slice(0, 10) },
-    { header: "Amount", accessor: (e: ExpRow) => `₹${Number(e.amount).toLocaleString()}` },
-  ];
-
   const goToExpense = (e: ExpRow) => {
     void navigate({ to: "/owner/expenses/$id", params: { id: String(e.id) } });
   };
+
+  const renderExpenseCards = (list: ExpRow[]) => (
+    <OwnerEntityCardStack>
+      {list.map((e) => (
+        <OwnerEntityCard
+          key={e.id}
+          onClick={() => goToExpense(e)}
+          leading={
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Receipt strokeWidth={2} aria-hidden />
+            </div>
+          }
+          title={e.particular || e.expense_id}
+          subtitle={
+            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar size={14} className="shrink-0 text-primary" aria-hidden />
+                {String(e.expense_date ?? "").slice(0, 10) || "—"}
+              </span>
+              <span className="text-text-muted">·</span>
+              <span className="font-mono text-xs text-text-secondary">{e.expense_id}</span>
+            </span>
+          }
+          meta={
+            <>
+              {!groupByRestaurant && showRestaurantCol && e.restaurant_name ? (
+                <span className="text-xs text-text-muted">{e.restaurant_name}</span>
+              ) : null}
+              <StatusBadge status={e.category} />
+              <span className="font-mono text-base font-semibold text-foreground">₹{Number(e.amount).toLocaleString()}</span>
+            </>
+          }
+          actions={
+            <>
+              <Link
+                to="/owner/expenses/$id"
+                params={{ id: String(e.id) }}
+                onClick={(ev) => ev.stopPropagation()}
+                className={ownerListActionClass}
+              >
+                View expense
+              </Link>
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  openEdit(e);
+                }}
+                className={ownerListActionSecondaryClass}
+              >
+                Edit
+              </button>
+            </>
+          }
+        />
+      ))}
+    </OwnerEntityCardStack>
+  );
 
   return (
     <>
@@ -177,14 +229,14 @@ function ExpensesPage() {
                 {sectionRows.length === 0 ? (
                   <p className="text-sm text-text-muted">No expenses for this restaurant.</p>
                 ) : (
-                  <DataTable columns={tableColumns} data={sectionRows} onRowClick={goToExpense} />
+                  renderExpenseCards(sectionRows)
                 )}
               </section>
             );
           })}
         </div>
       ) : (
-        <DataTable columns={tableColumns} data={rows} onRowClick={goToExpense} />
+        renderExpenseCards(rows)
       )}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

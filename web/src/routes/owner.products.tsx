@@ -1,14 +1,15 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
-import { DataTable } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { apiGet, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { ImagePlus, Plus } from "lucide-react";
+import { MapPin, Package, Plus, Tag } from "lucide-react";
 
 export const Route = createFileRoute("/owner/products")({ component: ProductsPage });
 
@@ -97,6 +98,61 @@ function ProductsPage() {
 
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user) && fetchIds.length <= 1;
 
+  const renderProductCards = (sectionRows: ProductRow[], catName: Map<number, string>) => (
+    <OwnerEntityCardStack>
+      {sectionRows.map((p) => {
+        const url = resolveMediaUrl(p.image);
+        const cat = p.category != null ? catName.get(p.category) ?? "—" : "—";
+        const multiVenue = fetchIds.length > 1;
+        return (
+          <OwnerEntityCard
+            key={p.id}
+            onClick={() => goToProduct(p)}
+            leading={
+              url ? (
+                <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" loading="lazy" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Package strokeWidth={2} aria-hidden />
+                </div>
+              )
+            }
+            title={p.name}
+            subtitle={
+              !multiVenue && showRestaurantCol && p.restaurant_name ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin size={14} className="shrink-0 text-primary" aria-hidden />
+                  <span>{p.restaurant_name}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <Tag size={14} className="shrink-0 text-primary" aria-hidden />
+                  <span>{cat}</span>
+                </span>
+              )
+            }
+            meta={
+              <>
+                {p.is_veg ? <StatusBadge status="veg" /> : <StatusBadge status="non-veg" />}
+                <StatusBadge status={p.is_active ? "active" : "inactive"} />
+              </>
+            }
+            actions={
+              <Link
+                to="/owner/products/$id"
+                params={{ id: String(p.id) }}
+                onClick={(e) => e.stopPropagation()}
+                className={ownerListActionClass}
+              >
+                View product
+              </Link>
+            }
+          />
+        );
+      })}
+    </OwnerEntityCardStack>
+  );
+
   if (fetchIds.length === 0) return <p className="text-sm text-text-muted">No restaurant context.</p>;
   if (loadError) return <p className="text-sm text-error">Failed to load products.</p>;
   if (isLoading) return <p className="text-sm text-text-muted">Loading…</p>;
@@ -126,40 +182,7 @@ function ProductsPage() {
             {rows.length === 0 ? (
               <p className="text-sm text-text-muted">No products in this restaurant yet.</p>
             ) : (
-              <DataTable
-                columns={[
-                  {
-                    header: "",
-                    mobileHidden: true,
-                    accessor: (p) => {
-                      const url = resolveMediaUrl(p.image);
-                      if (!url) {
-                        return (
-                          <div className="flex size-10 items-center justify-center rounded-lg border border-dashed border-border bg-surface text-text-muted">
-                            <ImagePlus size={16} />
-                          </div>
-                        );
-                      }
-                      return (
-                        <img
-                          src={url}
-                          alt=""
-                          className="size-10 rounded-lg border border-border object-cover"
-                          loading="lazy"
-                        />
-                      );
-                    },
-                  },
-                  { header: "Name", accessor: "name" },
-                  ...(showRestaurantCol ? [restaurantTableColumn<ProductRow>()] : []),
-                  {
-                    header: "Category",
-                    accessor: (p) => (p.category != null ? catName.get(p.category) ?? "—" : "—"),
-                  },
-                ]}
-                data={rows}
-                onRowClick={goToProduct}
-              />
+              renderProductCards(rows, catName)
             )}
           </div>
         );

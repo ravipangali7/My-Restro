@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { useRawMaterials, useStockLogs, useUnits } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
+import { Calendar, ClipboardList, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/owner/stocklog")({ component: StockLogPage });
 
@@ -68,38 +69,67 @@ function StockLogPage() {
       )}
       {isPending ? (
         <div className="bg-card rounded-xl border border-border px-4 py-12 text-center text-text-muted text-sm">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-text-muted">No stock movements match this filter.</p>
       ) : (
-      <DataTable
-        columns={[
-          { header: "Date", accessor: "created_at" },
-          ...(showRestaurantCol ? [restaurantTableColumn<StockLogRow>()] : []),
-          { header: "Raw Material", accessor: (s) => rmName(s.raw_material) },
-          {
-            header: "Type",
-            accessor: (s) => (
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  s.type === "in" ? "bg-success/10 text-success" : "bg-error/10 text-error"
-                }`}
-              >
-                {s.type.toUpperCase()}
-              </span>
-            ),
-          },
-          {
-            header: "Quantity",
-            accessor: (s) => qtyLabel(s.raw_material, Number(s.quantity)),
-          },
-          {
-            header: "Source",
-            accessor: (s) => (s.purchase ? "Purchase" : s.order ? "Order" : "Manual"),
-          },
-        ]}
-        data={filtered}
-        onRowClick={(s) => {
-          void navigate({ to: "/owner/stocklog/$id", params: { id: String(s.id) } });
-        }}
-      />
+        <OwnerEntityCardStack>
+          {filtered.map((s) => {
+            const when = (() => {
+              const d = new Date(s.created_at);
+              return Number.isNaN(d.getTime()) ? s.created_at : d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+            })();
+            const source = s.purchase ? "Purchase" : s.order ? "Order" : "Manual";
+            return (
+              <OwnerEntityCard
+                key={s.id}
+                onClick={() => {
+                  void navigate({ to: "/owner/stocklog/$id", params: { id: String(s.id) } });
+                }}
+                leading={
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ClipboardList strokeWidth={2} aria-hidden />
+                  </div>
+                }
+                title={rmName(s.raw_material)}
+                subtitle={
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar size={14} className="shrink-0 text-primary" aria-hidden />
+                    <span>{when}</span>
+                  </span>
+                }
+                meta={
+                  <>
+                    {showRestaurantCol && s.restaurant_name ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                        <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                        {s.restaurant_name}
+                      </span>
+                    ) : null}
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        s.type === "in" ? "bg-success/10 text-success" : "bg-error/10 text-error"
+                      }`}
+                    >
+                      {s.type.toUpperCase()}
+                    </span>
+                    <span className="font-mono text-sm font-semibold text-foreground">{qtyLabel(s.raw_material, Number(s.quantity))}</span>
+                    <span className="text-xs text-text-muted">{source}</span>
+                  </>
+                }
+                actions={
+                  <Link
+                    to="/owner/stocklog/$id"
+                    params={{ id: String(s.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View entry
+                  </Link>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
       )}
     </>
   );

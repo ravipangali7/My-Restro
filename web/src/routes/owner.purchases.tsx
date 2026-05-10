@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
 import { usePurchases, useRawMaterials, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Plus, Trash2 } from "lucide-react";
+import { MapPin, Plus, ShoppingCart, Trash2 } from "lucide-react";
 
 type PurchaseRow = {
   id: number;
@@ -214,19 +214,63 @@ function PurchasesPage() {
       </div>
       {isLoading && purchases === undefined ? (
         <p className="text-sm text-text-muted py-8">Loading purchases…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-text-muted">No purchases yet.</p>
       ) : (
-        <DataTable
-          columns={[
-            { header: "Purchase ID", accessor: "purchase_id" },
-            ...(showRestaurantCol ? [restaurantTableColumn<PurchaseRow>()] : []),
-            { header: "Supplier", accessor: (p) => supplierName(p.supplier) },
-            { header: "Total", accessor: (p) => `₹${Number(p.total).toLocaleString()}` },
-          ]}
-          data={rows}
-          onRowClick={(p) => {
-            void navigate({ to: "/owner/purchases/$id", params: { id: String(p.id) } });
-          }}
-        />
+        <OwnerEntityCardStack>
+          {rows.map((p) => (
+            <OwnerEntityCard
+              key={p.id}
+              onClick={() => {
+                void navigate({ to: "/owner/purchases/$id", params: { id: String(p.id) } });
+              }}
+              leading={
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <ShoppingCart strokeWidth={2} aria-hidden />
+                </div>
+              }
+              title={p.purchase_id}
+              subtitle={
+                <span className="text-text-secondary">
+                  Supplier: <span className="font-medium text-foreground">{supplierName(p.supplier)}</span>
+                </span>
+              }
+              meta={
+                <>
+                  {showRestaurantCol && p.restaurant_name ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                      <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                      {p.restaurant_name}
+                    </span>
+                  ) : null}
+                  <span className="font-mono text-base font-semibold text-foreground">₹{Number(p.total).toLocaleString()}</span>
+                </>
+              }
+              actions={
+                <>
+                  <Link
+                    to="/owner/purchases/$id"
+                    params={{ id: String(p.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View purchase
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(p);
+                    }}
+                    className={ownerListActionSecondaryClass}
+                  >
+                    Edit
+                  </button>
+                </>
+              }
+            />
+          ))}
+        </OwnerEntityCardStack>
       )}
 
       {showForm && (

@@ -1,12 +1,10 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
-import { DataTable } from "@/components/shared/DataTable";
 import { useOwnerTablesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Plus } from "lucide-react";
+import { LayoutGrid, MapPin, Plus, Users } from "lucide-react";
 
 export const Route = createFileRoute("/owner/tables")({ component: TablesPage });
 
@@ -33,47 +31,67 @@ function TablesPage() {
 
   const restaurantLabel = (rid: number) => restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
 
-  type TableColumn = {
-    header: string;
-    accessor: keyof TableRow | ((row: TableRow) => ReactNode);
-    className?: string;
-    mobileHidden?: boolean;
-  };
-
-  const columns: TableColumn[] = useMemo(
-    () => [
-      {
-        header: "Image",
-        className: "w-28",
-        mobileHidden: true,
-        accessor: (t: TableRow) => {
-          const url = resolveMediaUrl(t.image);
-          return url ? (
-            <img src={url} alt="" className="h-12 w-16 rounded-lg border border-border bg-surface object-cover" />
-          ) : (
-            <span className="text-xs text-text-muted">No image</span>
-          );
-        },
-      },
-      { header: "Name", accessor: "name" },
-      { header: "Capacity", accessor: "capacity" },
-    ],
-    [],
-  );
-
   const goToTable = (t: TableRow) => {
     void navigate({ to: "/owner/tables/$id", params: { id: String(t.id) } });
   };
+
+  const renderTableCards = (rows: TableRow[]) => (
+    <OwnerEntityCardStack>
+      {rows.map((t) => {
+        const url = resolveMediaUrl(t.image);
+        const floorLine = (t.floor ?? "").trim();
+        return (
+          <OwnerEntityCard
+            key={t.id}
+            onClick={() => goToTable(t)}
+            leading={
+              url ? (
+                <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <LayoutGrid strokeWidth={2} aria-hidden />
+                </div>
+              )
+            }
+            title={t.name}
+            subtitle={
+              <span className="inline-flex items-center gap-1.5">
+                <Users size={14} className="shrink-0 text-primary" aria-hidden />
+                <span>
+                  Seats {t.capacity}
+                  {floorLine ? ` · ${floorLine}` : ""}
+                </span>
+              </span>
+            }
+            meta={
+              t.restaurant_name ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                  <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                  {t.restaurant_name}
+                </span>
+              ) : null
+            }
+            actions={
+              <Link
+                to="/owner/tables/$id"
+                params={{ id: String(t.id) }}
+                onClick={(e) => e.stopPropagation()}
+                className={ownerListActionClass}
+              >
+                View table
+              </Link>
+            }
+          />
+        );
+      })}
+    </OwnerEntityCardStack>
+  );
 
   if (restaurantIds.length === 0) {
     return <p className="text-sm text-text-muted">No restaurants assigned.</p>;
   }
   if (error) return <p className="text-sm text-error">Failed to load tables.</p>;
   if (isPending) return <p className="text-sm text-text-muted">Loading…</p>;
-
-  const renderTable = (rows: TableRow[]) => (
-    <DataTable<TableRow> columns={columns} data={rows} onRowClick={goToTable} />
-  );
 
   return (
     <>
@@ -96,7 +114,7 @@ function TablesPage() {
                 {rows.length === 0 ? (
                   <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
                 ) : (
-                  renderTable(rows)
+                  renderTableCards(rows)
                 )}
               </section>
             );
@@ -105,7 +123,7 @@ function TablesPage() {
       ) : (sections[0]?.tables as TableRow[] | undefined)?.length === 0 ? (
         <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
       ) : (
-        renderTable((sections[0]?.tables as TableRow[]) ?? [])
+        renderTableCards((sections[0]?.tables as TableRow[]) ?? [])
       )}
       {isFormRoute ? (
         <RouteFormModal title="Table form" onClose={() => navigate({ to: "/owner/tables" })}>

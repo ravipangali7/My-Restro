@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Bar,
@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Colors } from "@/constants/colors";
@@ -44,6 +44,7 @@ import {
   PieChart as PieChartIcon,
   Receipt,
   ShoppingBag,
+  UserRound,
   TrendingUp,
   Users,
   Wallet,
@@ -670,37 +671,106 @@ function ReportsPage() {
         </ChartCard>
       </div>
 
-      <div className="space-y-4 mb-6">
-        <h3 className="font-display font-semibold text-sm text-foreground">Staff roster (linked restaurants & users)</h3>
-        <DataTable
-          columns={[
-            { header: "Name", accessor: "name" },
-            { header: "Phone", accessor: "phone" },
-            { header: "Restaurant", accessor: "restaurant" },
-            { header: "Role", accessor: (r) => <StatusBadge status={r.role} /> },
-            { header: "Salary", accessor: "salary" },
-            { header: "Orders served (waiter)", accessor: (r) => (typeof r.served === "number" ? String(r.served) : r.served) },
-            { header: "Status", accessor: (r) => <StatusBadge status={r.status === "Active" ? "active" : "inactive"} /> },
-          ]}
-          data={staffTableRows}
-        />
+      <div className="mb-6 space-y-4">
+        <h3 className="font-display text-sm font-semibold text-foreground">Staff roster (linked restaurants & users)</h3>
+        {staffTableRows.length === 0 ? (
+          <p className="text-sm text-text-muted">No staff in this scope.</p>
+        ) : (
+          <OwnerEntityCardStack>
+            {staffTableRows.map((r) => (
+              <OwnerEntityCard
+                key={r.id}
+                onClick={() => {
+                  void navigate({ to: "/owner/staff/$id", params: { id: String(r.id) } });
+                }}
+                leading={
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <UserRound strokeWidth={2} aria-hidden />
+                  </div>
+                }
+                title={r.name}
+                subtitle={
+                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-text-secondary">
+                    <span>{r.phone}</span>
+                    <span className="text-text-muted">·</span>
+                    <span>{r.restaurant}</span>
+                  </span>
+                }
+                meta={
+                  <>
+                    <StatusBadge status={r.role} />
+                    <StatusBadge status={r.status === "Active" ? "active" : "inactive"} />
+                    <span className="text-xs text-text-muted">Salary {r.salary}</span>
+                    <span className="text-xs font-medium text-foreground">
+                      Orders served: {typeof r.served === "number" ? r.served : r.served}
+                    </span>
+                  </>
+                }
+                actions={
+                  <Link
+                    to="/owner/staff/$id"
+                    params={{ id: String(r.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View staff
+                  </Link>
+                }
+              />
+            ))}
+          </OwnerEntityCardStack>
+        )}
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-display font-semibold text-sm text-foreground">Recent orders</h3>
-        <DataTable
-          columns={[
-            { header: "When", accessor: "when" },
-            ...(isAll ? [{ header: "Restaurant", accessor: "venue" as const }] : []),
-            { header: "Order", accessor: "code" },
-            { header: "Total", accessor: "total" },
-            { header: "Status", accessor: (r) => <StatusBadge status={r.status} /> },
-            { header: "Payment", accessor: (r) => <StatusBadge status={r.payment} /> },
-            { header: "Waiter (User)", accessor: "waiter" },
-          ]}
-          data={recentOrdersTable}
-          onRowClick={onOrderNavigate}
-        />
+        <h3 className="font-display text-sm font-semibold text-foreground">Recent orders</h3>
+        {recentOrdersTable.length === 0 ? (
+          <p className="text-sm text-text-muted">No orders in this scope.</p>
+        ) : (
+          <OwnerEntityCardStack>
+            {recentOrdersTable.map((r) => (
+              <OwnerEntityCard
+                key={r.id}
+                onClick={() => onOrderNavigate(r)}
+                leading={
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ShoppingBag strokeWidth={2} aria-hidden />
+                  </div>
+                }
+                title={r.code}
+                subtitle={
+                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>{r.when}</span>
+                    {isAll ? (
+                      <>
+                        <span className="text-text-muted">·</span>
+                        <span className="text-text-secondary">{r.venue}</span>
+                      </>
+                    ) : null}
+                  </span>
+                }
+                meta={
+                  <>
+                    <StatusBadge status={r.status} />
+                    <StatusBadge status={r.payment} />
+                    <span className="font-mono text-base font-semibold text-foreground">{r.total}</span>
+                    <span className="text-xs text-text-muted">Waiter: {r.waiter}</span>
+                  </>
+                }
+                actions={
+                  <Link
+                    to="/owner/orders/$id"
+                    params={{ id: String(r.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View order
+                  </Link>
+                }
+              />
+            ))}
+          </OwnerEntityCardStack>
+        )}
       </div>
     </>
   );

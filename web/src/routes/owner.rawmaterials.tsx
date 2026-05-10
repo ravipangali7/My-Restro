@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
 import {
   useOwnerRawMaterialsByRestaurant,
   useOwnerSuppliersByRestaurant,
@@ -13,9 +13,8 @@ import {
 } from "@/hooks/use-rest-api";
 import { apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { restaurantTableColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { Plus } from "lucide-react";
+import { Leaf, MapPin, Plus } from "lucide-react";
 
 type Rm = {
   id: number;
@@ -52,7 +51,6 @@ function RawMaterialsPage() {
   const queryClient = useQueryClient();
   const { restaurantId, restaurantIds, setRestaurantId } = useRestaurantScope();
   const multiRestaurant = restaurantIds.length > 1;
-  const showRestaurantCol = multiRestaurant;
   /** Table scope for this page only; default All when the owner has multiple restaurants. */
   const [materialsFilter, setMaterialsFilter] = useState<number | "all">("all");
   const effectiveFilter = useMemo((): number | "all" | null => {
@@ -349,28 +347,70 @@ function RawMaterialsPage() {
           </button>
         </div>
       </div>
-      <DataTable
-        columns={[
-          { header: "Name", accessor: "name" },
-          ...(showRestaurantCol ? [restaurantTableColumn<Rm>()] : []),
-          {
-            header: "Stock",
-            accessor: (rm) => (
-              <span
-                className={`font-mono font-semibold ${
-                  Number(rm.stock) <= Number(rm.min_stock) ? "text-error" : "text-foreground"
-                }`}
-              >
-                {rm.stock}
-              </span>
-            ),
-          },
-        ]}
-        data={rows}
-        onRowClick={(rm) => {
-          void navigate({ to: "/owner/rawmaterials/$id", params: { id: String(rm.id) } });
-        }}
-      />
+      {rows.length === 0 ? (
+        <p className="text-sm text-text-muted">No raw materials in this scope.</p>
+      ) : (
+        <OwnerEntityCardStack>
+          {rows.map((rm) => {
+            const low = Number(rm.stock) <= Number(rm.min_stock);
+            const venue = rm.restaurant_name ?? restaurants.find((x) => x.id === rm.restaurant)?.name;
+            return (
+              <OwnerEntityCard
+                key={`${rm.restaurant ?? "x"}-${rm.id}`}
+                onClick={() => {
+                  void navigate({ to: "/owner/rawmaterials/$id", params: { id: String(rm.id) } });
+                }}
+                leading={
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Leaf strokeWidth={2} aria-hidden />
+                  </div>
+                }
+                title={rm.name}
+                subtitle={
+                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>
+                      Supplier: <span className="text-foreground">{supNameForRow(rm)}</span>
+                    </span>
+                    <span className="text-text-muted">·</span>
+                    <span>
+                      Unit: <span className="font-mono text-foreground">{unitSymForRow(rm)}</span>
+                    </span>
+                  </span>
+                }
+                meta={
+                  <>
+                    {multiRestaurant && venue ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                        <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                        {venue}
+                      </span>
+                    ) : null}
+                    <span className={`font-mono text-base font-semibold ${low ? "text-error" : "text-foreground"}`}>
+                      Stock {rm.stock}
+                      <span className="ml-1 text-xs font-normal text-text-muted">(min {rm.min_stock})</span>
+                    </span>
+                  </>
+                }
+                actions={
+                  <>
+                    <Link
+                      to="/owner/rawmaterials/$id"
+                      params={{ id: String(rm.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={ownerListActionClass}
+                    >
+                      View details
+                    </Link>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(rm); }} className={ownerListActionSecondaryClass}>
+                      Quick edit
+                    </button>
+                  </>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

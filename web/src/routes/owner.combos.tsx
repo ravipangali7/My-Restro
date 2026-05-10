@@ -1,15 +1,14 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { apiGet, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { ImagePlus, Plus } from "lucide-react";
+import { Layers, MapPin, Plus, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/owner/combos")({ component: CombosPage });
 
@@ -77,36 +76,60 @@ function CombosPage() {
   }, [fetchIds, comboQueries, restaurantNameById]);
 
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user) && fetchIds.length <= 1;
+  const multiVenue = fetchIds.length > 1;
 
-  type ComboColumn = {
-    header: string;
-    accessor: keyof ComboRow | ((row: ComboRow) => ReactNode);
-    mobileHidden?: boolean;
-  };
-
-  const makeColumns = (): ComboColumn[] => [
-    {
-      header: "",
-      mobileHidden: true,
-      accessor: (c: ComboRow) => {
+  const renderComboCards = (rows: ComboRow[]) => (
+    <OwnerEntityCardStack>
+      {rows.map((c) => {
         const url = resolveMediaUrl(c.image);
-        if (!url) {
-          return (
-            <div className="flex size-10 items-center justify-center rounded-lg border border-dashed border-border bg-surface text-text-muted">
-              <ImagePlus size={14} />
-            </div>
-          );
-        }
-        return <img src={url} alt="" className="size-10 rounded-lg border border-border object-cover" loading="lazy" />;
-      },
-    },
-    { header: "Name", accessor: "name" },
-    ...(showRestaurantCol ? [restaurantTableColumn<ComboRow>()] : []),
-    {
-      header: "Price",
-      accessor: (c: ComboRow) => `₹${Number(c.price).toLocaleString()}`,
-    },
-  ];
+        const itemCount = Array.isArray(c.products) ? c.products.length : 0;
+        const discountLabel =
+          c.discount_type === "percentage" ? `${Number(c.discount)}% off` : `₹${Number(c.discount).toLocaleString()} off`;
+        return (
+          <OwnerEntityCard
+            key={c.id}
+            onClick={() => goToCombo(c)}
+            leading={
+              url ? (
+                <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" loading="lazy" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Layers strokeWidth={2} aria-hidden />
+                </div>
+              )
+            }
+            title={c.name}
+            subtitle={
+              !multiVenue && showRestaurantCol && c.restaurant_name ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin size={14} className="shrink-0 text-primary" aria-hidden />
+                  <span>{c.restaurant_name}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-text-secondary">
+                  <Sparkles size={14} className="shrink-0 text-primary" aria-hidden />
+                  <span>
+                    {itemCount} item{itemCount === 1 ? "" : "s"} · {discountLabel}
+                  </span>
+                </span>
+              )
+            }
+            meta={<span className="font-mono text-base font-semibold text-foreground">₹{Number(c.price).toLocaleString()}</span>}
+            actions={
+              <Link
+                to="/owner/combos/$id"
+                params={{ id: String(c.id) }}
+                onClick={(e) => e.stopPropagation()}
+                className={ownerListActionClass}
+              >
+                View combo
+              </Link>
+            }
+          />
+        );
+      })}
+    </OwnerEntityCardStack>
+  );
 
   if (fetchIds.length === 0) return <p className="text-sm text-text-muted">No restaurant context.</p>;
   if (loadError) return <p className="text-sm text-error">Failed to load combo sets.</p>;
@@ -132,7 +155,7 @@ function CombosPage() {
           {rows.length === 0 ? (
             <p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>
           ) : (
-            <DataTable columns={makeColumns()} data={rows} onRowClick={goToCombo} />
+            renderComboCards(rows)
           )}
         </div>
       ))}
