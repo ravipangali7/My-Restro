@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Copy, Download, ExternalLink, QrCode } from "lucide-react";
+import { Copy, Download, ExternalLink, Loader2, QrCode } from "lucide-react";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
+import { getApiBaseUrl, getStoredToken } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 /** Matches `:root` in `styles.css` (MyRestro light theme) for print-friendly PDFs. */
 const PDF_THEME = {
@@ -11,6 +14,9 @@ const PDF_THEME = {
   primary: [248, 50, 50] as const,
   primary50: [255, 241, 241] as const,
 } as const;
+
+/** Raster size for QR bitmap (high ECC + large modules → fast, reliable scans). */
+const QR_PIXEL_SIZE = 768;
 
 type MenuQrPageProps = {
   title: string;
@@ -48,10 +54,13 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
-function loadImageElement(src: string): Promise<HTMLImageElement> {
+/** Avoid `crossOrigin` on blob/data URLs; use anonymous only for remote http(s) (same-origin relative URLs skip cors). */
+function loadImageElementForComposite(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (/^https?:\/\//i.test(src) || src.startsWith("//")) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Image failed to load."));
     img.src = src;
@@ -59,7 +68,7 @@ function loadImageElement(src: string): Promise<HTMLImageElement> {
 }
 
 function dataUrlToImage(dataUrl: string): Promise<HTMLImageElement> {
-  return loadImageElement(dataUrl);
+  return loadImageElementForComposite(dataUrl);
 }
 
 function roundRectPath(
@@ -81,29 +90,49 @@ function roundRectPath(
 }
 
 /** Draws the QR bitmap and places a small logo on a white patch in the center (for PDF / print). */
-async function embedLogoCenterInQrPng(qrPngDataUrl: string, logoUrl: string | null, outSize: number): Promise<string> {
-  if (!logoUrl) return qrPngDataUrl;
+async function embedLogoCenterInQrPng(qrPngDataUrl: string, logoSrc: string | null, outSize: number): Promise<string> {
+  if (!logoSrc) return qrPngDataUrl;
   try {
     const qrImg = await dataUrlToImage(qrPngDataUrl);
-    const logoImg = await loadImageElement(logoUrl);
+    const logoImg = await loadImageElementForComposite(logoSrc);
     const canvas = document.createElement("canvas");
     canvas.width = outSize;
     canvas.height = outSize;
     const ctx = canvas.getContext("2d");
     if (!ctx) return qrPngDataUrl;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(qrImg, 0, 0, outSize, outSize);
-    const patch = outSize * 0.24;
+    const patch = outSize * 0.22;
     const px = (outSize - patch) / 2;
     const py = (outSize - patch) / 2;
     ctx.fillStyle = "#ffffff";
-    roundRectPath(ctx, px, py, patch, patch, Math.round(outSize * 0.028));
+    roundRectPath(ctx, px, py, patch, patch, Math.round(outSize * 0.03));
     ctx.fill();
-    const inset = patch * 0.13;
+    const inset = patch * 0.12;
     ctx.drawImage(logoImg, px + inset, py + inset, patch - inset * 2, patch - inset * 2);
     return canvas.toDataURL("image/png");
   } catch {
     return qrPngDataUrl;
   }
+}
+
+async function rasterizeImageSrcToPngDataUrl(src: string): Promise<string> {
+  const img = await loadImageElementForComposite(src);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas context unavailable.");
+  context.drawImage(img, 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
+function resolveMenuQrBaseUrl(): string {
+  const raw = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)?.trim();
+  if (raw) return raw.replace(/\/+$/, "");
+  if (typeof window !== "undefined" && window.location?.origin) return window.location.origin;
+  return "";
 }
 
 export function MenuQrPage({
@@ -115,20 +144,116 @@ export function MenuQrPage({
   restaurantName,
   restaurantLogoUrl,
 }: MenuQrPageProps) {
+  const { token } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [menuBaseUrl, setMenuBaseUrl] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrGenError, setQrGenError] = useState<string | null>(null);
+  const [brandObjectUrl, setBrandObjectUrl] = useState<string | null>(null);
+  const [brandLoading, setBrandLoading] = useState(false);
+  const brandBlobRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setMenuBaseUrl(resolveMenuQrBaseUrl());
+  }, []);
 
   const menuUrl = useMemo(() => {
-    if (restaurantId == null) return null;
-    const base = typeof window !== "undefined" ? window.location.origin : "";
-    return `${base}/waiter-menu?restaurantId=${restaurantId}`;
-  }, [restaurantId]);
+    if (restaurantId == null || !menuBaseUrl) return null;
+    return `${menuBaseUrl}/waiter-menu?restaurantId=${restaurantId}`;
+  }, [restaurantId, menuBaseUrl]);
 
-  const qrImageUrl = useMemo(() => {
-    if (!menuUrl) return null;
-    const encoded = encodeURIComponent(menuUrl);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=640x640&margin=24&data=${encoded}`;
+  useEffect(() => {
+    if (!menuUrl) {
+      setQrDataUrl(null);
+      setQrGenError(null);
+      return;
+    }
+    let cancelled = false;
+    setQrGenError(null);
+    void QRCode.toDataURL(menuUrl, {
+      errorCorrectionLevel: "H",
+      type: "image/png",
+      margin: 4,
+      width: QR_PIXEL_SIZE,
+      color: { dark: "#1A1A1AFF", light: "#FFFFFFFF" },
+    })
+      .then((data) => {
+        if (!cancelled) setQrDataUrl(data);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQrDataUrl(null);
+          setQrGenError("Could not generate QR code. Check your connection and try again.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [menuUrl]);
+
+  useEffect(() => {
+    const revokeBlobOnly = () => {
+      const u = brandBlobRef.current;
+      if (u) {
+        URL.revokeObjectURL(u);
+        brandBlobRef.current = null;
+      }
+    };
+
+    if (!restaurantId || !restaurantLogoUrl?.trim()) {
+      revokeBlobOnly();
+      setBrandObjectUrl(null);
+      setBrandLoading(false);
+      return;
+    }
+
+    const authToken = token ?? getStoredToken();
+    if (!authToken) {
+      revokeBlobOnly();
+      setBrandObjectUrl(null);
+      setBrandLoading(false);
+      return;
+    }
+
+    const apiBase = getApiBaseUrl().replace(/\/$/, "");
+    const fetchUrl = `${apiBase}/api/restaurants/${restaurantId}/qr-brand-image/`;
+
+    let cancelled = false;
+    setBrandLoading(true);
+    void fetch(fetchUrl, {
+      headers: { Authorization: `Token ${authToken}`, Accept: "image/*" },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        revokeBlobOnly();
+        const u = URL.createObjectURL(blob);
+        brandBlobRef.current = u;
+        setBrandObjectUrl(u);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          revokeBlobOnly();
+          setBrandObjectUrl(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBrandLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      revokeBlobOnly();
+    };
+  }, [restaurantId, restaurantLogoUrl, token]);
+
+  const logoSrcForComposite = brandObjectUrl ?? (restaurantLogoUrl?.trim() ? restaurantLogoUrl : null);
+  const hasLogoConfigured = Boolean(restaurantLogoUrl?.trim());
+  const pdfDownloadBlockedByLogo = Boolean(hasLogoConfigured && brandLoading);
 
   const displayName = restaurantName?.trim() || (restaurantId != null ? `Restaurant ${restaurantId}` : "");
 
@@ -142,28 +267,8 @@ export function MenuQrPage({
     }
   };
 
-  const loadImageDataUrl = (src: string): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const context = canvas.getContext("2d");
-        if (!context) {
-          reject(new Error("Canvas context unavailable."));
-          return;
-        }
-        context.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => reject(new Error("Image failed to load."));
-      img.src = src;
-    });
-
   const handleDownloadPdf = async () => {
-    if (!menuUrl || !qrImageUrl || restaurantId == null || isDownloading) return;
+    if (!menuUrl || !qrDataUrl || restaurantId == null || isDownloading) return;
     setIsDownloading(true);
     try {
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
@@ -179,21 +284,22 @@ export function MenuQrPage({
       const [prR, prG, prB] = PDF_THEME.primary;
       const [p50R, p50G, p50B] = PDF_THEME.primary50;
 
-      // Brand accent (full bleed top stripe — no box border)
       pdf.setFillColor(prR, prG, prB);
       pdf.rect(0, 0, pageWidth, 5, "F");
 
       let cursorY = 56;
       const headerLogoSize = 76;
       let headerLogoLoaded = false;
-      if (restaurantLogoUrl) {
+      const headerLogoCandidates = [brandObjectUrl, restaurantLogoUrl?.trim() || null].filter(Boolean) as string[];
+      for (const src of headerLogoCandidates) {
         try {
-          const logoData = await loadImageDataUrl(restaurantLogoUrl);
+          const logoData = await rasterizeImageSrcToPngDataUrl(src);
           pdf.addImage(logoData, "PNG", centerX - headerLogoSize / 2, cursorY, headerLogoSize, headerLogoSize);
           headerLogoLoaded = true;
           cursorY += headerLogoSize + 20;
+          break;
         } catch {
-          headerLogoLoaded = false;
+          /* try next */
         }
       }
 
@@ -224,13 +330,12 @@ export function MenuQrPage({
       pdf.text(tagLines, centerX, cursorY, { align: "center" });
       cursorY += tagLines.length * 14 + 28;
 
-      const qrDataRaw = await loadImageDataUrl(qrImageUrl);
-      const qrData =
-        restaurantLogoUrl != null && restaurantLogoUrl !== ""
-          ? await embedLogoCenterInQrPng(qrDataRaw, restaurantLogoUrl, 640)
-          : qrDataRaw;
+      const qrRaster =
+        logoSrcForComposite != null
+          ? await embedLogoCenterInQrPng(qrDataUrl, logoSrcForComposite, QR_PIXEL_SIZE)
+          : qrDataUrl;
 
-      const qrSize = 292;
+      const qrSize = 320;
       const panelPadY = 36;
       const panelPadX = 40;
       const panelW = Math.min(qrSize + panelPadX * 2, contentW);
@@ -242,7 +347,7 @@ export function MenuQrPage({
 
       const qrX = centerX - qrSize / 2;
       const qrY = cursorY + panelPadY;
-      pdf.addImage(qrData, "PNG", qrX, qrY, qrSize, qrSize);
+      pdf.addImage(qrRaster, "PNG", qrX, qrY, qrSize, qrSize);
 
       cursorY += panelH + 28;
 
@@ -275,6 +380,11 @@ export function MenuQrPage({
     }
   };
 
+  const showQrWorkspace = Boolean(restaurantId && menuUrl && qrDataUrl);
+  const showGenerating = Boolean(restaurantId && menuUrl && !qrDataUrl && !qrGenError);
+  const showQrError = Boolean(restaurantId && qrGenError);
+  const waitingOrigin = Boolean(restaurantId && !menuBaseUrl);
+
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
@@ -289,31 +399,39 @@ export function MenuQrPage({
         </div>
       </div>
 
-      {!restaurantId || !menuUrl || !qrImageUrl ? (
+      {!restaurantId ? (
         <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-text-muted">
           Select a restaurant to generate its menu QR.
         </div>
-      ) : (
+      ) : waitingOrigin ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card p-10 text-sm text-text-secondary">
+          <Loader2 className="size-5 animate-spin text-primary" aria-hidden />
+          Preparing menu link…
+        </div>
+      ) : showQrError ? (
+        <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-error">{qrGenError}</div>
+      ) : showGenerating ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card p-10 text-sm text-text-secondary">
+          <Loader2 className="size-5 animate-spin text-primary" aria-hidden />
+          Generating QR…
+        </div>
+      ) : showQrWorkspace ? (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
             <div className="rounded-2xl bg-primary-50/70 p-5">
               <div className="mx-auto flex w-full max-w-[280px] flex-col items-center">
                 <div className="relative w-full rounded-2xl bg-white p-2.5 shadow-sm ring-1 ring-black/[0.04]">
                   <img
-                    src={qrImageUrl}
+                    src={qrDataUrl}
                     alt={`Menu QR for ${restaurantName ?? `restaurant ${restaurantId}`}`}
                     className="block h-auto w-full rounded-xl"
                   />
-                  {restaurantLogoUrl ? (
+                  {logoSrcForComposite ? (
                     <div
-                      className="pointer-events-none absolute left-1/2 top-1/2 flex size-[22%] min-h-[44px] min-w-[44px] max-h-[72px] max-w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]"
+                      className="pointer-events-none absolute left-1/2 top-1/2 flex size-[20%] min-h-[44px] min-w-[44px] max-h-[72px] max-w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]"
                       aria-hidden
                     >
-                      <img
-                        src={restaurantLogoUrl}
-                        alt=""
-                        className="size-[78%] rounded-md object-cover"
-                      />
+                      <img src={logoSrcForComposite} alt="" className="size-[78%] rounded-md object-cover" />
                     </div>
                   ) : null}
                 </div>
@@ -321,6 +439,9 @@ export function MenuQrPage({
                   <p className="mt-3 px-1 text-center font-display text-sm font-bold leading-snug text-foreground">
                     {displayName}
                   </p>
+                ) : null}
+                {hasLogoConfigured && !brandObjectUrl ? (
+                  <p className="mt-2 text-center text-[11px] text-text-muted">Loading logo for print-quality export…</p>
                 ) : null}
               </div>
             </div>
@@ -343,6 +464,11 @@ export function MenuQrPage({
               <div className="mt-4 rounded-xl border border-border bg-muted/20 px-3 py-2 text-sm text-text-secondary break-all">
                 {menuUrl}
               </div>
+              <p className="mt-2 text-xs text-text-muted">
+                Set <span className="font-mono text-foreground">VITE_PUBLIC_APP_URL</span> (e.g.{" "}
+                <span className="font-mono">https://mithobasai.com</span>) so printed QR codes always open your live
+                site, even if you generate them from another host.
+              </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -355,11 +481,18 @@ export function MenuQrPage({
                 <button
                   type="button"
                   onClick={() => void handleDownloadPdf()}
-                  disabled={isDownloading}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/60"
+                  disabled={isDownloading || pdfDownloadBlockedByLogo}
+                  title={
+                    pdfDownloadBlockedByLogo ? "Wait for the logo to finish loading so it can be embedded in the PDF." : undefined
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/60 disabled:opacity-50"
                 >
                   <Download className="size-4" />
-                  {isDownloading ? "Preparing PDF..." : "Download PDF"}
+                  {isDownloading
+                    ? "Preparing PDF..."
+                    : pdfDownloadBlockedByLogo
+                      ? "Preparing logo…"
+                      : "Download PDF"}
                 </button>
                 <a
                   href={menuUrl}
@@ -379,7 +512,7 @@ export function MenuQrPage({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

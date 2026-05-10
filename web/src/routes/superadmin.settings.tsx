@@ -125,9 +125,13 @@ function SettingsPage() {
               className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
             />
             <p className="mt-1 text-xs text-text-muted">
-              Charged per successful SMS send: superadmin campaigns (debited from platform balance), owner login OTP
-              (added to the owner&apos;s due), and staff login OTP (added to the restaurant&apos;s due). Twilio must
-              succeed for OTP billing to run; in local debug without Twilio, OTPs are not billed.
+              Saved platform rate:{" "}
+              <span className="font-mono text-foreground">
+                ₹{toNum(display.sms_per_usage).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>{" "}
+              per successful SMS (updates when you save). Charged when Twilio delivers: superadmin campaigns (platform
+              balance), owner login OTP (owner due), staff login OTP (restaurant due), and customer order status texts
+              (restaurant due). Without Twilio in local debug, SMS is skipped and nothing is billed.
             </p>
           </div>
           <div>

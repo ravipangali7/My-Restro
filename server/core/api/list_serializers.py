@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.db.models import Sum
 from rest_framework import serializers
 
 from core.models import (
@@ -30,6 +31,8 @@ from core.models import (
 class RestaurantListSerializer(serializers.ModelSerializer):
     reference_distance_m = serializers.SerializerMethodField()
     effective_per_transaction_fee = serializers.SerializerMethodField()
+    due_sms_usage = serializers.SerializerMethodField()
+    due_service_charge = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
@@ -48,6 +51,8 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             "reference_distance_m",
             "proximity_alert_radius_m",
             "due_balance",
+            "due_sms_usage",
+            "due_service_charge",
             "subscription_start",
             "subscription_end",
             "is_open",
@@ -77,6 +82,31 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             haversine_distance_m(obj.latitude, obj.longitude, obj.reference_latitude, obj.reference_longitude),
             2,
         )
+
+    def _sum_due_category(self, obj: Restaurant, category: str) -> Decimal:
+        if category == TransactionCategory.SMS_USAGE:
+            annotated = getattr(obj, "due_sms_usage_agg", None)
+            if annotated is not None:
+                return Decimal(str(annotated))
+        if category == TransactionCategory.TRANSACTION_FEE:
+            annotated = getattr(obj, "due_service_charge_agg", None)
+            if annotated is not None:
+                return Decimal(str(annotated))
+        total = (
+            Transaction.objects.filter(
+                restaurant_id=obj.pk,
+                category=category,
+                transaction_type=TransactionType.IN,
+                is_system=True,
+            ).aggregate(s=Sum("amount"))["s"]
+        )
+        return Decimal(total) if total is not None else Decimal("0.00")
+
+    def get_due_sms_usage(self, obj: Restaurant):
+        return str(self._sum_due_category(obj, TransactionCategory.SMS_USAGE))
+
+    def get_due_service_charge(self, obj: Restaurant):
+        return str(self._sum_due_category(obj, TransactionCategory.TRANSACTION_FEE))
 
 
 class CategoryListSerializer(serializers.ModelSerializer):

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { useOrders } from "@/hooks/use-rest-api";
+import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -22,11 +22,33 @@ interface OrderRow {
   restaurant_name?: string;
 }
 
+function nextOwnerStatuses(o: OrderRow): { value: string; label: string }[] {
+  const t = String(o.order_type ?? "").toLowerCase();
+  switch (String(o.status ?? "").toLowerCase()) {
+    case "pending":
+      return [{ value: "accepted", label: "Accept" }];
+    case "accepted":
+      return [{ value: "running", label: "Running" }];
+    case "running":
+      return [{ value: "ready", label: "Ready" }];
+    case "ready":
+      if (t === "packing" || t === "delivery") {
+        return [{ value: "waiting_pickup", label: "Waiting pickup" }];
+      }
+      return [];
+    case "waiting_pickup":
+      return [{ value: "delivered", label: "Delivered" }];
+    default:
+      return [];
+  }
+}
+
 function OrdersPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { restaurantId } = useRestaurantScope();
   const { data, isLoading, error } = useOrders(restaurantId, { refetchInterval: 5000 });
+  const transitionOrder = useTransitionOrderStatus();
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user);
   const rows = (data ?? []) as OrderRow[];
   const [filter, setFilter] = useState("all");
@@ -78,7 +100,9 @@ function OrdersPage() {
         <p className="text-sm text-text-muted">No orders match this filter.</p>
       ) : !isLoading ? (
         <OwnerEntityCardStack>
-          {filtered.map((o) => (
+          {filtered.map((o) => {
+            const next = nextOwnerStatuses(o);
+            return (
             <OwnerEntityCard
               key={o.id}
               onClick={() => {
@@ -114,17 +138,42 @@ function OrdersPage() {
                 </div>
               }
               actions={
-                <Link
-                  to="/owner/orders/$id"
-                  params={{ id: String(o.id) }}
-                  onClick={(e) => e.stopPropagation()}
-                  className={ownerListActionClass}
-                >
-                  View order
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  {next.length > 0 ? (
+                    <select
+                      aria-label={`Change status for order ${o.order_id}`}
+                      defaultValue=""
+                      disabled={transitionOrder.isPending}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        e.currentTarget.value = "";
+                        if (!v) return;
+                        transitionOrder.mutate({ orderId: o.id, status: v });
+                      }}
+                      className={`${ownerListActionSecondaryClass} h-9 max-w-[12rem] cursor-pointer py-0 pl-2 pr-6 text-left`}
+                    >
+                      <option value="">Set status…</option>
+                      {next.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
+                  <Link
+                    to="/owner/orders/$id"
+                    params={{ id: String(o.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View order
+                  </Link>
+                </div>
               }
             />
-          ))}
+            );
+          })}
         </OwnerEntityCardStack>
       ) : null}
     </>

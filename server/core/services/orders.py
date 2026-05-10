@@ -271,4 +271,14 @@ def transition_order_status(
     if new_status == OrderStatus.READY and old != OrderStatus.READY:
         notify_customer_order_ready_with_bill(order, old_status=old)
 
+    if old != new_status:
+        oid, old_s, new_s = order.pk, old, new_status
+
+        def _customer_side_effects() -> None:
+            from core.services.order_status_customer_notify import run_order_status_change_customer_side_effects
+
+            run_order_status_change_customer_side_effects(order_id=oid, old_status=old_s, new_status=new_s)
+
+        transaction.on_commit(_customer_side_effects)
+
     return order

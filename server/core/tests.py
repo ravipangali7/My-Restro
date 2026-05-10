@@ -10,6 +10,7 @@ from rest_framework.test import APITestCase
 
 from core.models import (
     BulkNotification,
+    BulkNotificationType,
     Category,
     ComboSet,
     DiscountType,
@@ -1594,6 +1595,33 @@ class ClientHomeInactiveRestaurantApiTests(APITestCase):
         self.assertEqual(data["restaurant"]["is_open"], False)
 
 
+class RestaurantQrBrandImageApiTests(APITestCase):
+    """GET /api/restaurants/<id>/qr-brand-image/ streams logo for canvas-safe compositing."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create(phone="9000000903", name="Owner Logo", role=UserRole.OWNER)
+        self.restaurant = Restaurant.objects.create(user=self.owner, name="Logo Cafe", is_active=True)
+        png_1px = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        self.restaurant.logo.save("logo.png", SimpleUploadedFile("logo.png", png_1px, content_type="image/png"), save=True)
+
+    def test_owner_can_fetch_logo_bytes(self):
+        self.client.force_authenticate(user=self.owner)
+        url = f"/api/restaurants/{self.restaurant.pk}/qr-brand-image/"
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        body = b"".join(res.streaming_content)
+        self.assertTrue(body.startswith(b"\x89PNG"))
+
+    def test_unauthenticated_returns_401(self):
+        url = f"/api/restaurants/{self.restaurant.pk}/qr-brand-image/"
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 401)
+
+
 class ClientPublicMenuOrderApiTests(APITestCase):
     """POST /api/client/orders/ allows anonymous guests to order from the menu QR flow."""
 
@@ -1844,3 +1872,114 @@ class OwnerProfileImagePatchTests(APITestCase):
         self.assertIsNotNone(body.get("image"))
         owner.refresh_from_db()
         self.assertTrue(bool(getattr(owner.image, "name", None)))
+
+
+class OrderStatusCustomerSideEffectsTests(TestCase):
+    """SMS + due billing when order status changes (post-commit helper)."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create(phone="9000001301", name="Status Owner", role=UserRole.OWNER)
+        self.restaurant = Restaurant.objects.create(user=self.owner, name="Status Cafe")
+        self.customer = User.objects.create(phone="9000001302", name="Status Cust", role=UserRole.CUSTOMER)
+        self.unit = Unit.objects.create(restaurant=self.restaurant, name="Piece", symbol="pc")
+        self.cat = Category.objects.create(restaurant=self.restaurant, name="Food")
+        self.product = Product.objects.create(restaurant=self.restaurant, category=self.cat, name="Dish")
+        self.item = ProductItem.objects.create(
+            product=self.product,
+            unit=self.unit,
+            price=Decimal("100.00"),
+            discount_type=DiscountType.PERCENTAGE,
+            discount=Decimal("0.00"),
+        )
+        self.order = create_order_with_items(
+            restaurant=self.restaurant,
+            lines=[{"product_item_id": self.item.pk, "quantity": "1"}],
+            customer=self.customer,
+        )
+        s = get_super_setting()
+        s.sms_per_usage = Decimal("1.25")
+        s.save(update_fields=["sms_per_usage", "updated_at"])
+
+    @patch("core.services.order_status_customer_notify.send_plain_sms", return_value=True)
+    def test_accepted_transition_sms_bills_restaurant_and_creates_push(self, mock_sms):
+        from core.services.order_status_customer_notify import run_order_status_change_customer_side_effects
+
+        before = self.restaurant.due_balance
+        n_before = BulkNotification.objects.count()
+        run_order_status_change_customer_side_effects(
+            order_id=self.order.pk,
+            old_status=OrderStatus.PENDING,
+            new_status=OrderStatus.ACCEPTED,
+        )
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.due_balance, before + Decimal("1.25"))
+        mock_sms.assert_called_once()
+        self.assertGreater(BulkNotification.objects.count(), n_before)
+        self.assertTrue(
+            BulkNotification.objects.filter(type=BulkNotificationType.PUSH, title__icontains=self.order.order_id).exists()
+        )
+
+    @patch("core.services.order_status_customer_notify.send_plain_sms", return_value=False)
+    def test_sms_failure_skips_billing(self, _mock_sms):
+        from core.services.order_status_customer_notify import run_order_status_change_customer_side_effects
+
+        before = self.restaurant.due_balance
+        run_order_status_change_customer_side_effects(
+            order_id=self.order.pk,
+            old_status=OrderStatus.PENDING,
+            new_status=OrderStatus.ACCEPTED,
+        )
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.due_balance, before)
+
+    @patch("core.services.order_status_customer_notify.send_plain_sms", return_value=True)
+    def test_ready_transition_sms_bills_without_extra_status_push(self, mock_sms):
+        from core.services.order_status_customer_notify import run_order_status_change_customer_side_effects
+
+        n_before = BulkNotification.objects.count()
+        before = self.restaurant.due_balance
+        run_order_status_change_customer_side_effects(
+            order_id=self.order.pk,
+            old_status=OrderStatus.RUNNING,
+            new_status=OrderStatus.READY,
+        )
+        mock_sms.assert_called_once()
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.due_balance, before + Decimal("1.25"))
+        self.assertEqual(BulkNotification.objects.count(), n_before)
+
+
+class RestaurantListDueBreakdownApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create(phone="9000001401", name="Break Owner", role=UserRole.OWNER)
+        self.restaurant = Restaurant.objects.create(user=self.owner, name="Breakdown Cafe")
+
+    def test_owner_list_includes_due_sms_and_service_charge(self):
+        Transaction.objects.create(
+            restaurant=self.restaurant,
+            amount=Decimal("4.50"),
+            payment_status=PaymentStatus.SUCCESS,
+            remarks="SMS — test",
+            transaction_type=TransactionType.IN,
+            category=TransactionCategory.SMS_USAGE,
+            is_system=True,
+        )
+        Transaction.objects.create(
+            restaurant=self.restaurant,
+            amount=Decimal("10.00"),
+            payment_status=PaymentStatus.SUCCESS,
+            remarks="Platform fee test",
+            transaction_type=TransactionType.IN,
+            category=TransactionCategory.TRANSACTION_FEE,
+            is_system=True,
+        )
+        self.client.force_authenticate(user=self.owner)
+        res = self.client.get("/api/restaurants/")
+        self.assertEqual(res.status_code, 200, res.content)
+        rows = res.json()
+        self.assertTrue(isinstance(rows, list))
+        row = next(r for r in rows if r["id"] == self.restaurant.pk)
+        self.assertEqual(Decimal(str(row["due_sms_usage"])), Decimal("4.50"))
+        self.assertEqual(Decimal(str(row["due_service_charge"])), Decimal("10.00"))

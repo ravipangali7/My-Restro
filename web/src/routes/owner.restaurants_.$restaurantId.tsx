@@ -37,6 +37,10 @@ type RestaurantDetail = {
   reference_distance_m?: number | null;
   proximity_alert_radius_m: string | number;
   due_balance: string | number;
+  /** Sum of platform-billed SMS rows (OTP + order status texts, etc.). */
+  due_sms_usage?: string | number;
+  /** Sum of per-order platform transaction fees owed. */
+  due_service_charge?: string | number;
   is_active?: boolean;
   is_open?: boolean;
   can_delivery?: boolean;
@@ -160,9 +164,25 @@ function OwnerRestaurantDetailPage() {
 
       <ViewSection title="Due to platform">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Due amount</p>
-            <p className="text-2xl font-bold text-foreground tabular-nums">{money(r.due_balance)}</p>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-x-8 gap-y-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">SMS usage</p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {money(r.due_sms_usage ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Service charge</p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {money(r.due_service_charge ?? 0)}
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Total due</p>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{money(r.due_balance)}</p>
+            </div>
             {thresholdActive ? (
               <p className="text-sm text-text-secondary">
                 Platform due threshold: {money(threshold)}

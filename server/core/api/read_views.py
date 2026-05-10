@@ -1,12 +1,15 @@
 from datetime import date
 from decimal import Decimal
 import json
+import mimetypes
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
 from django.db import IntegrityError
-from django.db.models import Prefetch, Q
+from django.db.models import DecimalField, OuterRef, Prefetch, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
+from django.http import FileResponse
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -134,7 +137,65 @@ def list_restaurants(request):
             qs = qs.filter(is_active=True)
     else:
         qs = qs.filter(is_active=True)
+
+    sms_due_sub = (
+        Transaction.objects.filter(
+            restaurant_id=OuterRef("pk"),
+            category=TransactionCategory.SMS_USAGE,
+            transaction_type=TransactionType.IN,
+            is_system=True,
+        )
+        .values("restaurant_id")
+        .annotate(t=Sum("amount"))
+        .values("t")[:1]
+    )
+    fee_due_sub = (
+        Transaction.objects.filter(
+            restaurant_id=OuterRef("pk"),
+            category=TransactionCategory.TRANSACTION_FEE,
+            transaction_type=TransactionType.IN,
+            is_system=True,
+        )
+        .values("restaurant_id")
+        .annotate(t=Sum("amount"))
+        .values("t")[:1]
+    )
+    qs = qs.annotate(
+        due_sms_usage_agg=Coalesce(
+            Subquery(sms_due_sub, output_field=DecimalField(max_digits=14, decimal_places=2)),
+            Value(Decimal("0.00")),
+        ),
+        due_service_charge_agg=Coalesce(
+            Subquery(fee_due_sub, output_field=DecimalField(max_digits=14, decimal_places=2)),
+            Value(Decimal("0.00")),
+        ),
+    )
     return Response(RestaurantListSerializer(qs, many=True, context={"request": request}).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def restaurant_qr_brand_image(request, pk: int):
+    """
+    Stream the restaurant logo for authenticated staff/owners who can access the venue.
+    Used by the menu QR page to composite the logo into a canvas/PDF without cross-origin media CORS issues.
+    """
+    if getattr(request.user, "role", None) == UserRole.CUSTOMER:
+        return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
+    if not user_can_access_restaurant(request.user, pk):
+        return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        restaurant = Restaurant.objects.get(pk=pk)
+    except Restaurant.DoesNotExist:
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+    if not restaurant.logo:
+        return Response({"detail": "No logo configured for this restaurant."}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        logo_file = restaurant.logo.open("rb")
+    except FileNotFoundError:
+        return Response({"detail": "Logo file missing."}, status=status.HTTP_404_NOT_FOUND)
+    content_type = mimetypes.guess_type(restaurant.logo.name)[0] or "application/octet-stream"
+    return FileResponse(logo_file, content_type=content_type)
 
 
 @api_view(["GET"])

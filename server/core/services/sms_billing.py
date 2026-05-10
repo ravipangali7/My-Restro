@@ -82,3 +82,38 @@ def record_sms_otp_charge_after_sent(*, phone: str, purpose: str, restaurant_id_
         if apply_due_balance_deactivation(restaurant):
             restaurant.save(update_fields=["is_active", "updated_at"])
         return
+
+
+@transaction.atomic
+def record_restaurant_order_status_sms_charge(
+    *,
+    restaurant_id: int,
+    order_id: str,
+    old_status: str,
+    new_status: str,
+    created_by=None,
+) -> None:
+    """After a successful order-status SMS, add ``sms_per_usage`` to the restaurant's due balance."""
+    setting = get_super_setting()
+    rate = setting.sms_per_usage or Decimal("0.00")
+    if rate <= Decimal("0.00"):
+        return
+
+    restaurant = Restaurant.objects.select_for_update().get(pk=restaurant_id)
+    remarks = f"SMS — order {order_id} {old_status}->{new_status}"
+    if len(remarks) > 255:
+        remarks = remarks[:255]
+    Transaction.objects.create(
+        restaurant=restaurant,
+        created_by=created_by,
+        amount=rate,
+        payment_status=PaymentStatus.SUCCESS,
+        remarks=remarks,
+        transaction_type=TransactionType.IN,
+        category=TransactionCategory.SMS_USAGE,
+        is_system=True,
+    )
+    Restaurant.objects.filter(pk=restaurant.pk).update(due_balance=F("due_balance") + rate)
+    restaurant.refresh_from_db()
+    if apply_due_balance_deactivation(restaurant):
+        restaurant.save(update_fields=["is_active", "updated_at"])

@@ -19,6 +19,7 @@ from core.api.inventory_views import (
 from core.api.read_views import (
     expense_detail,
     geocode_search,
+    restaurant_qr_brand_image,
     get_platform_defaults,
     list_bulk_notifications,
     list_combo_sets,
@@ -57,6 +58,7 @@ urlpatterns = [
     path("restaurants/", list_restaurants),
     path("geocode/", geocode_search),
     path("restaurants/<int:pk>/pay-due/", restaurant_pay_due),
+    path("restaurants/<int:pk>/qr-brand-image/", restaurant_qr_brand_image),
     path("restaurants/<int:pk>/", restaurant_detail),
     path("users/", list_users),
     path("users/<int:pk>/", user_detail),
