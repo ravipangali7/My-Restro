@@ -1,0 +1,61 @@
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+export interface OwnerEntityCardProps {
+  /** Icon or avatar inside the tinted square (left). */
+  leading: ReactNode;
+  title: ReactNode;
+  /** Secondary line (e.g. location or phone). */
+  subtitle?: ReactNode;
+  /** Status chips, amounts, etc. — left-aligned row. */
+  meta?: ReactNode;
+  /** Buttons / links — left-aligned under meta (use `stopPropagation` on interactive children when the card is clickable). */
+  actions?: ReactNode;
+  /** Whole-card tap (e.g. navigate to detail). */
+  onClick?: () => void;
+  className?: string;
+}
+
+/**
+ * Card-style list row for owner portal lists (matches compact “entity card” layout:
+ * leading icon, left-stacked title / subtitle / meta / actions).
+ */
+export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onClick, className }: OwnerEntityCardProps) {
+  const interactive = Boolean(onClick);
+
+  return (
+    <article
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        "flex gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors",
+        interactive &&
+          "cursor-pointer hover:border-primary/35 hover:shadow-md hover:bg-primary/[0.04] active:bg-primary/[0.06]",
+        className,
+      )}
+    >
+      <div className="shrink-0 [&>svg]:size-[22px]">{leading}</div>
+      <div className="min-w-0 flex-1">
+        <div className="font-display text-base font-semibold leading-snug text-foreground">{title}</div>
+        {subtitle ? <div className="mt-1 text-sm text-text-muted">{subtitle}</div> : null}
+        {meta ? <div className="mt-2 flex flex-wrap items-center gap-2">{meta}</div> : null}
+        {actions ? <div className="mt-3 flex flex-wrap items-center justify-start gap-2">{actions}</div> : null}
+      </div>
+    </article>
+  );
+}
+
+export function OwnerEntityCardStack({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("flex flex-col gap-3", className)}>{children}</div>;
+}

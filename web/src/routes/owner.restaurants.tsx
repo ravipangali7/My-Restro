@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AddRestaurantModal } from "@/components/owner/AddRestaurantModal";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
-import { Plus } from "lucide-react";
+import { MapPin, Plus, Store, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/owner/restaurants")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -36,6 +36,25 @@ interface RestaurantRow {
   due_balance?: string | number;
 }
 
+function subtitleForRestaurant(r: RestaurantRow) {
+  const addr = (r.address ?? "").trim();
+  if (addr) {
+    const short = addr.split(",")[0]?.trim() || addr;
+    return (
+      <span className="inline-flex items-start gap-1.5">
+        <MapPin size={14} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+        <span>{short.length > 80 ? `${short.slice(0, 77)}…` : short}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <MapPin size={14} className="shrink-0 text-primary" aria-hidden />
+      {r.phone || "—"}
+    </span>
+  );
+}
+
 function OwnerRestaurantsPage() {
   const navigate = useNavigate({ from: "/owner/restaurants" });
   const { add } = Route.useSearch();
@@ -60,52 +79,72 @@ function OwnerRestaurantsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Restaurants</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-semibold text-foreground">Restaurants</h2>
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-1 hover:bg-primary/90"
+          className="inline-flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
-          <Plus size={14} /> Add restaurant
+          <Plus size={14} aria-hidden /> Add restaurant
         </button>
       </div>
-      <DataTable
-        columns={[
-          {
-            header: "Logo",
-            mobileHidden: true,
-            accessor: (r: RestaurantRow) => {
-              const src = resolveMediaUrl(r.logo);
-              if (!src) {
-                return <span className="text-text-muted">—</span>;
-              }
-              return (
-                <img
-                  src={src}
-                  alt=""
-                  className="h-9 w-9 rounded-lg border border-border bg-card object-cover"
-                />
-              );
-            },
-          },
-          { header: "Name", accessor: "name" },
-          { header: "Phone", accessor: "phone" },
-          {
-            header: "Status",
-            accessor: (r) =>
-              r.is_active === false ? (
-                <StatusBadge status="inactive" />
-              ) : (
-                <StatusBadge status="active" />
-              ),
-          },
-        ]}
-        data={rows}
-        onRowClick={(r) => {
-          void navigate({ to: "/owner/restaurants/$restaurantId", params: { restaurantId: String(r.id) } });
-        }}
-      />
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-text-muted">No restaurants yet.</p>
+      ) : (
+        <OwnerEntityCardStack>
+          {rows.map((r) => {
+            const src = resolveMediaUrl(r.logo);
+            const deliveryKm = r.delivery_radius_km != null ? Number(r.delivery_radius_km) : null;
+            return (
+              <OwnerEntityCard
+                key={r.id}
+                onClick={() => {
+                  void navigate({ to: "/owner/restaurants/$restaurantId", params: { restaurantId: String(r.id) } });
+                }}
+                leading={
+                  src ? (
+                    <img
+                      src={src}
+                      alt=""
+                      className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Store strokeWidth={2} aria-hidden />
+                    </div>
+                  )
+                }
+                title={r.name}
+                subtitle={subtitleForRestaurant(r)}
+                meta={
+                  <>
+                    {r.is_active === false ? <StatusBadge status="inactive" /> : <StatusBadge status="active" />}
+                    {deliveryKm != null && Number.isFinite(deliveryKm) ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                        <Truck size={14} className="text-success" aria-hidden />
+                        <span className="font-medium text-success">Delivery</span>
+                        <span className="text-text-muted">· Within {deliveryKm.toLocaleString()} km</span>
+                      </span>
+                    ) : null}
+                  </>
+                }
+                actions={
+                  <Link
+                    to="/owner/restaurants/$restaurantId"
+                    params={{ restaurantId: String(r.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]"
+                  >
+                    View details
+                  </Link>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
       <AddRestaurantModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );

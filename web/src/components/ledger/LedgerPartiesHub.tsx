@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { DataTable } from "@/components/shared/DataTable";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { OwnerEntityCard, OwnerEntityCardStack } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCustomers, useLedgers, useStaffMembers, useSuppliers } from "@/hooks/use-rest-api";
 import { money } from "@/lib/money";
+import { BookOpen, Truck, UserRound, Users } from "lucide-react";
 import type { LedgerListRow, LedgerPartyKind, LedgerPartyRow } from "@/components/ledger/ledger-types";
 
 type PartyTab = "all" | LedgerPartyKind;
@@ -41,6 +43,15 @@ function aggregateByParty(rows: LedgerListRow[]): Map<string, { credit: number; 
   return m;
 }
 
+function partyLeadingIcon(partyType: LedgerPartyKind): ReactNode {
+  const wrap = (node: ReactNode) => (
+    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">{node}</div>
+  );
+  if (partyType === "customer") return wrap(<UserRound strokeWidth={2} aria-hidden />);
+  if (partyType === "staff") return wrap(<Users strokeWidth={2} aria-hidden />);
+  return wrap(<Truck strokeWidth={2} aria-hidden />);
+}
+
 export function LedgerPartiesHub({
   restaurantId,
   portal,
@@ -48,6 +59,7 @@ export function LedgerPartiesHub({
   restaurantId: number;
   portal: "owner" | "staff" | "customer";
 }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<PartyTab>("all");
   const { data: ledgerRaw = [], isLoading, error } = useLedgers(restaurantId);
   const { data: customers = [] } = useCustomers(restaurantId);
@@ -120,6 +132,13 @@ export function LedgerPartiesHub({
         ? "/staff/ledger/$partyType/$partyId"
         : "/customer/ledger/$partyType/$partyId";
 
+  const openParty = (p: LedgerPartyRow) => {
+    void navigate({
+      to: partyDetailTo,
+      params: { partyType: p.partyType, partyId: p.partyId },
+    });
+  };
+
   if (error) return <p className="text-sm text-error">Failed to load ledger.</p>;
   if (isLoading) return <p className="text-sm text-text-muted">Loading…</p>;
 
@@ -137,45 +156,47 @@ export function LedgerPartiesHub({
         </TabsList>
       </Tabs>
 
-      <DataTable
-        columns={[
-          { header: "Party", accessor: (p) => (p as LedgerPartyRow).name },
-          { header: "Type", accessor: (p) => <StatusBadge status={(p as LedgerPartyRow).partyType} /> },
-          {
-            header: "Balance",
-            accessor: (p) => <span className="font-mono font-medium">{money((p as LedgerPartyRow).balance)}</span>,
-          },
-          {
-            header: "Credit / Debit",
-            accessor: (p) => {
-              const x = p as LedgerPartyRow;
-              return (
-                <span className="text-xs tabular-nums">
-                  <span className="font-mono text-success">{money(x.totalCredit)}</span>
-                  <span className="mx-1 text-text-muted">/</span>
-                  <span className="font-mono text-error">{money(x.totalDebit)}</span>
+      {filtered.length === 0 ? (
+        <p className="text-sm text-text-muted">No parties match this filter.</p>
+      ) : (
+        <OwnerEntityCardStack>
+          {filtered.map((row) => (
+            <OwnerEntityCard
+              key={row.id}
+              onClick={() => openParty(row)}
+              leading={partyLeadingIcon(row.partyType)}
+              title={row.name}
+              subtitle={
+                <span className="inline-flex items-center gap-1.5 capitalize text-text-secondary">
+                  <BookOpen size={14} className="shrink-0 text-primary" aria-hidden />
+                  {row.partyType} ledger
                 </span>
-              );
-            },
-          },
-          {
-            header: "Actions",
-            accessor: (p) => {
-              const x = p as LedgerPartyRow;
-              return (
+              }
+              meta={
+                <>
+                  <span className="font-mono text-base font-semibold text-foreground">{money(row.balance)}</span>
+                  <StatusBadge status={row.partyType} />
+                  <span className="text-xs tabular-nums text-text-muted">
+                    <span className="text-success">Cr {money(row.totalCredit)}</span>
+                    <span className="mx-1">·</span>
+                    <span className="text-error">Dr {money(row.totalDebit)}</span>
+                  </span>
+                </>
+              }
+              actions={
                 <Link
                   to={partyDetailTo}
-                  params={{ partyType: x.partyType, partyId: x.partyId }}
-                  className="text-xs font-medium text-primary"
+                  params={{ partyType: row.partyType, partyId: row.partyId }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]"
                 >
-                  View
+                  View ledger
                 </Link>
-              );
-            },
-          },
-        ]}
-        data={filtered}
-      />
+              }
+            />
+          ))}
+        </OwnerEntityCardStack>
+      )}
     </>
   );
 }

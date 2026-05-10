@@ -1,12 +1,12 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
+import { OwnerEntityCard, OwnerEntityCardStack } from "@/components/owner/OwnerEntityCard";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
-import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useCreateOwnerStaffNotification, useOwnerStaffByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
 import { STAFF_PATH } from "@/lib/portal-routes";
-import { Bell, Plus } from "lucide-react";
+import { Bell, MapPin, Plus, Users } from "lucide-react";
 
 type StaffRow = {
   id: number;
@@ -21,8 +21,6 @@ type StaffRow = {
   salary_per_day: string | number;
   is_suspend: boolean;
 };
-
-type StaffColumn = { header: string; accessor: keyof StaffRow | ((row: StaffRow) => ReactNode) };
 
 export const Route = createFileRoute("/owner/staff")({ component: StaffPage });
 
@@ -45,30 +43,63 @@ function StaffPage() {
 
   const restaurantLabel = (rid: number) => restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
 
-  const tableColumns: StaffColumn[] = useMemo(
-    () => [
-      { header: "Name", accessor: (s: StaffRow) => s.user_name || `User #${s.user}` },
-      ...(restaurantIds.length > 1
-        ? [
-            {
-              header: "Restaurant",
-              accessor: (s: StaffRow) => (
-                <span className="text-sm text-foreground">
-                  {s.restaurant_name ?? (s.restaurant != null ? `Restaurant #${s.restaurant}` : "—")}
-                </span>
-              ),
-            },
-          ]
-        : []),
-      { header: "Role", accessor: (s: StaffRow) => <StatusBadge status={s.role} /> },
-      { header: "Status", accessor: (s: StaffRow) => <StatusBadge status={s.is_suspend ? "inactive" : "active"} /> },
-    ],
-    [restaurantIds.length],
-  );
-
   const goToStaff = (s: StaffRow) => {
     void navigate({ to: "/owner/staff/$id", params: { id: String(s.id) } });
   };
+
+  const staffSubtitle = (s: StaffRow) => {
+    if (restaurantIds.length > 1) {
+      const venue = s.restaurant_name ?? (s.restaurant != null ? restaurantLabel(s.restaurant) : null);
+      if (!venue) return <span className="text-text-muted">—</span>;
+      return (
+        <span className="inline-flex items-start gap-1.5">
+          <MapPin size={14} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+          <span>{venue}</span>
+        </span>
+      );
+    }
+    const line = s.user_phone?.trim() || "Team member";
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <MapPin size={14} className="shrink-0 text-primary" aria-hidden />
+        <span>{line}</span>
+      </span>
+    );
+  };
+
+  const renderStaffCards = (list: StaffRow[]) => (
+    <OwnerEntityCardStack>
+      {list.map((s) => (
+        <OwnerEntityCard
+          key={s.id}
+          onClick={() => goToStaff(s)}
+          leading={
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Users strokeWidth={2} aria-hidden />
+            </div>
+          }
+          title={s.user_name || `User #${s.user}`}
+          subtitle={staffSubtitle(s)}
+          meta={
+            <>
+              <StatusBadge status={s.role} />
+              <StatusBadge status={s.is_suspend ? "inactive" : "active"} />
+            </>
+          }
+          actions={
+            <Link
+              to="/owner/staff/$id"
+              params={{ id: String(s.id) }}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/[0.06]"
+            >
+              View profile
+            </Link>
+          }
+        />
+      ))}
+    </OwnerEntityCardStack>
+  );
 
   return (
     <>
@@ -201,13 +232,13 @@ function StaffPage() {
               {(staff as StaffRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No staff at this restaurant.</p>
               ) : (
-                <DataTable columns={[...tableColumns]} data={staff as StaffRow[]} onRowClick={goToStaff} />
+                renderStaffCards(staff as StaffRow[])
               )}
             </section>
           ))}
         </div>
       ) : (
-        <DataTable columns={[...tableColumns]} data={(sections[0]?.staff as StaffRow[]) ?? []} onRowClick={goToStaff} />
+        renderStaffCards((sections[0]?.staff as StaffRow[]) ?? [])
       )}
       {isFormRoute ? (
         <RouteFormModal title="Staff form" onClose={() => navigate({ to: "/owner/staff" })}>
