@@ -1950,6 +1950,61 @@ class OrderStatusCustomerSideEffectsTests(TestCase):
         self.assertEqual(BulkNotification.objects.count(), n_before)
 
 
+class OrderTransitionStatusApiSmsBillingTests(APITestCase):
+    """Owner transition-status must run on_commit SMS billing (TestCase defers on_commit unless captured)."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create(phone="9000001501", name="Api Sms Owner", role=UserRole.OWNER)
+        self.restaurant = Restaurant.objects.create(user=self.owner, name="Api Sms Cafe")
+        self.customer = User.objects.create(phone="9000001502", name="Api Sms Cust", role=UserRole.CUSTOMER)
+        self.unit = Unit.objects.create(restaurant=self.restaurant, name="Piece", symbol="pc")
+        self.cat = Category.objects.create(restaurant=self.restaurant, name="Food")
+        self.product = Product.objects.create(restaurant=self.restaurant, category=self.cat, name="Dish")
+        self.item = ProductItem.objects.create(
+            product=self.product,
+            unit=self.unit,
+            price=Decimal("100.00"),
+            discount_type=DiscountType.PERCENTAGE,
+            discount=Decimal("0.00"),
+        )
+        self.order = create_order_with_items(
+            restaurant=self.restaurant,
+            lines=[{"product_item_id": self.item.pk, "quantity": "1"}],
+            customer=self.customer,
+        )
+        s = get_super_setting()
+        s.sms_per_usage = Decimal("2.00")
+        s.save(update_fields=["sms_per_usage", "updated_at"])
+
+    @patch("core.services.order_status_customer_notify.send_plain_sms", return_value=True)
+    def test_owner_accept_via_api_bills_sms_and_updates_restaurant_list(self, _mock_sms):
+        self.client.force_authenticate(user=self.owner)
+        url = f"/api/orders/{self.order.pk}/transition-status/"
+        before = self.restaurant.due_balance
+        with self.captureOnCommitCallbacks(execute=True):
+            res = self.client.post(url, {"status": OrderStatus.ACCEPTED}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.due_balance, before + Decimal("2.00"))
+        self.assertTrue(
+            Transaction.objects.filter(
+                restaurant_id=self.restaurant.pk,
+                category=TransactionCategory.SMS_USAGE,
+                transaction_type=TransactionType.IN,
+                amount=Decimal("2.00"),
+            ).exists()
+        )
+        list_res = self.client.get("/api/restaurants/")
+        self.assertEqual(list_res.status_code, 200)
+        row = next(r for r in list_res.json() if r["id"] == self.restaurant.pk)
+        self.assertEqual(Decimal(str(row["due_sms_usage"])), Decimal("2.00"))
+        self.assertGreater(
+            BulkNotification.objects.filter(type=BulkNotificationType.PUSH).count(),
+            0,
+        )
+
+
 class RestaurantListDueBreakdownApiTests(APITestCase):
     def setUp(self):
         User = get_user_model()
