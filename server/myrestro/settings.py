@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-&0$*^ddssgu7wv6h5qgw_ad44j1k25++$+5obl!wm5%-&g71(c'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").strip().lower() in {"1", "true", "yes", "on"}
 
 # Optional: enable camera scan AI on the payment counter (see core.services.vision_billing).
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
