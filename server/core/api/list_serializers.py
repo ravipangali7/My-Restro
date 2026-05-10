@@ -84,14 +84,17 @@ class RestaurantListSerializer(serializers.ModelSerializer):
         )
 
     def _sum_due_category(self, obj: Restaurant, category: str) -> Decimal:
+        ctx = self.context or {}
         if category == TransactionCategory.SMS_USAGE:
-            annotated = getattr(obj, "due_sms_usage_agg", None)
-            if annotated is not None:
-                return Decimal(str(annotated))
+            totals = ctx.get("restaurant_sms_usage_totals")
+            if isinstance(totals, dict):
+                raw = totals.get(obj.pk)
+                return Decimal(str(raw)) if raw is not None else Decimal("0.00")
         if category == TransactionCategory.TRANSACTION_FEE:
-            annotated = getattr(obj, "due_service_charge_agg", None)
-            if annotated is not None:
-                return Decimal(str(annotated))
+            totals = ctx.get("restaurant_fee_totals")
+            if isinstance(totals, dict):
+                raw = totals.get(obj.pk)
+                return Decimal(str(raw)) if raw is not None else Decimal("0.00")
         total = (
             Transaction.objects.filter(
                 restaurant_id=obj.pk,

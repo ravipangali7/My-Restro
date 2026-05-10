@@ -7,8 +7,7 @@ from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
 from django.db import IntegrityError
-from django.db.models import DecimalField, OuterRef, Prefetch, Q, Subquery, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Prefetch, Q, Sum
 from django.http import FileResponse
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -138,39 +137,39 @@ def list_restaurants(request):
     else:
         qs = qs.filter(is_active=True)
 
-    sms_due_sub = (
-        Transaction.objects.filter(
-            restaurant_id=OuterRef("pk"),
-            category=TransactionCategory.SMS_USAGE,
+    # One grouped query per category (avoids per-row subqueries that can mis-sum on some DBs, and avoids
+    # Coalesce(Subquery, 0) masking a failed subquery — which would skip the serializer's aggregate fallback).
+    restaurant_ids = list(qs.values_list("pk", flat=True))
+    sms_totals: dict[int, Decimal] = {}
+    fee_totals: dict[int, Decimal] = {}
+    if restaurant_ids:
+        base = Transaction.objects.filter(
+            restaurant_id__in=restaurant_ids,
             transaction_type=TransactionType.IN,
             is_system=True,
         )
-        .values("restaurant_id")
-        .annotate(t=Sum("amount"))
-        .values("t")[:1]
+        for row in base.filter(category=TransactionCategory.SMS_USAGE).values("restaurant_id").annotate(t=Sum("amount")):
+            rid = row["restaurant_id"]
+            amt = row["t"]
+            sms_totals[rid] = amt if amt is not None else Decimal("0.00")
+        for row in base.filter(category=TransactionCategory.TRANSACTION_FEE).values("restaurant_id").annotate(
+            t=Sum("amount")
+        ):
+            rid = row["restaurant_id"]
+            amt = row["t"]
+            fee_totals[rid] = amt if amt is not None else Decimal("0.00")
+
+    return Response(
+        RestaurantListSerializer(
+            qs,
+            many=True,
+            context={
+                "request": request,
+                "restaurant_sms_usage_totals": sms_totals,
+                "restaurant_fee_totals": fee_totals,
+            },
+        ).data
     )
-    fee_due_sub = (
-        Transaction.objects.filter(
-            restaurant_id=OuterRef("pk"),
-            category=TransactionCategory.TRANSACTION_FEE,
-            transaction_type=TransactionType.IN,
-            is_system=True,
-        )
-        .values("restaurant_id")
-        .annotate(t=Sum("amount"))
-        .values("t")[:1]
-    )
-    qs = qs.annotate(
-        due_sms_usage_agg=Coalesce(
-            Subquery(sms_due_sub, output_field=DecimalField(max_digits=14, decimal_places=2)),
-            Value(Decimal("0.00")),
-        ),
-        due_service_charge_agg=Coalesce(
-            Subquery(fee_due_sub, output_field=DecimalField(max_digits=14, decimal_places=2)),
-            Value(Decimal("0.00")),
-        ),
-    )
-    return Response(RestaurantListSerializer(qs, many=True, context={"request": request}).data)
 
 
 @api_view(["GET"])

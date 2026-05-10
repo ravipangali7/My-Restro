@@ -142,6 +142,7 @@ export function useTransitionOrderStatus() {
       void qc.invalidateQueries({ queryKey: ["orders"] });
       void qc.invalidateQueries({ queryKey: ["order", vars.orderId] });
       void qc.invalidateQueries({ queryKey: ["restaurants"] });
+      void qc.refetchQueries({ queryKey: ["restaurants"] });
       // Ready transitions consume inventory and create stock logs; refresh inventory views too.
       void qc.invalidateQueries({ queryKey: ["stock-logs"] });
       void qc.invalidateQueries({ queryKey: ["raw-materials"] });
@@ -883,7 +884,9 @@ export function usePlatformDefaults() {
     },
     placeholderData: () => readPlatformDefaultsCache() ?? undefined,
     enabled: isAuthenticated,
-    staleTime: 60_000,
+    /** Owners rely on this for SMS rate / thresholds; keep fresh after superadmin changes (global staleTime is 30s). */
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
