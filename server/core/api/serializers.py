@@ -179,6 +179,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "people_for",
             "sub_total",
             "discount",
+            "service_charge",
             "delivery_fee",
             "total",
             "reject_reason",
@@ -188,7 +189,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("order_id", "sub_total", "total", "amount_paid")
+        read_only_fields = ("order_id", "sub_total", "service_charge", "total", "amount_paid")
 
     def get_amount_remaining(self, obj):
         total = obj.total if obj.total is not None else Decimal("0.00")

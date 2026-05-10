@@ -49,6 +49,7 @@ interface OrderDetail {
   people_for: number;
   sub_total: string | number;
   discount: string | number;
+  service_charge?: string | number;
   delivery_fee?: string | number;
   total: string | number;
   address: string;
@@ -272,6 +273,9 @@ function OrderViewPage() {
           />
           <ViewField label="Sub Total" value={`₹${Number(order.sub_total).toLocaleString()}`} />
           <ViewField label="Discount" value={`₹${Number(order.discount).toLocaleString()}`} />
+          {Number(order.service_charge ?? 0) > 0 ? (
+            <ViewField label="Service charge" value={`₹${Number(order.service_charge).toLocaleString()}`} />
+          ) : null}
           {order.order_type === "delivery" && Number(order.delivery_fee ?? 0) > 0 ? (
             <ViewField label="Delivery fee" value={`₹${Number(order.delivery_fee).toLocaleString()}`} />
           ) : null}

@@ -467,6 +467,7 @@ class Order(TimeStampedModel):
     people_for = models.PositiveIntegerField(default=1)
     sub_total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    service_charge = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     delivery_fee = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     amount_paid = models.DecimalField(

@@ -22,6 +22,7 @@ interface OrderRow {
   payment_status: string;
   sub_total: string | number;
   discount: string | number;
+  service_charge?: string | number;
   total: string | number;
   restaurant?: number;
   restaurant_name?: string;
@@ -232,6 +233,12 @@ function CustomerOrders() {
                 <span className="text-text-secondary">Discount</span>
                 <span className="font-mono">₹{Number(selectedOrder.discount).toLocaleString()}</span>
               </div>
+              {Number(selectedOrder.service_charge ?? 0) > 0 ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-secondary">Service charge</span>
+                  <span className="font-mono">₹{Number(selectedOrder.service_charge).toLocaleString()}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between text-md font-bold border-t border-border pt-2">
                 <span>Total</span>
                 <span className="font-mono">₹{Number(selectedOrder.total).toLocaleString()}</span>

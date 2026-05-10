@@ -104,6 +104,20 @@ class OrderServiceTests(TestCase):
         line = order.items.first()
         self.assertEqual(line.price, Decimal("180.00"))
 
+    def test_service_charge_is_included_in_order_total(self):
+        setting = get_super_setting()
+        setting.per_transaction_fee = Decimal("10.00")
+        setting.save(update_fields=["per_transaction_fee", "updated_at"])
+
+        order = create_order_with_items(
+            restaurant=self.restaurant,
+            lines=[{"product_item_id": self.item.pk, "quantity": "1"}],
+        )
+
+        self.assertEqual(order.sub_total, Decimal("180.00"))
+        self.assertEqual(order.service_charge, Decimal("10.00"))
+        self.assertEqual(order.total, Decimal("190.00"))
+
     def test_menu_offer_savings_on_discounted_line(self):
         from core.services.order_bill import _line_menu_offer_savings
 

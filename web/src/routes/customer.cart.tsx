@@ -112,6 +112,7 @@ function CustomerCart() {
     const n = raw != null ? Number(raw) : 0;
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
   }, [cartRestaurant?.effective_per_transaction_fee]);
+  const total = useMemo(() => Math.round((subTotal + serviceCharge) * 100) / 100, [subTotal, serviceCharge]);
 
   const placeOrder = async () => {
     if (!token) {
@@ -334,7 +335,7 @@ function CustomerCart() {
             </div>
             <div className="flex justify-between text-md font-bold border-t border-border pt-2">
               <span>Total</span>
-              <span className="font-mono">₹{subTotal.toLocaleString()}</span>
+              <span className="font-mono">₹{total.toLocaleString()}</span>
             </div>
             <button
               type="button"

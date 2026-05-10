@@ -502,6 +502,9 @@ def render_order_bill_png(order: Order) -> bytes:
         y += 24
 
     money_row("Subtotal", _fmt_money(order.sub_total), font_sm)
+    svc = getattr(order, "service_charge", Decimal("0.00")) or Decimal("0.00")
+    if svc > 0:
+        money_row("Service charge", _fmt_money(svc), font_sm)
     y += 6
 
     # --- discount highlight (only when an order-level discount is present) ---
