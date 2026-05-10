@@ -3,6 +3,20 @@ import type { LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { isNavPathActive } from "@/lib/nav-active";
 
+/** Filled document / order-sheet glyph (not Lucide strokes) for the center hub. */
+function FeaturedHubGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8.828a2 2 0 0 0-.586-1.414L15 2.586A2 2 0 0 0 13.172 2H6Zm1 2h6v4a1 1 0 0 0 1 1h4v11H7V4Zm8 .414L16.586 8H15V4.414ZM9 10.5a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2h-4a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2h-4a1 1 0 0 1-1-1Z"
+      />
+    </svg>
+  );
+}
+
 interface NavTab {
   title: string;
   to: string;
@@ -23,7 +37,7 @@ export function BottomNav({ tabs, featuredTo }: BottomNavProps) {
 
   return (
     <nav
-      className="lg:hidden fixed inset-x-0 bottom-0 z-50 max-w-full overflow-x-hidden overflow-y-visible border-t border-border bg-card pb-[max(0.375rem,env(safe-area-inset-bottom))] pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))] pt-2 touch-manipulation"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-50 max-w-full overflow-visible border-t border-border bg-card pb-[max(0.375rem,env(safe-area-inset-bottom))] pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))] pt-2 touch-manipulation"
       aria-label="Primary"
     >
       <div className="flex min-h-0 min-w-0 flex-1 items-end justify-stretch gap-0 px-0.5 pb-1 sm:gap-0.5 sm:px-1">
@@ -36,17 +50,17 @@ export function BottomNav({ tabs, featuredTo }: BottomNavProps) {
               <Link
                 key={tab.to}
                 to={tab.to}
-                className="group relative z-[2] flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-end px-0.5 pb-0.5 pt-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-card rounded-xl"
+                className="group relative z-[2] flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-end px-0.5 pb-0.5 pt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-card rounded-xl"
                 aria-current={isActive ? "page" : undefined}
               >
                 <span
-                  className={`relative -mt-8 mb-1 flex size-[3.25rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[5px] ring-card transition-[transform,box-shadow,opacity] duration-200 sm:size-14 sm:-mt-9 ${
+                  className={`relative mb-1.5 flex size-[3.25rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[5px] ring-card transition-[transform,box-shadow,opacity] duration-200 sm:size-14 ${
                     isActive
                       ? "shadow-[0_10px_34px_-6px_color-mix(in_oklab,var(--primary)_55%,transparent)]"
                       : "shadow-[0_8px_26px_-6px_color-mix(in_oklab,var(--primary)_42%,transparent)] opacity-[0.96] group-hover:opacity-100"
                   } group-active:scale-95`}
                 >
-                  <tab.icon className="size-[1.35rem] sm:size-6" strokeWidth={2.25} aria-hidden />
+                  <FeaturedHubGlyph className="size-[1.4rem] sm:size-[1.55rem]" />
                   {tab.badge != null && tab.badge > 0 ? (
                     <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-card px-1 text-[9px] font-bold leading-none text-primary tabular-nums ring-2 ring-primary sm:text-[10px]">
                       {tab.badge > 99 ? "99+" : tab.badge}
