@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -1579,6 +1579,61 @@ class ClientHomeInactiveRestaurantApiTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["restaurant"]["is_open"], False)
+
+
+class AuthOtpSmsFallbackApiTests(APITestCase):
+    """When SMS cannot be sent, DEBUG or SMS_OTP_ALLOW_INSECURE_FALLBACK still returns a verifiable OTP."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create(phone="9000002001", name="Otp User", role=UserRole.CUSTOMER)
+
+    @patch("core.views.client.auth_views.send_otp_sms", return_value=False)
+    @override_settings(DEBUG=True, SMS_OTP_ALLOW_INSECURE_FALLBACK=False)
+    def test_request_otp_debug_returns_debug_otp_when_sms_skipped(self, _mock_send):
+        res = self.client.post(
+            "/api/auth/request-otp/",
+            {"phone": self.user.phone, "purpose": "login"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        body = res.json()
+        self.assertIn("debug_otp", body)
+        self.assertEqual(len(body["debug_otp"]), 6)
+
+        verify = self.client.post(
+            "/api/auth/verify-otp/",
+            {
+                "phone": self.user.phone,
+                "otp": body["debug_otp"],
+                "purpose": "login",
+            },
+            format="json",
+        )
+        self.assertEqual(verify.status_code, 200, verify.content)
+        self.assertIn("token", verify.json())
+
+    @patch("core.views.client.auth_views.send_otp_sms", return_value=False)
+    @override_settings(DEBUG=False, SMS_OTP_ALLOW_INSECURE_FALLBACK=True)
+    def test_request_otp_insecure_fallback_returns_debug_otp_when_sms_skipped(self, _mock_send):
+        res = self.client.post(
+            "/api/auth/request-otp/",
+            {"phone": self.user.phone, "purpose": "login"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        body = res.json()
+        self.assertIn("debug_otp", body)
+
+    @patch("core.views.client.auth_views.send_otp_sms", return_value=False)
+    @override_settings(DEBUG=False, SMS_OTP_ALLOW_INSECURE_FALLBACK=False)
+    def test_request_otp_production_mode_503_when_sms_skipped(self, _mock_send):
+        res = self.client.post(
+            "/api/auth/request-otp/",
+            {"phone": self.user.phone, "purpose": "login"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 503, res.content)
 
 
 class OtpSmsBillingApiTests(APITestCase):

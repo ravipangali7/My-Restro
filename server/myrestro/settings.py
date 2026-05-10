@@ -179,6 +179,15 @@ AUTH_USER_MODEL = "core.User"
 
 # OTP SMS (Twilio). Set these in the environment for production.
 # https://www.twilio.com/docs/sms
+# Use either TWILIO_FROM_NUMBER (phone or alphanumeric sender) or TWILIO_MESSAGING_SERVICE_SID
+# (recommended for production); if the messaging service SID is set, "From" is omitted.
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
 TWILIO_FROM_NUMBER = os.environ.get("TWILIO_FROM_NUMBER", "").strip()
+TWILIO_MESSAGING_SERVICE_SID = os.environ.get("TWILIO_MESSAGING_SERVICE_SID", "").strip()
+
+# Staging only: when Twilio is missing or send fails, behave like DEBUG and return debug_otp
+# in the JSON so login works without SMS. Never enable on a public production server.
+SMS_OTP_ALLOW_INSECURE_FALLBACK = os.environ.get(
+    "SMS_OTP_ALLOW_INSECURE_FALLBACK", ""
+).strip().lower() in {"1", "true", "yes", "on"}

@@ -59,13 +59,28 @@ def request_otp(request):
     sms_sent = send_otp_sms(phone, code)
     payload = {"detail": "OTP sent.", "phone": phone}
 
+    allow_otp_without_sms = settings.DEBUG or getattr(
+        settings, "SMS_OTP_ALLOW_INSECURE_FALLBACK", False
+    )
+
     if not sms_sent:
-        if settings.DEBUG:
+        if allow_otp_without_sms:
             payload["debug_otp"] = code
+            if getattr(settings, "SMS_OTP_ALLOW_INSECURE_FALLBACK", False) and not settings.DEBUG:
+                logger.warning(
+                    "SMS_OTP_ALLOW_INSECURE_FALLBACK enabled: OTP not sent via SMS; "
+                    "client received debug_otp for this request (staging only)."
+                )
         else:
             otp_row.delete()
             return Response(
-                {"detail": "Could not send verification SMS. Configure Twilio or try again later."},
+                {
+                    "detail": (
+                        "Could not send verification SMS. Set TWILIO_ACCOUNT_SID, "
+                        "TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID "
+                        "on the server, then retry."
+                    ),
+                },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
