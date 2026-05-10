@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PortalGate } from "@/components/auth/PortalGate";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { PortalNotificationBell } from "@/components/layout/StaffNotificationBell";
@@ -7,8 +7,12 @@ import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCustomerCartBadgeCount } from "@/hooks/use-customer-cart-badge";
 import { useAuth } from "@/lib/auth-context";
-import { CUSTOMER_BOTTOM_NAV_ITEMS, CUSTOMER_PROFILE_MENU_LINKS } from "@/lib/customer-portal-nav";
-import { ChevronRight, Edit, Menu } from "lucide-react";
+import {
+  CUSTOMER_BOTTOM_NAV_ITEMS,
+  CUSTOMER_DRAWER_NAV_ITEMS,
+  CUSTOMER_PROFILE_MENU_LINKS,
+} from "@/lib/customer-portal-nav";
+import { ChevronRight, Edit, Menu, ShoppingCart } from "lucide-react";
 
 export const Route = createFileRoute("/customer")({
   component: CustomerLayout,
@@ -23,14 +27,6 @@ function CustomerLayout() {
   const cartBadgeCount = useCustomerCartBadgeCount();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-
-  const bottomTabs = useMemo(
-    () =>
-      CUSTOMER_BOTTOM_NAV_ITEMS.map((tab) =>
-        tab.to === "/customer/cart" ? { ...tab, badge: cartBadgeCount } : tab,
-      ),
-    [cartBadgeCount],
-  );
 
   return (
     <PortalGate allow={["customer"]} allowGuest>
@@ -50,7 +46,7 @@ function CustomerLayout() {
                 <SheetTitle className="font-display text-left text-base">Menu</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col px-2 py-3" aria-label="Main navigation">
-                {CUSTOMER_BOTTOM_NAV_ITEMS.map((item) => {
+                {CUSTOMER_DRAWER_NAV_ITEMS.map((item) => {
                   const badge = item.to === "/customer/cart" && cartBadgeCount > 0 ? cartBadgeCount : null;
                   return (
                     <SheetClose asChild key={item.to}>
@@ -119,12 +115,24 @@ function CustomerLayout() {
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex flex-1 justify-end gap-2 min-w-0">
+          <div className="flex flex-1 justify-end items-center gap-1 min-w-0 sm:gap-2">
+            <Link
+              to="/customer/cart"
+              className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-surface-alt"
+              aria-label={cartBadgeCount > 0 ? `Cart, ${cartBadgeCount} items` : "Cart"}
+            >
+              <ShoppingCart size={22} strokeWidth={2} aria-hidden />
+              {cartBadgeCount > 0 ? (
+                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground tabular-nums">
+                  {cartBadgeCount > 99 ? "99+" : cartBadgeCount}
+                </span>
+              ) : null}
+            </Link>
             {isAuthenticated ? <PortalNotificationBell /> : null}
           </div>
         </div>
         <Outlet />
-        <BottomNav tabs={bottomTabs} />
+        <BottomNav tabs={CUSTOMER_BOTTOM_NAV_ITEMS} featuredTo="/customer/orders" />
       </div>
       <ConfirmModal
         open={logoutConfirmOpen}
