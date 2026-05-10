@@ -30,7 +30,7 @@ import {
   YAxis,
 } from "recharts";
 import { OrderTableVisual } from "@/components/shared/OrderTableVisual";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -470,7 +470,7 @@ export function WaiterDashboard() {
           title="Today at a glance"
           description="Counts and totals from the orders, pickup queue, ledger, and payments you can access in this portal."
         />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 xl:gap-4">
+        <StatCardsGrid>
           <StatFrame accentClass="from-primary/55 via-primary/20 to-transparent">
             <StatCard
               className="h-full rounded-[0.9375rem] border-0 shadow-none"
@@ -519,7 +519,7 @@ export function WaiterDashboard() {
               value={statLoading ? "…" : formatInr(revenue7dTotal)}
             />
           </StatFrame>
-        </div>
+        </StatCardsGrid>
       </section>
 
       <section className="space-y-5">

@@ -1,7 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
@@ -96,12 +96,12 @@ function UserViewPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <StatCardsGrid className="mb-6">
         <StatCard icon={Wallet} label="Balance" value={`₹${Number(u.balance).toLocaleString()}`} />
         <StatCard icon={DollarSign} label="Due Balance" value={`₹${Number(u.due_balance).toLocaleString()}`} />
         <StatCard icon={ShoppingBag} label="Orders (loaded)" value={ordersFlat.length} />
         <StatCard icon={TrendingUp} label="Share %" value={`${u.share_percentage}%`} />
-      </div>
+      </StatCardsGrid>
 
       <ViewSection title="User Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

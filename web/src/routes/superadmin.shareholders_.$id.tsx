@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
@@ -63,12 +63,12 @@ function ShareholderViewPage() {
           <p className="text-sm text-text-muted">{u.phone}</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <StatCardsGrid className="mb-6">
         <StatCard icon={TrendingUp} label="Share %" value={`${u.share_percentage}%`} />
         <StatCard icon={Wallet} label="Balance" value={`₹${Number(u.balance).toLocaleString()}`} />
         <StatCard icon={DollarSign} label="Due Balance" value={`₹${Number(u.due_balance).toLocaleString()}`} />
         <StatCard icon={Receipt} label="Withdrawals" value={userWithdrawals.length} />
-      </div>
+      </StatCardsGrid>
       <ViewSection title="Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ViewField label="Phone" value={u.phone} />

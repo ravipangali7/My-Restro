@@ -1,4 +1,4 @@
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -254,12 +254,12 @@ function OverviewTab({ restaurantId }: { restaurantId: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <StatCardsGrid>
         <StatCard icon={Store} label="Your restaurants" value={lr ? "…" : String(locationCount)} />
         <StatCard icon={ShoppingBag} label="Orders (this location)" value={lo ? "…" : String(orderCount)} />
         <StatCard icon={TrendingUp} label="Revenue (7 days)" value={lo ? "…" : formatInr(revenue7d)} />
         <StatCard icon={PieChartIcon} label="Avg ticket (7 days)" value={lo ? "…" : formatInr(avgOrder)} />
-      </div>
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel title="Revenue trend" description="Last 7 days for the selected restaurant." icon={TrendingUp} className="lg:col-span-2">
@@ -375,12 +375,12 @@ function OperationsTab({ restaurantId }: { restaurantId: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatCardsGrid>
         <StatCard icon={ShoppingBag} label="Pending" value={lo ? "…" : String(pending)} />
         <StatCard icon={TrendingUp} label="In progress" value={lo ? "…" : String(inProgress)} />
         <StatCard icon={Package} label="Ready to serve" value={lo ? "…" : String(ready)} />
         <StatCard icon={Bell} label="Broadcasts" value={lb ? "…" : String(bulkList.length)} />
-      </div>
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Order volume" description="Orders placed per day (last 7 days)." icon={BarChart2}>
@@ -521,12 +521,12 @@ function CatalogTab({ restaurantId }: { restaurantId: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <StatCardsGrid>
         <StatCard icon={UtensilsCrossed} label="Categories" value={lc ? "…" : String((categories as unknown[]).length)} />
         <StatCard icon={Package} label="Products" value={lp ? "…" : String((products as unknown[]).length)} />
         <StatCard icon={Package} label="Combo sets" value={lco ? "…" : String((combos as unknown[]).length)} />
         <StatCard icon={LayoutGrid} label="Tables" value={lt ? "…" : String((tables as unknown[]).length)} />
-      </div>
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel title="Stock log activity" description="Inventory movements per day." icon={TrendingUp} className="lg:col-span-2">
@@ -735,12 +735,12 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatCardsGrid>
         <StatCard icon={Receipt} label="Expenses (7 days)" value={le ? "…" : formatInr(expenseTotal7d)} />
         <StatCard icon={Users} label="Customers" value={lc ? "…" : String((customers as unknown[]).length)} />
         <StatCard icon={Users} label="Staff seats" value={ls ? "…" : String((staff as unknown[]).length)} />
         <StatCard icon={BookOpen} label="Ledger lines" value={ll ? "…" : String((ledger as unknown[]).length)} />
-      </div>
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel title="Expense trend" description="Recorded expenses by day." icon={TrendingUp} className="lg:col-span-2">
@@ -929,12 +929,12 @@ function AllVenuesComparisonPanel({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <StatCardsGrid>
         <StatCard icon={Store} label="Locations compared" value={String(restaurantIds.length)} />
         <StatCard icon={ShoppingBag} label="Orders (all locations)" value={String(totals.totalOrders)} />
         <StatCard icon={TrendingUp} label="Revenue (7 days, all)" value={formatInr(totals.revenue)} />
         <StatCard icon={PieChartIcon} label="Pending (all)" value={String(totals.pending)} />
-      </div>
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Revenue by location" description="Last 7 days — quick visual comparison." icon={BarChart2} className="lg:col-span-1">

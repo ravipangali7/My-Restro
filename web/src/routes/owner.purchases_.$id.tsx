@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
 import { usePurchaseDetail, useRawMaterials, useStockLogs, useSuppliers, useUnits } from "@/hooks/use-rest-api";
@@ -75,7 +75,7 @@ function PurchaseViewPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+      <StatCardsGrid className="mb-6">
         <StatCard icon={DollarSign} label="Subtotal" value={`₹${Number(p.subtotal).toLocaleString()}`} />
         <StatCard
           icon={DollarSign}
@@ -83,7 +83,7 @@ function PurchaseViewPage() {
           value={p.discount_type === "percentage" ? `${p.discount}%` : `₹${p.discount}`}
         />
         <StatCard icon={DollarSign} label="Total" value={`₹${Number(p.total).toLocaleString()}`} />
-      </div>
+      </StatCardsGrid>
 
       <ViewSection title="Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

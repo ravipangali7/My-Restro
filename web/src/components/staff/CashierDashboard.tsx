@@ -29,7 +29,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CashierScanRawMaterialDialog } from "@/components/staff/CashierScanRawMaterialDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -468,7 +468,7 @@ export function CashierDashboard() {
           title="Desk at a glance"
           description="Alerts, open payments, pipeline orders, and the ledger lines tied to your cashier access."
         />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 xl:gap-4">
+        <StatCardsGrid>
           <StatFrame accentClass="from-amber-500/55 via-amber-400/18 to-transparent">
             <StatCard
               className="h-full rounded-[0.9375rem] border-0 shadow-none"
@@ -517,7 +517,7 @@ export function CashierDashboard() {
               value={statLoading ? "…" : formatInr(revenue7dTotal)}
             />
           </StatFrame>
-        </div>
+        </StatCardsGrid>
       </section>
 
       <section className="space-y-5">

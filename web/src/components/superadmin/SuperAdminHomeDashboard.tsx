@@ -28,7 +28,7 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -428,7 +428,7 @@ export function SuperAdminHomeDashboard() {
           title="Platform KPIs"
           description="Headline counts and balances drawn from the same APIs as your list pages."
         />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 xl:gap-4">
+        <StatCardsGrid>
           <StatFrame accentClass="from-primary/55 via-primary/20 to-transparent">
             <StatCard
               className="h-full rounded-[0.9375rem] border-0 shadow-none"
@@ -477,7 +477,7 @@ export function SuperAdminHomeDashboard() {
               value={statLoading ? "…" : formatInr(platformBalance)}
             />
           </StatFrame>
-        </div>
+        </StatCardsGrid>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-border/80 bg-muted/20 px-4 py-3 text-sm text-text-secondary">
             <span className="font-semibold text-foreground">Active subscriptions:</span>{" "}

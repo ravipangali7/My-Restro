@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -8,6 +9,11 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   className?: string;
+}
+
+/** Two-column grid for stat cards (mobile / Flutter WebView–safe; avoids sub-`sm` single-column layouts). */
+export function StatCardsGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("grid grid-cols-2 gap-3 [&>*]:min-w-0", className)}>{children}</div>;
 }
 
 export function StatCard({ icon: Icon, label, value, trend, trendUp, className }: StatCardProps) {

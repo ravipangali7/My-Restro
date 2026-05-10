@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
@@ -94,12 +94,12 @@ function RestaurantViewPage() {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <StatCardsGrid className="mb-6">
         <StatCard icon={ShoppingBag} label="Total Orders" value={orderList.length} />
         <StatCard icon={DollarSign} label="Revenue (in)" value={`₹${totalRevenue.toLocaleString()}`} trend="—" trendUp />
         <StatCard icon={Users} label="Staff" value={(staff as unknown[] | undefined)?.length ?? 0} />
         <StatCard icon={Package} label="Products" value={(products as unknown[] | undefined)?.length ?? 0} />
-      </div>
+      </StatCardsGrid>
       <ViewSection title="Restaurant Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <ViewField label="Owner" value={owner?.name || "—"} />

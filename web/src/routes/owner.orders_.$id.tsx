@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
@@ -112,12 +112,12 @@ function OrderViewPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <StatCardsGrid className="mb-6">
         <StatCard icon={DollarSign} label="Total" value={`₹${Number(order.total).toLocaleString()}`} />
         <StatCard icon={ShoppingBag} label="Items" value={items.length} />
         <StatCard icon={Users} label="People" value={order.people_for} />
         <StatCard icon={Clock} label="Payment" value={order.payment_method} />
-      </div>
+      </StatCardsGrid>
 
       <ViewSection title="Order Details">
         <div className="mb-4 p-3 rounded-xl border border-border bg-surface">

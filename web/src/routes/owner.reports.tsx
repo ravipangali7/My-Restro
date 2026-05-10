@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { DataTable } from "@/components/shared/DataTable";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Colors } from "@/constants/colors";
 import {
@@ -560,7 +560,7 @@ function ReportsPage() {
         <p className="text-sm text-text-muted mb-4">Loading report data…</p>
       ) : null}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <StatCardsGrid className="mb-6">
         <StatCard icon={ShoppingBag} label="Orders (scope)" value={stats.orderCount} />
         <StatCard icon={TrendingUp} label="Recorded revenue" value={formatInr(stats.revenue)} />
         <StatCard icon={Users} label="Staff (rows)" value={`${stats.activeStaff} active / ${stats.staffCount} total`} />
@@ -569,7 +569,7 @@ function ReportsPage() {
         <StatCard icon={Wallet} label="Expenses (total)" value={formatInr(stats.expenseTotal)} />
         <StatCard icon={Package} label="Low stock SKUs" value={stats.lowStock} />
         <StatCard icon={BarChart3} label="Register lines" value={transactionsScoped.length} />
-      </div>
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <ChartCard title="Order status mix">

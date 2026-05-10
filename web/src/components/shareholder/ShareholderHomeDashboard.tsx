@@ -28,7 +28,7 @@ import {
 } from "recharts";
 import type { AuthUser } from "@/lib/auth-context";
 import { useAuth } from "@/lib/auth-context";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions, useWithdrawals } from "@/hooks/use-rest-api";
@@ -402,7 +402,7 @@ export function ShareholderHomeDashboard() {
           title="Holdings at a glance"
           description="Balances, withdrawal queue, and loaded financial activity for your account."
         />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 xl:gap-4">
+        <StatCardsGrid>
           <StatFrame accentClass="from-violet-500/55 via-violet-400/20 to-transparent">
             <StatCard
               className="h-full rounded-[0.9375rem] border-0 shadow-none"
@@ -451,7 +451,7 @@ export function ShareholderHomeDashboard() {
               value={statLoading || !user ? "…" : formatSharePct(user.share_percentage)}
             />
           </StatFrame>
-        </div>
+        </StatCardsGrid>
       </section>
 
       <section className="space-y-5">
