@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { OrderTableVisual } from "@/components/shared/OrderTableVisual";
+import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -701,7 +702,14 @@ export function PaymentAlertsBoard({ restaurantId }: PaymentAlertsBoardProps) {
                               key={it.id}
                               className="flex items-start justify-between gap-2 rounded-lg border border-border/80 bg-surface-alt/40 px-3 py-2"
                             >
-                              <span className="min-w-0 break-words leading-snug text-foreground">{label}</span>
+                              <span className="inline-flex items-start gap-2 min-w-0 flex-1">
+                                <MenuMediaThumb
+                                  mediaPath={it.line_image ?? null}
+                                  alt={label}
+                                  className="h-10 w-10 shrink-0 rounded-md border border-border"
+                                />
+                                <span className="min-w-0 break-words leading-snug text-foreground">{label}</span>
+                              </span>
                               <div className="shrink-0 text-right text-xs sm:text-sm">
                                 <span className="tabular-nums">×{String(it.quantity)}</span>
                                 <p className="text-text-muted">@ {formatMoney(it.price)}</p>
@@ -881,14 +889,24 @@ export function PaymentAlertsBoard({ restaurantId }: PaymentAlertsBoardProps) {
                               </div>
                               {ho.items?.length ? (
                                 <ul className="border-t border-border/60 pt-2 space-y-1 text-xs text-text-secondary">
-                                  {ho.items.map((it) => (
-                                    <li key={it.id} className="flex justify-between gap-2">
-                                      <span className="min-w-0 break-words">{it.line_label || `Item #${it.id}`}</span>
-                                      <span className="shrink-0 tabular-nums">
-                                        ×{String(it.quantity)} · {formatMoney(it.total)}
-                                      </span>
-                                    </li>
-                                  ))}
+                                  {ho.items.map((it) => {
+                                    const lab = it.line_label || `Item #${it.id}`;
+                                    return (
+                                      <li key={it.id} className="flex items-center justify-between gap-2">
+                                        <span className="inline-flex items-center gap-2 min-w-0 flex-1">
+                                          <MenuMediaThumb
+                                            mediaPath={it.line_image ?? null}
+                                            alt={lab}
+                                            className="h-7 w-7 shrink-0 rounded border border-border"
+                                          />
+                                          <span className="min-w-0 break-words">{lab}</span>
+                                        </span>
+                                        <span className="shrink-0 tabular-nums">
+                                          ×{String(it.quantity)} · {formatMoney(it.total)}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
                                 </ul>
                               ) : null}
                               {ho.staff_payment_records && ho.staff_payment_records.length > 0 ? (

@@ -45,6 +45,8 @@ interface OrderDetail {
     price: string | number;
     quantity: string | number;
     total: string | number;
+    line_label?: string | null;
+    line_image?: string | null;
   }>;
 }
 
@@ -203,8 +205,33 @@ function OrderViewPage() {
       <ViewSection title="Order Items">
         <DataTable
           columns={[
-            { header: "Product ID", accessor: (oi) => oi.product ?? "—" },
-            { header: "Item ID", accessor: (oi) => oi.product_item ?? oi.comboset ?? "—" },
+            {
+              header: "Item",
+              accessor: (oi) => {
+                const label = (oi.line_label ?? "").trim() || `Item #${oi.id}`;
+                return (
+                  <span className="inline-flex items-center gap-3 min-w-0">
+                    <MenuMediaThumb
+                      mediaPath={oi.line_image ?? null}
+                      alt={label}
+                      className="h-12 w-12 shrink-0 rounded-lg border border-border"
+                    />
+                    <span className="min-w-0">
+                      <span className="font-medium block truncate max-w-[14rem] sm:max-w-xs">{label}</span>
+                      <span className="text-[11px] text-text-muted">
+                        {oi.product_item != null
+                          ? `Unit #${oi.product_item}`
+                          : oi.comboset != null
+                            ? `Combo #${oi.comboset}`
+                            : oi.product != null
+                              ? `Product #${oi.product}`
+                              : ""}
+                      </span>
+                    </span>
+                  </span>
+                );
+              },
+            },
             {
               header: "Price",
               accessor: (oi) => `₹${Number(oi.price).toLocaleString()}`,

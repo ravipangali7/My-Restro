@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { OrderTableVisual } from "@/components/shared/OrderTableVisual";
+import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useOrderDetail, useOrders } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
@@ -27,7 +28,14 @@ interface OrderRow {
   table?: number | null;
   table_name?: string | null;
   table_image?: string | null;
-  items?: Array<{ id: number; product: number | null; quantity: string | number; total: string | number }>;
+  items?: Array<{
+    id: number;
+    product: number | null;
+    quantity: string | number;
+    total: string | number;
+    line_label?: string | null;
+    line_image?: string | null;
+  }>;
 }
 
 function CustomerOrders() {
@@ -128,15 +136,23 @@ function CustomerOrders() {
             )}
 
             <div className="space-y-2 mb-4">
-              {(selectedOrder.items ?? []).map((item) => (
-                <div key={item.id} className="flex justify-between py-2 border-b border-border last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">Product #{item.product ?? "—"}</p>
-                    <p className="text-xs text-text-muted">Qty: {Number(item.quantity).toLocaleString()}</p>
+              {(selectedOrder.items ?? []).map((item) => {
+                const label = (item.line_label ?? "").trim() || `Item #${item.id}`;
+                return (
+                  <div key={item.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                    <MenuMediaThumb
+                      mediaPath={item.line_image ?? null}
+                      alt={label}
+                      className="h-14 w-14 shrink-0 rounded-xl border border-border"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground leading-snug">{label}</p>
+                      <p className="text-xs text-text-muted mt-0.5">Qty: {Number(item.quantity).toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-bold font-mono shrink-0">₹{Number(item.total).toLocaleString()}</p>
                   </div>
-                  <p className="text-sm font-bold font-mono">₹{Number(item.total).toLocaleString()}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {selectedOrder.status !== "rejected" &&
