@@ -12,6 +12,7 @@ import {
   Package,
   Bell,
   Home,
+  ChefHat,
 } from "lucide-react";
 import { getStoredAuthUser, useAuth } from "@/lib/auth-context";
 import type { NavItem } from "@/components/layout/AppSidebar";
@@ -88,21 +89,24 @@ function StaffLayout() {
     { title: "Profile", to: STAFF_PATH.profile, icon: User },
   ];
 
+  /**
+   * Kitchen mobile bottom bar: same five-tab hub pattern as waiter/cashier (center elevated).
+   * Center hub = Live Orders (`ChefHat` reads as kitchen station vs waiter POS cart).
+   */
+  const kitchenBottomTabs = [
+    { title: "Home", to: STAFF_PATH.home, icon: Home },
+    { title: "Pickup", to: STAFF_PATH.waitingPickup, icon: Package },
+    { title: "Live Orders", to: STAFF_PATH.liveorders, icon: ChefHat },
+    { title: "Ledgers", to: STAFF_PATH.ledger, icon: BookOpen },
+    { title: "Profile", to: STAFF_PATH.profile, icon: User },
+  ];
+
   const bottomTabs =
     staffRole === "cashier"
       ? cashierBottomTabs
       : staffRole === "waiter"
         ? waiterBottomTabs
-        : [
-            {
-              title: "Dashboard",
-              to: STAFF_PATH.home,
-              icon: LayoutDashboard,
-            },
-            { title: "Live Orders", to: STAFF_PATH.liveorders, icon: ClipboardList },
-            { title: "Pickup", to: STAFF_PATH.waitingPickup, icon: Package },
-            { title: "Profile", to: STAFF_PATH.profile, icon: User },
-          ];
+        : kitchenBottomTabs;
 
   return (
     <PortalGate allow={["waiter", "cashier", "kitchen"]}>
@@ -116,9 +120,13 @@ function StaffLayout() {
             ? STAFF_PATH.paymentAlerts
             : staffRole === "waiter"
               ? STAFF_PATH.pos
-              : undefined
+              : staffRole === "kitchen"
+                ? STAFF_PATH.liveorders
+                : undefined
         }
-        bottomNavFeaturedIcon={staffRole === "cashier" || staffRole === "waiter" ? "tab" : undefined}
+        bottomNavFeaturedIcon={
+          staffRole === "cashier" || staffRole === "waiter" || staffRole === "kitchen" ? "tab" : undefined
+        }
       >
         <Outlet />
       </DashboardLayout>
