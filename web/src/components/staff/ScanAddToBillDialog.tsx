@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Camera, Check, ListPlus, Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Camera, Check, ListPlus, Loader2, RefreshCw, SwitchCamera } from "lucide-react";
 import { toast } from "sonner";
 
 import { type PaymentAlertOrder } from "@/components/staff/payment-alert-types";
@@ -95,21 +95,42 @@ export function ScanAddToBillDialog({
   const [quantity, setQuantity] = useState("1");
   const [useCatalogId, setUseCatalogId] = useState<number | "">("");
   const [aiHint, setAiHint] = useState<string | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraGesturePrimedRef = useRef(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  /** Touch / hybrid devices: getUserMedia must start from a tap (iOS Safari & in-app WebViews). */
+  const [needsCoarseCameraTap, setNeedsCoarseCameraTap] = useState(false);
   const orderSelectId = useId();
 
+  const prefersCoarsePointer = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return (
+        window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(hover: none)").matches
+      );
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      cameraGesturePrimedRef.current = false;
+      setNeedsCoarseCameraTap(false);
+      return;
+    }
     setName("");
     setUnitPrice("");
     setQuantity("1");
     setUseCatalogId("");
     setMainTab("scan");
     setAiHint(null);
+    setCameraFacing("environment");
+    cameraGesturePrimedRef.current = false;
   }, [open]);
 
   useEffect(() => {
@@ -134,6 +155,26 @@ export function ScanAddToBillDialog({
     setCameraReady(false);
   }, []);
 
+  const bindStreamToVideo = useCallback(async (s: MediaStream) => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.srcObject = s;
+    await el.play().catch(() => undefined);
+    if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      setCameraReady(true);
+    }
+  }, []);
+
+  const setVideoEl = useCallback(
+    (node: HTMLVideoElement | null) => {
+      videoRef.current = node;
+      if (node && streamRef.current) {
+        void bindStreamToVideo(streamRef.current);
+      }
+    },
+    [bindStreamToVideo],
+  );
+
   const startCamera = useCallback(async () => {
     stopCamera();
     setCameraError(null);
@@ -148,44 +189,62 @@ export function ScanAddToBillDialog({
       let s: MediaStream;
       try {
         s = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+          video: { facingMode: { ideal: cameraFacing }, width: { ideal: 1280 } },
           audio: false,
         });
       } catch {
-        // Fallback for devices/browsers that reject strict constraints.
-        s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        try {
+          s = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: cameraFacing },
+            audio: false,
+          });
+        } catch {
+          s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
       }
       streamRef.current = s;
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-        await videoRef.current.play().catch(() => undefined);
-        if (videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-          setCameraReady(true);
-        }
-      } else {
-        setCameraReady(true);
-      }
+      await bindStreamToVideo(s);
     } catch (e) {
       const msg = (e as Error).message || "Could not open the camera. Check permissions or use manual entry.";
       setCameraError(msg);
       toast.error(msg);
     }
-  }, [stopCamera]);
+  }, [stopCamera, cameraFacing, bindStreamToVideo]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
       stopCamera();
+      setNeedsCoarseCameraTap(false);
       return;
     }
-    if (mainTab === "scan") {
-      void startCamera();
-    } else {
+    if (mainTab !== "scan") {
       stopCamera();
+      cameraGesturePrimedRef.current = false;
+      setNeedsCoarseCameraTap(false);
+      return;
     }
+    if (prefersCoarsePointer && !cameraGesturePrimedRef.current) {
+      stopCamera();
+      setCameraError(null);
+      setNeedsCoarseCameraTap(true);
+      return;
+    }
+    setNeedsCoarseCameraTap(false);
+    void startCamera();
     return () => {
       stopCamera();
     };
-  }, [open, mainTab, startCamera, stopCamera]);
+  }, [open, mainTab, startCamera, stopCamera, prefersCoarsePointer]);
+
+  const flipCamera = useCallback(() => {
+    setCameraFacing((f) => (f === "environment" ? "user" : "environment"));
+  }, []);
+
+  const openCameraWithUserGesture = useCallback(() => {
+    cameraGesturePrimedRef.current = true;
+    setNeedsCoarseCameraTap(false);
+    void startCamera();
+  }, [startCamera]);
 
   const applyScanResult = (r: ScanBillItemResult) => {
     setName((r.item_name || "").trim() || "Unnamed item");
@@ -366,7 +425,7 @@ export function ScanAddToBillDialog({
             <TabsContent value="scan" className="mt-3 space-y-3">
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-border bg-black/90">
                 <video
-                  ref={videoRef}
+                  ref={setVideoEl}
                   playsInline
                   className="h-full w-full object-contain"
                   muted
@@ -375,15 +434,41 @@ export function ScanAddToBillDialog({
                   onPlaying={() => setCameraReady(true)}
                 />
                 {!cameraReady && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80">
-                    {open ? "Starting camera…" : null}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center text-sm text-white/90">
+                    {open && prefersCoarsePointer && needsCoarseCameraTap ? (
+                      <>
+                        <p className="text-white/80">Camera opens after you tap below (required on this device).</p>
+                        <Button
+                          type="button"
+                          className="rounded-xl gap-2"
+                          onClick={() => openCameraWithUserGesture()}
+                        >
+                          <Camera className="h-4 w-4" aria-hidden />
+                          Open camera
+                        </Button>
+                      </>
+                    ) : open ? (
+                      "Starting camera…"
+                    ) : null}
                   </div>
                 )}
                 {cameraError ? (
-                  <div className="absolute inset-x-3 bottom-3 rounded-lg bg-red-950/70 px-3 py-2 text-xs text-red-100">
+                  <div className="absolute inset-x-3 bottom-14 rounded-lg bg-red-950/70 px-3 py-2 text-xs text-red-100">
                     {cameraError}
                   </div>
                 ) : null}
+                <div className="absolute right-2 top-2 flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="size-10 rounded-full bg-black/50 text-white shadow-md backdrop-blur-sm hover:bg-black/65"
+                    aria-label="Switch front and back camera"
+                    onClick={() => flipCamera()}
+                  >
+                    <SwitchCamera className="size-5" />
+                  </Button>
+                </div>
                 {scan.isPending ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 text-white">
                     <Loader2 className="h-8 w-8 animate-spin" />
@@ -396,7 +481,7 @@ export function ScanAddToBillDialog({
                   type="button"
                   variant="secondary"
                   className="rounded-xl gap-1.5"
-                  onClick={() => void startCamera()}
+                  onClick={() => openCameraWithUserGesture()}
                 >
                   <RefreshCw className="h-4 w-4" />
                   Retake / restart camera

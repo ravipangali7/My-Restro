@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Package,
   Bell,
+  Home,
 } from "lucide-react";
 import { getStoredAuthUser, useAuth } from "@/lib/auth-context";
 import type { NavItem } from "@/components/layout/AppSidebar";
@@ -66,25 +67,42 @@ function StaffLayout() {
     baseSidebar.splice(1, 0, { title: "Payment alerts", to: STAFF_PATH.paymentAlerts, icon: AlertTriangle });
   }
 
-  const bottomTabs = [
-    {
-      title: "Dashboard",
-      to: staffRole === "cashier" ? STAFF_PATH.cashierDashboard : STAFF_PATH.home,
-      icon: LayoutDashboard,
-    },
-    ...(staffRole === "waiter" ? [{ title: "POS", to: STAFF_PATH.pos, icon: ShoppingCart }] : []),
-    ...(staffRole === "kitchen" ? [{ title: "Live Orders", to: STAFF_PATH.liveorders, icon: ClipboardList }] : []),
-    ...(staffRole === "waiter" || staffRole === "kitchen"
-      ? [{ title: "Waiting Pickup Orders", to: STAFF_PATH.waitingPickup, icon: Package }]
-      : []),
-    ...(staffRole === "cashier" ? [{ title: "Alerts", to: STAFF_PATH.paymentAlerts, icon: AlertTriangle }] : []),
+  /** Cashier mobile bottom bar: same layout pattern as the owner portal (five tabs, center hub). */
+  const cashierBottomTabs = [
+    { title: "Home", to: STAFF_PATH.cashierDashboard, icon: Home },
+    { title: "Transactions", to: STAFF_PATH.transactions, icon: ArrowLeftRight },
+    { title: "Alerts", to: STAFF_PATH.paymentAlerts, icon: Bell },
+    { title: "Ledgers", to: STAFF_PATH.ledger, icon: BookOpen },
     { title: "Profile", to: STAFF_PATH.profile, icon: User },
   ];
+
+  const bottomTabs =
+    staffRole === "cashier"
+      ? cashierBottomTabs
+      : [
+          {
+            title: "Dashboard",
+            to: STAFF_PATH.home,
+            icon: LayoutDashboard,
+          },
+          ...(staffRole === "waiter" ? [{ title: "POS", to: STAFF_PATH.pos, icon: ShoppingCart }] : []),
+          ...(staffRole === "kitchen" ? [{ title: "Live Orders", to: STAFF_PATH.liveorders, icon: ClipboardList }] : []),
+          ...(staffRole === "waiter" || staffRole === "kitchen"
+            ? [{ title: "Waiting Pickup Orders", to: STAFF_PATH.waitingPickup, icon: Package }]
+            : []),
+          { title: "Profile", to: STAFF_PATH.profile, icon: User },
+        ];
 
   return (
     <PortalGate allow={["waiter", "cashier", "kitchen"]}>
       {staffRole === "kitchen" ? <KitchenPortalOrderAlarm /> : null}
-      <DashboardLayout title="Staff Portal" sidebarItems={baseSidebar} bottomTabs={bottomTabs}>
+      <DashboardLayout
+        title="Staff Portal"
+        sidebarItems={baseSidebar}
+        bottomTabs={bottomTabs}
+        bottomNavFeaturedTo={staffRole === "cashier" ? STAFF_PATH.paymentAlerts : undefined}
+        bottomNavFeaturedIcon={staffRole === "cashier" ? "tab" : undefined}
+      >
         <Outlet />
       </DashboardLayout>
     </PortalGate>
