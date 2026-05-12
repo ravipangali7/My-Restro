@@ -18,6 +18,7 @@ import {
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Colors } from "@/constants/colors";
 import {
   useExpenses,
@@ -39,7 +40,6 @@ import { useRestaurantScope } from "@/lib/restaurant-context";
 import { cn } from "@/lib/utils";
 import {
   BarChart3,
-  Building2,
   Package,
   PieChart as PieChartIcon,
   Receipt,
@@ -504,8 +504,6 @@ function ReportsPage() {
     staffPending ||
     (isAll && (productsAllPending || itemsAllPending || rmAllPending || expAllPending));
 
-  const scopeLabel = isAll ? "All restaurants" : restaurantNameById.get(activeRestaurantId!) ?? "Location";
-
   if (!restaurantIds.length) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-sm text-text-secondary">
@@ -517,45 +515,33 @@ function ReportsPage() {
   return (
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
-        <div>
+        <div className="min-w-0">
           <h2 className="font-display font-semibold text-lg text-foreground">Reports & Analytics</h2>
-          <p className="text-sm text-text-secondary mt-1">
-            Detailed operational and financial metrics{isAll ? " across every venue you own" : ` for ${scopeLabel}`}.
-            Staff assignments follow the{" "}
-            <span className="text-foreground font-medium">Restaurant → Staff → User</span> model; waiter performance
-            uses the <span className="text-foreground font-medium">Order.waiter</span> link to the same user record.
-          </p>
         </div>
-      </div>
-
-      {restaurantIds.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => setScope("all")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-              isAll ? "border-primary bg-primary-50 text-primary" : "border-border bg-card text-text-secondary hover:bg-surface",
-            )}
-          >
-            <Building2 size={16} />
-            All
-          </button>
-          {restaurantIds.map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setScope(id)}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors max-w-[220px] truncate",
-                scope === id ? "border-primary bg-primary-50 text-primary" : "border-border bg-card text-text-secondary hover:bg-surface",
-              )}
+        {restaurantIds.length > 1 ? (
+          <div className="w-full shrink-0 sm:w-72">
+            <label htmlFor="reports-restaurant-scope" className="text-xs font-semibold text-text-secondary mb-1.5 block">
+              Restaurant
+            </label>
+            <Select
+              value={isAll ? "all" : String(scope)}
+              onValueChange={(v) => setScope(v === "all" ? "all" : Number(v))}
             >
-              {restaurantNameById.get(id) ?? `Restaurant #${id}`}
-            </button>
-          ))}
-        </div>
-      )}
+              <SelectTrigger id="reports-restaurant-scope" className="w-full rounded-xl bg-background">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {restaurantIds.map((id) => (
+                  <SelectItem key={id} value={String(id)}>
+                    {restaurantNameById.get(id) ?? `Restaurant #${id}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+      </div>
 
       {dataPending ? (
         <p className="text-sm text-text-muted mb-4">Loading report data…</p>
