@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect, useRef, type ChangeEvent } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback, type ChangeEvent } from "react";
 import { useAuth, type AuthUser } from "@/lib/auth-context";
-import { User, Phone, LogOut, Building2, Save } from "lucide-react";
+import { User, Phone, LogOut, Building2, Pencil } from "lucide-react";
 import { apiPatch, apiPatchForm, resolveMediaUrl } from "@/lib/api";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
@@ -9,29 +9,38 @@ export const Route = createFileRoute("/staff/profile")({ component: StaffProfile
 
 function StaffProfile() {
   const { userName, phone, role, logout, user, token, refreshUser } = useAuth();
-  const [name, setName] = useState(user?.name ?? "");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [avatarBust, setAvatarBust] = useState(0);
   const [saving, setSaving] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setName(user?.name ?? "");
-  }, [user?.name]);
+  const revokePendingPreview = useCallback(() => {
+    setPendingPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPendingImage(null);
+  }, []);
 
   useEffect(() => {
-    if (!saveSuccess) return;
-    const t = window.setTimeout(() => setSaveSuccess(false), 2500);
-    return () => window.clearTimeout(t);
-  }, [saveSuccess]);
+    return () => {
+      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    };
+  }, [pendingPreviewUrl]);
 
   const baseAvatarUrl = resolveMediaUrl(user?.image ?? null);
   const avatarUrl =
     baseAvatarUrl && avatarBust > 0
       ? `${baseAvatarUrl}${baseAvatarUrl.includes("?") ? "&" : "?"}v=${avatarBust}`
       : baseAvatarUrl;
+
+  const editAvatarSrc = pendingPreviewUrl || avatarUrl;
 
   const assignedRestaurants = useMemo(() => {
     const rows = user?.staff_memberships?.filter((m) => !m.is_suspend) ?? [];
@@ -40,47 +49,64 @@ function StaffProfile() {
 
   const canEditProfile = role === "waiter" || role === "cashier" || role === "kitchen";
 
-  const onPickImage = () => fileInputRef.current?.click();
-
-  const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !user?.id || !token) return;
+  const openEdit = () => {
     setSaveError(null);
-    setSaveSuccess(false);
-    setSaving(true);
-    try {
-      const fd = new FormData();
-      if (name.trim()) fd.append("name", name.trim());
-      fd.append("image", file);
-      const updated = await apiPatchForm<AuthUser>(`/api/users/${user.id}/`, fd, token);
-      await refreshUser();
-      if (updated.name) setName(updated.name);
-      setAvatarBust((b) => b + 1);
-      setSaveSuccess(true);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not update photo.");
-    } finally {
-      setSaving(false);
-    }
+    setEditName(user?.name ?? userName ?? "");
+    setEditPhone(user?.phone ?? phone ?? "");
+    revokePendingPreview();
+    setIsEditing(true);
   };
 
-  const saveName = async () => {
+  const cancelEdit = () => {
+    revokePendingPreview();
+    setSaveError(null);
+    setIsEditing(false);
+  };
+
+  const onPickImage = () => fileInputRef.current?.click();
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPendingPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingImage(file);
+    setSaveError(null);
+  };
+
+  const saveProfile = async () => {
     if (!user?.id || !token) return;
-    const trimmed = name.trim();
-    if (!trimmed) {
+    const trimmedName = editName.trim();
+    const trimmedPhone = editPhone.trim();
+    if (!trimmedName) {
       setSaveError("Name cannot be empty.");
       return;
     }
+    if (!trimmedPhone) {
+      setSaveError("Phone cannot be empty.");
+      return;
+    }
     setSaveError(null);
-    setSaveSuccess(false);
     setSaving(true);
     try {
-      await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmed }, token);
+      if (pendingImage) {
+        const fd = new FormData();
+        fd.append("name", trimmedName);
+        fd.append("phone", trimmedPhone);
+        fd.append("image", pendingImage);
+        await apiPatchForm<AuthUser>(`/api/users/${user.id}/`, fd, token);
+      } else {
+        await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: trimmedPhone }, token);
+      }
       await refreshUser();
-      setSaveSuccess(true);
+      setAvatarBust((b) => b + 1);
+      revokePendingPreview();
+      setIsEditing(false);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save.");
+      setSaveError(err instanceof Error ? err.message : "Could not save profile.");
     } finally {
       setSaving(false);
     }
@@ -88,93 +114,130 @@ function StaffProfile() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-4">Profile</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-semibold text-foreground">Profile</h2>
+        {canEditProfile && !isEditing ? (
+          <button
+            type="button"
+            onClick={openEdit}
+            disabled={saving}
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted/60 disabled:opacity-50"
+            aria-label="Edit profile"
+          >
+            <Pencil className="size-4" aria-hidden />
+          </button>
+        ) : null}
+      </div>
       <div className="max-w-md">
-        <div className="flex flex-col items-center mb-6">
-          {canEditProfile ? (
-            <button
-              type="button"
-              onClick={onPickImage}
-              disabled={saving}
-              className="relative w-20 h-20 rounded-full bg-primary-50 flex items-center justify-center mb-3 overflow-hidden border border-border shrink-0 disabled:opacity-50 hover:opacity-90 transition-opacity"
-              aria-label="Change profile photo"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          aria-hidden
+          onChange={onFileChange}
+        />
+
+        <div className="mb-6 flex flex-col items-center">
+          <div className="relative mb-3 flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-primary-50">
+            {!isEditing && avatarUrl ? (
+              <img src={avatarUrl} alt="" className="absolute inset-0 size-full object-cover" />
+            ) : !isEditing ? (
+              <User size={32} className="text-primary" />
+            ) : null}
+            {isEditing &&
+              (editAvatarSrc ? (
+                <img src={editAvatarSrc} alt="" className="absolute inset-0 size-full object-cover" />
               ) : (
                 <User size={32} className="text-primary" />
-              )}
-            </button>
-          ) : (
-            <div className="relative w-20 h-20 rounded-full bg-primary-50 flex items-center justify-center mb-3 overflow-hidden border border-border shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-              ) : (
-                <User size={32} className="text-primary" />
-              )}
-            </div>
-          )}
-          <p className="font-display font-bold text-lg text-foreground">{userName || "Staff"}</p>
-          <p className="text-sm text-text-muted flex items-center gap-1">
-            <Phone size={12} /> {phone || "—"}
+              ))}
+          </div>
+          <p className="font-display text-lg font-bold text-foreground">{userName || "Staff"}</p>
+          <p className="mt-0.5 flex items-center gap-1 text-sm text-text-muted">
+            <Phone size={12} aria-hidden /> {phone || "—"}
           </p>
-          <span className="mt-1 px-3 py-0.5 rounded-full text-xs font-semibold bg-primary-50 text-primary capitalize">{role}</span>
+          <span className="mt-1 rounded-full bg-primary-50 px-3 py-0.5 text-xs font-semibold capitalize text-primary">
+            {role}
+          </span>
           {assignedRestaurants.length > 0 ? (
-            <p className="mt-4 text-sm text-text-secondary text-center flex items-start justify-center gap-2 max-w-full">
-              <Building2 size={16} className="text-text-muted shrink-0 mt-0.5" />
+            <p className="mt-4 flex max-w-full items-start justify-center gap-2 text-center text-sm text-text-secondary">
+              <Building2 size={16} className="mt-0.5 shrink-0 text-text-muted" />
               <span>
                 <span className="font-medium text-foreground">Restaurant</span>
                 {assignedRestaurants.length > 1 ? "s" : ""}: {assignedRestaurants.join(", ")}
               </span>
             </p>
           ) : (
-            <p className="mt-4 text-sm text-text-muted text-center">No restaurant assignment on file.</p>
+            <p className="mt-4 text-center text-sm text-text-muted">No restaurant assignment on file.</p>
           )}
         </div>
 
-        {canEditProfile && (
-          <div className="space-y-3 mb-6 rounded-xl border border-border bg-card p-4">
+        {canEditProfile && isEditing ? (
+          <div className="mb-6 space-y-3 rounded-xl border border-border bg-card p-4">
             <p className="text-sm font-medium text-foreground">Edit your profile</p>
-            <label className="block text-xs text-text-muted" htmlFor="staff-profile-name">
-              Display name
-            </label>
-            <input
-              id="staff-profile-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full h-11 rounded-lg border border-border bg-surface px-3 text-sm text-foreground"
-              autoComplete="name"
-            />
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={saveName}
-                disabled={saving}
-                className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
-              >
-                <Save size={16} />
-                Save name
-              </button>
+            <div>
+              <p className="mb-2 text-xs text-text-muted">Profile photo</p>
               <button
                 type="button"
                 onClick={onPickImage}
                 disabled={saving}
-                className="h-10 px-4 rounded-lg border border-border text-sm font-medium text-foreground disabled:opacity-50"
+                className="h-10 w-full rounded-lg border border-dashed border-border text-sm font-medium text-text-secondary transition-colors hover:bg-surface/80 disabled:opacity-50"
               >
-                Update photo
+                {pendingImage ? "Replace photo" : "Choose profile photo"}
               </button>
             </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted" htmlFor="staff-profile-name">
+                Display name
+              </label>
+              <input
+                id="staff-profile-name"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground"
+                autoComplete="name"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted" htmlFor="staff-profile-phone">
+                Phone
+              </label>
+              <input
+                id="staff-profile-phone"
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground"
+                autoComplete="tel"
+              />
+            </div>
             {saveError ? <p className="text-sm text-error">{saveError}</p> : null}
-            {saveSuccess ? <p className="text-sm text-emerald-600">Saved successfully.</p> : null}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={saving}
+                className="h-10 flex-1 rounded-lg border border-border text-sm font-semibold text-text-secondary disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveProfile()}
+                disabled={saving}
+                className="h-10 flex-1 rounded-lg bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
-        )}
+        ) : null}
 
         <button
           type="button"
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full h-12 rounded-xl bg-error text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-error text-sm font-semibold text-primary-foreground hover:opacity-90"
         >
           <LogOut size={16} /> Logout
         </button>

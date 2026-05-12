@@ -201,6 +201,21 @@ def _patch_user_response(request, pk: int) -> Response:
             nm = (data.get("name") or "").strip()
             if nm:
                 u.name = nm
+        if "phone" in data:
+            ph = normalize_phone(str(data.get("phone", "")))
+            if not ph:
+                return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if len(ph) > USER_PHONE_MAX_LEN:
+                return Response(
+                    {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if User.objects.filter(phone=ph).exclude(pk=u.id).exists():
+                return Response(
+                    {"detail": "A user with this phone already exists."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            u.phone = ph
         image_file = request.FILES.get("image")
         if image_file:
             u.image = image_file

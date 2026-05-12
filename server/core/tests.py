@@ -1891,6 +1891,36 @@ class OwnerProfileImagePatchTests(APITestCase):
         self.assertTrue(bool(getattr(owner.image, "name", None)))
 
 
+class StaffSelfProfilePatchTests(APITestCase):
+    def test_staff_json_patch_updates_name_and_phone(self):
+        User = get_user_model()
+        staff = User.objects.create(phone="9000000556", name="Desk Staff", role=UserRole.STAFF)
+        self.client.force_authenticate(user=staff)
+        resp = self.client.patch(
+            f"/api/users/{staff.pk}/",
+            {"name": "Desk Lead", "phone": "9000000557"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json().get("name"), "Desk Lead")
+        self.assertEqual(resp.json().get("phone"), "9000000557")
+        staff.refresh_from_db()
+        self.assertEqual(staff.name, "Desk Lead")
+        self.assertEqual(staff.phone, "9000000557")
+
+    def test_staff_patch_rejects_duplicate_phone(self):
+        User = get_user_model()
+        User.objects.create(phone="9000000558", name="Other", role=UserRole.STAFF)
+        staff = User.objects.create(phone="9000000559", name="Me", role=UserRole.STAFF)
+        self.client.force_authenticate(user=staff)
+        resp = self.client.patch(
+            f"/api/users/{staff.pk}/",
+            {"name": "Me", "phone": "9000000558"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.content)
+
+
 class OrderStatusCustomerSideEffectsTests(TestCase):
     """SMS + due billing when order status changes (post-commit helper)."""
 
