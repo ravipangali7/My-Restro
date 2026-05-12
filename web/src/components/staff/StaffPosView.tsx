@@ -6,7 +6,7 @@ import { apiGet, apiPost, resolveMediaUrl } from "@/lib/api";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { useAuth } from "@/lib/auth-context";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
-import { Search, ShoppingCart, Minus, Plus, Users, Leaf, Circle } from "lucide-react";
+import { Search, ShoppingCart, Minus, Plus, Users, Leaf, Circle, Package } from "lucide-react";
 import type { DiscountType, OrderType } from "@/constants/enums";
 
 export type StaffPosViewMode = "staff" | "public";
@@ -39,23 +39,46 @@ interface TableDTO {
   capacity: number;
   image?: string | null;
 }
+interface ComboSetDTO {
+  id: number;
+  name: string;
+  description: string;
+  price: string | number;
+  products: number[];
+  image: string | null;
+}
+
 interface HomePayload {
   restaurant?: { id: number; name: string; slug: string };
   categories: CategoryDTO[];
   products: ProductDTO[];
   product_items: ProductItemDTO[];
   tables: TableDTO[];
+  combo_sets?: ComboSetDTO[];
 }
 
-interface CartItem {
-  productId: number;
-  productItemId: number;
-  name: string;
-  unit: string;
-  price: number;
-  quantity: number;
-  imageUrl?: string | null;
-}
+type CartLine =
+  | {
+      kind: "product";
+      productId: number;
+      productItemId: number;
+      name: string;
+      unit: string;
+      price: number;
+      quantity: number;
+      imageUrl?: string | null;
+    }
+  | {
+      kind: "combo";
+      comboSetId: number;
+      name: string;
+      price: number;
+      quantity: number;
+      imageUrl?: string | null;
+    };
+
+/** `all` = every category + combo sets; `combo` = combo sets only; number = category id. */
+type MenuTab = "all" | "combo" | number;
 
 type PortionLayout =
   | { kind: "half_full"; half: ProductItemDTO; full: ProductItemDTO }
@@ -83,9 +106,9 @@ export function StaffPosView({
   const { data, isLoading, error } = useClientHome(restaurantId);
   const payload = data as HomePayload | undefined;
 
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [menuTab, setMenuTab] = useState<MenuTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [orderType, setOrderType] = useState<OrderType>("table");
   const [peopleFor, setPeopleFor] = useState(1);
@@ -98,7 +121,6 @@ export function StaffPosView({
   const [linkedCustomerId, setLinkedCustomerId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "e_wallet">("cash");
 
   const isWaiter = mode === "public" ? true : role === "waiter";
   const orderTypeOptions = useMemo((): readonly OrderType[] => (isWaiter ? (["table", "packing"] as const) : (["table", "packing", "delivery"] as const)), [isWaiter]);
@@ -106,9 +128,14 @@ export function StaffPosView({
   const { data: restaurantRows = [] } = useQuery({
     queryKey: ["restaurants", "staff-pos"],
     queryFn: () =>
-      apiGet<Array<{ id: number; latitude?: string | number | null; longitude?: string | number | null }>>(
-        "/api/restaurants/",
-      ),
+      apiGet<
+        Array<{
+          id: number;
+          latitude?: string | number | null;
+          longitude?: string | number | null;
+          effective_per_transaction_fee?: string | number;
+        }>
+      >("/api/restaurants/", token ?? null),
     staleTime: 60_000,
     enabled: restaurantId != null,
   });
@@ -139,17 +166,25 @@ export function StaffPosView({
   const products = payload?.products ?? [];
   const productItems = payload?.product_items ?? [];
   const tables = payload?.tables ?? [];
+  const comboSets = payload?.combo_sets ?? [];
 
   const loadError = error instanceof Error ? error.message : error ? String(error) : null;
 
   const filteredProducts = products.filter((p) => {
     if (!p.is_active) return false;
-    if (selectedCategory && p.category_id !== selectedCategory) return false;
+    if (menuTab === "combo") return false;
+    if (typeof menuTab === "number" && p.category_id !== menuTab) return false;
     if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  const addToCart = (
+  const filteredCombos = comboSets.filter((c) => {
+    if (menuTab !== "all" && menuTab !== "combo") return false;
+    if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const addProductToCart = (
     productId: number,
     productItemId: number,
     name: string,
@@ -162,24 +197,81 @@ export function StaffPosView({
     const price = discountedUnitPrice(unitPrice, discountType, discount);
     const imageUrl = resolveMediaUrl(productImagePath ?? null);
     setCart((prev) => {
-      const e = prev.find((c) => c.productItemId === productItemId);
-      if (e) {
-        return prev.map((c) =>
-          c.productItemId === productItemId ? { ...c, quantity: c.quantity + 1 } : c,
+      const e = prev.find((x) => x.kind === "product" && x.productItemId === productItemId);
+      if (e && e.kind === "product") {
+        return prev.map((x) =>
+          x.kind === "product" && x.productItemId === productItemId ? { ...x, quantity: x.quantity + 1 } : x,
         );
       }
-      return [...prev, { productId, productItemId, name, unit, price, quantity: 1, imageUrl: imageUrl ?? undefined }];
+      return [
+        ...prev,
+        {
+          kind: "product" as const,
+          productId,
+          productItemId,
+          name,
+          unit,
+          price,
+          quantity: 1,
+          imageUrl: imageUrl ?? undefined,
+        },
+      ];
     });
   };
 
-  const updateQty = (id: number, d: number) => {
+  const addComboToCart = (combo: ComboSetDTO) => {
+    const unitPrice = typeof combo.price === "string" ? Number.parseFloat(combo.price) : combo.price;
+    const price = Number.isFinite(unitPrice) ? unitPrice : 0;
+    const imageUrl = resolveMediaUrl(combo.image ?? null);
+    setCart((prev) => {
+      const e = prev.find((x) => x.kind === "combo" && x.comboSetId === combo.id);
+      if (e && e.kind === "combo") {
+        return prev.map((x) =>
+          x.kind === "combo" && x.comboSetId === combo.id ? { ...x, quantity: x.quantity + 1 } : x,
+        );
+      }
+      return [
+        ...prev,
+        {
+          kind: "combo" as const,
+          comboSetId: combo.id,
+          name: combo.name,
+          price,
+          quantity: 1,
+          imageUrl: imageUrl ?? undefined,
+        },
+      ];
+    });
+  };
+
+  const updateQty = (line: CartLine, d: number) => {
+    const idKey = line.kind === "product" ? line.productItemId : line.comboSetId;
     setCart((prev) =>
       prev
-        .map((c) => (c.productItemId === id ? { ...c, quantity: Math.max(0, c.quantity + d) } : c))
+        .map((c) => {
+          if (line.kind === "product" && c.kind === "product" && c.productItemId === idKey) {
+            return { ...c, quantity: Math.max(0, c.quantity + d) };
+          }
+          if (line.kind === "combo" && c.kind === "combo" && c.comboSetId === idKey) {
+            return { ...c, quantity: Math.max(0, c.quantity + d) };
+          }
+          return c;
+        })
         .filter((c) => c.quantity > 0),
     );
   };
   const subTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+
+  const serviceCharge = useMemo(() => {
+    const raw = posRestaurant?.effective_per_transaction_fee;
+    const n = raw != null ? Number(raw) : 0;
+    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+  }, [posRestaurant?.effective_per_transaction_fee]);
+
+  const grandTotal = useMemo(
+    () => Math.round((subTotal + (cart.length > 0 ? serviceCharge : 0)) * 100) / 100,
+    [subTotal, serviceCharge, cart.length],
+  );
 
   const resolveSelectedItemId = (productId: number, layout: PortionLayout): number | null => {
     if (layout.kind === "single") return layout.item.id;
@@ -197,7 +289,7 @@ export function StaffPosView({
     if (!item) return;
     const unitPrice = typeof item.price === "string" ? Number.parseFloat(item.price) : item.price;
     const disc = typeof item.discount === "string" ? Number.parseFloat(item.discount) : item.discount;
-    addToCart(product.id, item.id, product.name, item.unit__name, unitPrice, item.discount_type, disc, product.image);
+    addProductToCart(product.id, item.id, product.name, item.unit__name, unitPrice, item.discount_type, disc, product.image);
   };
 
   const onPickRegisteredCustomer = (idStr: string) => {
@@ -247,14 +339,14 @@ export function StaffPosView({
           "/api/client/orders/",
           {
             restaurant: restaurantId,
-            lines: cart.map((c) => ({
-              product_item_id: c.productItemId,
-              quantity: String(c.quantity),
-            })),
+            lines: cart.map((c) =>
+              c.kind === "product"
+                ? { product_item_id: c.productItemId, quantity: String(c.quantity) }
+                : { comboset_id: c.comboSetId, quantity: String(c.quantity) },
+            ),
             order_type: orderType,
             table: (orderType === "table" || orderType === "packing") ? selectedTable : null,
             people_for: peopleFor,
-            payment_method: paymentMethod,
             guest_customer_name: customerName.trim(),
             guest_customer_phone: customerPhone.trim(),
           },
@@ -264,7 +356,6 @@ export function StaffPosView({
         setLinkedCustomerId(null);
         setCustomerName("");
         setCustomerPhone("");
-        setPaymentMethod("cash");
         void queryClient.invalidateQueries({ queryKey: ["client-home", restaurantId] });
       } catch (e) {
         setOrderError(e instanceof Error ? e.message : "Could not place order.");
@@ -281,10 +372,11 @@ export function StaffPosView({
         "/api/orders/",
         {
           restaurant: restaurantId,
-          lines: cart.map((c) => ({
-            product_item_id: c.productItemId,
-            quantity: String(c.quantity),
-          })),
+          lines: cart.map((c) =>
+            c.kind === "product"
+              ? { product_item_id: c.productItemId, quantity: String(c.quantity) }
+              : { comboset_id: c.comboSetId, quantity: String(c.quantity) },
+          ),
           order_type: orderType,
           table: (orderType === "table" || orderType === "packing") ? selectedTable : null,
           people_for: peopleFor,
@@ -292,7 +384,6 @@ export function StaffPosView({
           address: orderType === "delivery" ? "Staff POS delivery" : "",
           latitude: orderType === "delivery" ? Number.parseFloat(deliveryLatitude) : null,
           longitude: orderType === "delivery" ? Number.parseFloat(deliveryLongitude) : null,
-          payment_method: paymentMethod,
           customer: linkedCustomerId,
           guest_customer_name: linkedCustomerId ? "" : customerName.trim(),
           guest_customer_phone: linkedCustomerId ? "" : customerPhone.trim(),
@@ -303,7 +394,6 @@ export function StaffPosView({
       setLinkedCustomerId(null);
       setCustomerName("");
       setCustomerPhone("");
-      setPaymentMethod("cash");
       void queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
       void queryClient.invalidateQueries({ queryKey: ["client-home", restaurantId] });
     } catch (e) {
@@ -336,18 +426,30 @@ export function StaffPosView({
         <div className="bg-card border-b border-border px-4 py-2 flex gap-2 overflow-x-auto items-center">
           <button
             type="button"
-            onClick={() => setSelectedCategory(null)}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary"}`}
+            onClick={() => setMenuTab("all")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${menuTab === "all" ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary"}`}
           >
             All
+          </button>
+          <button
+            type="button"
+            onClick={() => setMenuTab("combo")}
+            className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap border border-transparent ${
+              menuTab === "combo" ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary border-border/60"
+            }`}
+          >
+            <span className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-1 ring-black/5 bg-primary-50 flex items-center justify-center">
+              <Package size={16} className="text-primary" />
+            </span>
+            Combo Set
           </button>
           {categories.map((c) => (
             <button
               key={c.id}
               type="button"
-              onClick={() => setSelectedCategory(c.id)}
+              onClick={() => setMenuTab(c.id)}
               className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap border border-transparent ${
-                selectedCategory === c.id ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary border-border/60"
+                menuTab === c.id ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary border-border/60"
               }`}
             >
               <span className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-1 ring-black/5">
@@ -367,7 +469,7 @@ export function StaffPosView({
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search menu…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 pl-9 pr-4 rounded-xl border border-border bg-card text-sm focus:border-primary outline-none"
@@ -377,6 +479,12 @@ export function StaffPosView({
         <div className="flex-1 grid auto-rows-min grid-cols-2 gap-3 overflow-y-auto px-4 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] sm:grid-cols-3 lg:grid-cols-4 lg:pb-4">
           {isLoading && <div className="col-span-full text-sm text-text-muted">Loading menu...</div>}
           {loadError && <div className="col-span-full text-sm text-error">{loadError}</div>}
+          {!isLoading &&
+            !loadError &&
+            filteredProducts.length === 0 &&
+            filteredCombos.length === 0 && (
+              <div className="col-span-full text-sm text-text-muted py-8 text-center">No menu items match your search.</div>
+            )}
           {filteredProducts.map((product) => {
             const items = productItems.filter((pi) => pi.product_id === product.id);
             const layout = portionLayout(items);
@@ -490,6 +598,43 @@ export function StaffPosView({
               </div>
             );
           })}
+          {filteredCombos.map((combo) => (
+            <div
+              key={`combo-${combo.id}`}
+              className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow flex flex-col ring-1 ring-primary/10"
+            >
+              <div className="h-28 relative shrink-0 bg-gradient-to-br from-primary-50 to-surface-alt">
+                <MenuMediaThumb
+                  mediaPath={combo.image}
+                  alt={combo.name}
+                  className="h-full w-full"
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Package size={36} className="text-primary/70" />
+                    </div>
+                  }
+                />
+              </div>
+              <div className="p-3 flex flex-col flex-1 gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Combo set</p>
+                <p className="text-sm font-semibold text-foreground line-clamp-2">{combo.name}</p>
+                {combo.description ? (
+                  <p className="text-xs text-text-muted line-clamp-2">{combo.description}</p>
+                ) : null}
+                <p className="text-xs font-bold text-primary">
+                  ₹
+                  {(typeof combo.price === "string" ? Number.parseFloat(combo.price) : Number(combo.price)).toLocaleString()}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => addComboToCart(combo)}
+                  className="mt-auto w-full py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary-600"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <div className="lg:w-96 bg-card border-t lg:border-t-0 lg:border-l border-border flex flex-col max-h-screen lg:h-[calc(100vh-4rem)]">
@@ -573,7 +718,7 @@ export function StaffPosView({
           ) : (
             cart.map((item) => (
               <div
-                key={item.productItemId}
+                key={item.kind === "product" ? `p-${item.productItemId}` : `c-${item.comboSetId}`}
                 className="flex items-center gap-3 py-2 border-b border-border last:border-0"
               >
                 <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 border border-border bg-surface-alt">
@@ -581,18 +726,19 @@ export function StaffPosView({
                     mediaPath={item.imageUrl ?? null}
                     alt={item.name}
                     className="h-full w-full min-h-0"
+                    fallback={item.kind === "combo" ? <span className="text-lg">🍱</span> : undefined}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-xs text-text-muted">
-                    {item.unit} · ₹{item.price}
+                    {item.kind === "product" ? item.unit : "Combo set"} · ₹{item.price}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => updateQty(item.productItemId, -1)}
+                    onClick={() => updateQty(item, -1)}
                     className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center"
                   >
                     <Minus size={12} />
@@ -600,7 +746,7 @@ export function StaffPosView({
                   <span className="text-sm font-semibold w-5 text-center">{item.quantity}</span>
                   <button
                     type="button"
-                    onClick={() => updateQty(item.productItemId, 1)}
+                    onClick={() => updateQty(item, 1)}
                     className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center"
                   >
                     <Plus size={12} />
@@ -615,7 +761,7 @@ export function StaffPosView({
         </div>
         {cart.length > 0 ? (
           <div className="border-t border-border px-4 py-3 space-y-3 bg-surface-alt/30">
-            <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Customer and payment</p>
+            <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Customer</p>
             <div className="space-y-1.5">
               <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide block">
                 Registered customer
@@ -659,21 +805,6 @@ export function StaffPosView({
                 className="w-full h-9 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:border-primary"
               />
             </div>
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-text-muted font-medium uppercase tracking-wide block">Payment</span>
-              <div className="flex gap-1 p-0.5 rounded-xl bg-surface">
-                {(["cash", "e_wallet"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setPaymentMethod(m)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize ${paymentMethod === m ? "bg-primary text-primary-foreground shadow-sm" : "text-text-secondary"}`}
-                  >
-                    {m === "e_wallet" ? "E-wallet" : "Cash"}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         ) : null}
         <div className="border-t border-border px-4 py-3 space-y-2">
@@ -682,9 +813,13 @@ export function StaffPosView({
             <span>Sub Total</span>
             <span className="font-mono">₹{subTotal.toLocaleString()}</span>
           </div>
+          <div className="flex justify-between text-sm text-text-secondary">
+            <span>Service charge</span>
+            <span className="font-mono">₹{(cart.length > 0 ? serviceCharge : 0).toLocaleString()}</span>
+          </div>
           <div className="flex justify-between text-md font-bold border-t border-border pt-2">
             <span>Total</span>
-            <span className="font-mono">₹{subTotal.toLocaleString()}</span>
+            <span className="font-mono">₹{grandTotal.toLocaleString()}</span>
           </div>
           <button
             type="button"
