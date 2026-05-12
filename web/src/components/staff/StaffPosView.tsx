@@ -412,12 +412,19 @@ export function StaffPosView({
     return <p className="text-sm text-text-muted p-4">{emptyMessage}</p>;
   }
 
-  const layoutMinClass =
-    mode === "public" ? "min-h-0 flex-1" : "min-h-[calc(100vh-4rem)]";
+  /**
+   * Let height follow content so the staff portal `main` (overflow-y-auto) is the single vertical
+   * scroll surface — users can always scroll to totals + Place Order. Avoid nested max-h /
+   * overflow-y traps that clip the order footer (previously max-h-screen + flex-1 cart only).
+   */
+  const rootClass =
+    mode === "public"
+      ? "flex min-h-0 flex-1 flex-col lg:flex-row lg:items-start"
+      : "flex w-full flex-col lg:flex-row lg:items-start max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)]";
 
   const inner = (
-    <div className={`flex flex-col lg:flex-row ${mode === "staff" ? "-m-4 lg:-m-6" : ""} ${layoutMinClass}`}>
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className={`${rootClass} ${mode === "staff" ? "-m-4 lg:-m-6" : ""}`}>
+      <div className="flex min-w-0 flex-1 flex-col">
         {payload?.restaurant?.name ? (
           <div className="px-4 py-2 text-xs text-text-muted border-b border-border bg-surface-alt/50">
             Menu for <span className="font-semibold text-foreground">{payload.restaurant.name}</span>
@@ -476,7 +483,7 @@ export function StaffPosView({
             />
           </div>
         </div>
-        <div className="flex-1 grid auto-rows-min grid-cols-2 gap-3 overflow-y-auto px-4 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] sm:grid-cols-3 lg:grid-cols-4 lg:pb-4">
+        <div className="grid auto-rows-min grid-cols-2 gap-3 px-4 pb-4 sm:grid-cols-3 lg:grid-cols-4">
           {isLoading && <div className="col-span-full text-sm text-text-muted">Loading menu...</div>}
           {loadError && <div className="col-span-full text-sm text-error">{loadError}</div>}
           {!isLoading &&
@@ -637,8 +644,8 @@ export function StaffPosView({
           ))}
         </div>
       </div>
-      <div className="lg:w-96 bg-card border-t lg:border-t-0 lg:border-l border-border flex flex-col max-h-screen lg:h-[calc(100vh-4rem)]">
-        <div className="px-4 py-3 border-b border-border">
+      <div className="w-full shrink-0 border-t border-border bg-card lg:w-96 lg:max-w-[24rem] lg:border-l lg:border-t-0">
+        <div className="border-b border-border px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display font-semibold text-md flex items-center gap-2">
               <ShoppingCart size={18} /> Order
@@ -712,7 +719,7 @@ export function StaffPosView({
             </button>
           </div>
         </div>
-        <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] lg:pb-2">
+        <div className="space-y-2 px-4 py-2">
           {cart.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-text-muted text-sm">No items added</div>
           ) : (
@@ -807,7 +814,7 @@ export function StaffPosView({
             </div>
           </div>
         ) : null}
-        <div className="border-t border-border px-4 py-3 space-y-2">
+        <div className="space-y-2 border-t border-border px-4 py-3 pb-[max(1rem,calc(0.75rem+env(safe-area-inset-bottom)))]">
           {orderError && <p className="text-xs text-error">{orderError}</p>}
           <div className="flex justify-between text-sm text-text-secondary">
             <span>Sub Total</span>
