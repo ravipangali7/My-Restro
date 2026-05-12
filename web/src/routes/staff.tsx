@@ -76,7 +76,10 @@ function StaffLayout() {
     { title: "Profile", to: STAFF_PATH.profile, icon: User },
   ];
 
-  /** Waiter mobile bottom bar: five equal tabs, concise labels for small screens. */
+  /**
+   * Waiter mobile bottom bar: same hub pattern as cashier (five tabs, center elevated with tab icon).
+   * Order mirrors cashier: outer Home/Profile, inner flankers, center hub = POS (ShoppingCart).
+   */
   const waiterBottomTabs = [
     { title: "Home", to: STAFF_PATH.home, icon: Home },
     { title: "Pickup", to: STAFF_PATH.waitingPickup, icon: Package },
@@ -108,8 +111,14 @@ function StaffLayout() {
         title="Staff Portal"
         sidebarItems={baseSidebar}
         bottomTabs={bottomTabs}
-        bottomNavFeaturedTo={staffRole === "cashier" ? STAFF_PATH.paymentAlerts : undefined}
-        bottomNavFeaturedIcon={staffRole === "cashier" ? "tab" : undefined}
+        bottomNavFeaturedTo={
+          staffRole === "cashier"
+            ? STAFF_PATH.paymentAlerts
+            : staffRole === "waiter"
+              ? STAFF_PATH.pos
+              : undefined
+        }
+        bottomNavFeaturedIcon={staffRole === "cashier" || staffRole === "waiter" ? "tab" : undefined}
       >
         <Outlet />
       </DashboardLayout>
