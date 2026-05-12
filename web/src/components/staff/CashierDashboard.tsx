@@ -213,6 +213,15 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
   other: "#8b5cf6",
 };
 
+/** Sidebar modules chart: alerts / orders match money-in vs money-out semantics. */
+const CASHIER_MODULE_BAR_FILL: Record<string, string> = {
+  Alerts: PAYMENT_STATUS_COLORS.failed,
+  Orders: PAYMENT_STATUS_COLORS.success,
+  Ledger: "var(--chart-5)",
+  Txn: "var(--chart-3)",
+  Profile: "var(--chart-6)",
+};
+
 export function CashierDashboard() {
   const { user } = useAuth();
   const { restaurantId } = useRestaurantScope();
@@ -399,15 +408,6 @@ export function CashierDashboard() {
       iconBg: "bg-violet-50 text-violet-900 ring-violet-200/70",
     },
   ] as const;
-
-  const orderTypeFills = ["var(--chart-1)", "var(--chart-4)"];
-  const moduleBarFills = [
-    "var(--chart-4)",
-    "var(--chart-1)",
-    "var(--chart-5)",
-    "var(--chart-3)",
-    "var(--chart-6)",
-  ];
 
   function alertCustomerLabel(o: ProximityAlertOrder): string {
     const name = (o.customer_name ?? "").trim() || (o.guest_customer_name ?? "").trim();
@@ -700,8 +700,17 @@ export function CashierDashboard() {
                     />
                     <Tooltip {...chartTooltip} />
                     <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                      {txFlowBars.map((_, i) => (
-                        <Cell key={`flow-${i}`} fill={orderTypeFills[i % orderTypeFills.length]} />
+                      {txFlowBars.map((entry, i) => (
+                        <Cell
+                          key={`flow-${i}`}
+                          fill={
+                            entry.name === "In"
+                              ? PAYMENT_STATUS_COLORS.success
+                              : entry.name === "Out"
+                                ? PAYMENT_STATUS_COLORS.failed
+                                : "var(--chart-4)"
+                          }
+                        />
                       ))}
                     </Bar>
                   </BarChart>
@@ -731,8 +740,8 @@ export function CashierDashboard() {
                     />
                     <Tooltip {...chartTooltip} />
                     <Bar dataKey="count" radius={[0, 8, 8, 0]}>
-                      {moduleVolumeBars.map((_, i) => (
-                        <Cell key={`mod-${i}`} fill={moduleBarFills[i % moduleBarFills.length]} />
+                      {moduleVolumeBars.map((item, i) => (
+                        <Cell key={`mod-${i}`} fill={CASHIER_MODULE_BAR_FILL[item.name] ?? "var(--chart-4)"} />
                       ))}
                     </Bar>
                   </BarChart>
