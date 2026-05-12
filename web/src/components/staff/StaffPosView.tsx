@@ -412,12 +412,15 @@ export function StaffPosView({
     return <p className="text-sm text-text-muted p-4">{emptyMessage}</p>;
   }
 
-  const layoutMinClass =
-    mode === "public" ? "min-h-0 flex-1" : "min-h-[calc(100vh-4rem)]";
+  /** Staff: fill viewport below top bar on large screens; mobile relies on main scroll + bottom nav padding. */
+  const layoutRootClass =
+    mode === "public"
+      ? "min-h-0 flex-1"
+      : "min-h-0 w-full max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] lg:max-h-[calc(100dvh-3.5rem)] lg:min-h-0 lg:overflow-hidden";
 
   const inner = (
-    <div className={`flex flex-col lg:flex-row ${mode === "staff" ? "-m-4 lg:-m-6" : ""} ${layoutMinClass}`}>
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className={`flex min-h-0 w-full flex-col lg:flex-row ${mode === "staff" ? "-m-4 lg:-m-6" : ""} ${layoutRootClass}`}>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
         {payload?.restaurant?.name ? (
           <div className="px-4 py-2 text-xs text-text-muted border-b border-border bg-surface-alt/50">
             Menu for <span className="font-semibold text-foreground">{payload.restaurant.name}</span>
@@ -476,7 +479,7 @@ export function StaffPosView({
             />
           </div>
         </div>
-        <div className="flex-1 grid auto-rows-min grid-cols-2 gap-3 overflow-y-auto px-4 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] sm:grid-cols-3 lg:grid-cols-4 lg:pb-4">
+        <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto overscroll-y-contain px-4 pb-4 sm:grid-cols-3 lg:grid-cols-4 lg:pb-4">
           {isLoading && <div className="col-span-full text-sm text-text-muted">Loading menu...</div>}
           {loadError && <div className="col-span-full text-sm text-error">{loadError}</div>}
           {!isLoading &&
@@ -637,198 +640,200 @@ export function StaffPosView({
           ))}
         </div>
       </div>
-      <div className="lg:w-96 bg-card border-t lg:border-t-0 lg:border-l border-border flex flex-col max-h-screen lg:h-[calc(100vh-4rem)]">
-        <div className="px-4 py-3 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-semibold text-md flex items-center gap-2">
-              <ShoppingCart size={18} /> Order
-            </h2>
-            <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded-full">{cart.length} items</span>
-          </div>
-          <div className="flex gap-1 mb-3 p-1 rounded-xl bg-surface">
-            {orderTypeOptions.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setOrderType(t)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize ${orderType === t ? "bg-primary text-primary-foreground shadow-sm" : "text-text-secondary"}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          {(orderType === "table" || orderType === "packing") && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 mb-3">
-              {tables.map((t) => (
+      <div className="flex min-h-0 w-full shrink-0 flex-col border-t border-border bg-card lg:h-full lg:w-96 lg:max-w-[24rem] lg:shrink-0 lg:border-l lg:border-t-0">
+        <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overscroll-y-contain">
+          <div className="shrink-0 border-b border-border px-4 py-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display font-semibold text-md flex items-center gap-2">
+                <ShoppingCart size={18} /> Order
+              </h2>
+              <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded-full">{cart.length} items</span>
+            </div>
+            <div className="flex gap-1 mb-3 p-1 rounded-xl bg-surface">
+              {orderTypeOptions.map((t) => (
                 <button
-                  key={t.id}
+                  key={t}
                   type="button"
-                  onClick={() => setSelectedTable(t.id)}
-                  className={`flex flex-col items-stretch gap-1 p-1.5 rounded-lg text-xs font-medium border ${selectedTable === t.id ? "border-primary bg-primary-50 text-primary" : "border-border text-text-secondary"}`}
+                  onClick={() => setOrderType(t)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize ${orderType === t ? "bg-primary text-primary-foreground shadow-sm" : "text-text-secondary"}`}
                 >
-                  <MenuMediaThumb
-                    mediaPath={t.image ?? null}
-                    alt={t.name}
-                    className="h-11 w-full min-h-0 rounded-md border border-border/80"
-                  />
-                  <span className="truncate text-center leading-tight">{t.name}</span>
+                  {t}
                 </button>
               ))}
             </div>
-          )}
-          {orderType === "delivery" && (
-            <div className="mb-3 space-y-1">
-              <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Delivery pin</p>
-              <LocationMapPicker
-                latitude={deliveryLatitude}
-                longitude={deliveryLongitude}
-                defaultLatitude={posRestaurant?.latitude ?? null}
-                defaultLongitude={posRestaurant?.longitude ?? null}
-                onCoordinatesChange={(lat, lng) => {
-                  setDeliveryLatitude(lat);
-                  setDeliveryLongitude(lng);
-                }}
-                className="h-[160px]"
-              />
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Users size={14} className="text-text-muted" />
-            <span className="text-xs text-text-secondary">People:</span>
-            <button
-              type="button"
-              onClick={() => setPeopleFor(Math.max(1, peopleFor - 1))}
-              className="w-6 h-6 rounded bg-surface flex items-center justify-center"
-            >
-              <Minus size={12} />
-            </button>
-            <span className="text-sm font-semibold w-6 text-center">{peopleFor}</span>
-            <button
-              type="button"
-              onClick={() => setPeopleFor(peopleFor + 1)}
-              className="w-6 h-6 rounded bg-surface flex items-center justify-center"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] lg:pb-2">
-          {cart.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-text-muted text-sm">No items added</div>
-          ) : (
-            cart.map((item) => (
-              <div
-                key={item.kind === "product" ? `p-${item.productItemId}` : `c-${item.comboSetId}`}
-                className="flex items-center gap-3 py-2 border-b border-border last:border-0"
-              >
-                <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 border border-border bg-surface-alt">
-                  <MenuMediaThumb
-                    mediaPath={item.imageUrl ?? null}
-                    alt={item.name}
-                    className="h-full w-full min-h-0"
-                    fallback={item.kind === "combo" ? <span className="text-lg">🍱</span> : undefined}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-xs text-text-muted">
-                    {item.kind === "product" ? item.unit : "Combo set"} · ₹{item.price}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
+            {(orderType === "table" || orderType === "packing") && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 mb-3">
+                {tables.map((t) => (
                   <button
+                    key={t.id}
                     type="button"
-                    onClick={() => updateQty(item, -1)}
-                    className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center"
+                    onClick={() => setSelectedTable(t.id)}
+                    className={`flex flex-col items-stretch gap-1 p-1.5 rounded-lg text-xs font-medium border ${selectedTable === t.id ? "border-primary bg-primary-50 text-primary" : "border-border text-text-secondary"}`}
                   >
-                    <Minus size={12} />
+                    <MenuMediaThumb
+                      mediaPath={t.image ?? null}
+                      alt={t.name}
+                      className="h-11 w-full min-h-0 rounded-md border border-border/80"
+                    />
+                    <span className="truncate text-center leading-tight">{t.name}</span>
                   </button>
-                  <span className="text-sm font-semibold w-5 text-center">{item.quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => updateQty(item, 1)}
-                    className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center"
-                  >
-                    <Plus size={12} />
-                  </button>
-                </div>
-                <span className="text-sm font-bold font-mono w-16 text-right">
-                  ₹{(item.price * item.quantity).toLocaleString()}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-        {cart.length > 0 ? (
-          <div className="border-t border-border px-4 py-3 space-y-3 bg-surface-alt/30">
-            <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Customer</p>
-            <div className="space-y-1.5">
-              <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide block">
-                Registered customer
-              </label>
-              <select
-                className="w-full h-9 px-2 rounded-lg border border-border bg-card text-xs"
-                value={linkedCustomerId ?? ""}
-                onChange={(e) => onPickRegisteredCustomer(e.target.value)}
-              >
-                <option value="">Walk-in — enter name and phone below</option>
-                {customerRows.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.phone})
-                  </option>
                 ))}
-              </select>
+              </div>
+            )}
+            {orderType === "delivery" && (
+              <div className="mb-3 space-y-1">
+                <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Delivery pin</p>
+                <LocationMapPicker
+                  latitude={deliveryLatitude}
+                  longitude={deliveryLongitude}
+                  defaultLatitude={posRestaurant?.latitude ?? null}
+                  defaultLongitude={posRestaurant?.longitude ?? null}
+                  onCoordinatesChange={(lat, lng) => {
+                    setDeliveryLatitude(lat);
+                    setDeliveryLongitude(lng);
+                  }}
+                  className="h-[160px]"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Users size={14} className="text-text-muted" />
+              <span className="text-xs text-text-secondary">People:</span>
+              <button
+                type="button"
+                onClick={() => setPeopleFor(Math.max(1, peopleFor - 1))}
+                className="w-6 h-6 rounded bg-surface flex items-center justify-center"
+              >
+                <Minus size={12} />
+              </button>
+              <span className="text-sm font-semibold w-6 text-center">{peopleFor}</span>
+              <button
+                type="button"
+                onClick={() => setPeopleFor(peopleFor + 1)}
+                className="w-6 h-6 rounded bg-surface flex items-center justify-center"
+              >
+                <Plus size={12} />
+              </button>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Name</label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => {
-                  setCustomerName(e.target.value);
-                  setLinkedCustomerId(null);
-                }}
-                placeholder="Customer name"
-                className="w-full h-9 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:border-primary"
-              />
+          </div>
+          <div className="space-y-2 px-4 py-2">
+            {cart.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-text-muted text-sm">No items added</div>
+            ) : (
+              cart.map((item) => (
+                <div
+                  key={item.kind === "product" ? `p-${item.productItemId}` : `c-${item.comboSetId}`}
+                  className="flex items-center gap-3 py-2 border-b border-border last:border-0"
+                >
+                  <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 border border-border bg-surface-alt">
+                    <MenuMediaThumb
+                      mediaPath={item.imageUrl ?? null}
+                      alt={item.name}
+                      className="h-full w-full min-h-0"
+                      fallback={item.kind === "combo" ? <span className="text-lg">🍱</span> : undefined}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.name}</p>
+                    <p className="text-xs text-text-muted">
+                      {item.kind === "product" ? item.unit : "Combo set"} · ₹{item.price}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => updateQty(item, -1)}
+                      className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="text-sm font-semibold w-5 text-center">{item.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateQty(item, 1)}
+                      className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                  <span className="text-sm font-bold font-mono w-16 text-right">
+                    ₹{(item.price * item.quantity).toLocaleString()}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          {cart.length > 0 ? (
+            <div className="border-t border-border px-4 py-3 space-y-3 bg-surface-alt/30">
+              <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Customer</p>
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide block">
+                  Registered customer
+                </label>
+                <select
+                  className="w-full h-9 px-2 rounded-lg border border-border bg-card text-xs"
+                  value={linkedCustomerId ?? ""}
+                  onChange={(e) => onPickRegisteredCustomer(e.target.value)}
+                >
+                  <option value="">Walk-in — enter name and phone below</option>
+                  {customerRows.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.phone})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Name</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    setLinkedCustomerId(null);
+                  }}
+                  placeholder="Customer name"
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Phone</label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => {
+                    setCustomerPhone(e.target.value);
+                    setLinkedCustomerId(null);
+                  }}
+                  placeholder="Phone number"
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:border-primary"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Phone</label>
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => {
-                  setCustomerPhone(e.target.value);
-                  setLinkedCustomerId(null);
-                }}
-                placeholder="Phone number"
-                className="w-full h-9 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:border-primary"
-              />
+          ) : null}
+          <div className="shrink-0 border-t border-border px-4 py-3 space-y-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {orderError && <p className="text-xs text-error">{orderError}</p>}
+            <div className="flex justify-between text-sm text-text-secondary">
+              <span>Sub Total</span>
+              <span className="font-mono">₹{subTotal.toLocaleString()}</span>
             </div>
+            <div className="flex justify-between text-sm text-text-secondary">
+              <span>Service charge</span>
+              <span className="font-mono">₹{(cart.length > 0 ? serviceCharge : 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-md font-bold border-t border-border pt-2">
+              <span>Total</span>
+              <span className="font-mono">₹{grandTotal.toLocaleString()}</span>
+            </div>
+            <button
+              type="button"
+              disabled={placing || cart.length === 0}
+              onClick={() => void placeOrder()}
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 mt-2 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {placing ? "Placing…" : "Place Order"}
+            </button>
           </div>
-        ) : null}
-        <div className="border-t border-border px-4 py-3 space-y-2">
-          {orderError && <p className="text-xs text-error">{orderError}</p>}
-          <div className="flex justify-between text-sm text-text-secondary">
-            <span>Sub Total</span>
-            <span className="font-mono">₹{subTotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm text-text-secondary">
-            <span>Service charge</span>
-            <span className="font-mono">₹{(cart.length > 0 ? serviceCharge : 0).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-md font-bold border-t border-border pt-2">
-            <span>Total</span>
-            <span className="font-mono">₹{grandTotal.toLocaleString()}</span>
-          </div>
-          <button
-            type="button"
-            disabled={placing || cart.length === 0}
-            onClick={() => void placeOrder()}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 mt-2 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {placing ? "Placing…" : "Place Order"}
-          </button>
         </div>
       </div>
     </div>
