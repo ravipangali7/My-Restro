@@ -143,6 +143,12 @@
   --inline-form-bg: #FAFAFA;
   --inline-form-border: #E0E0E0;
   --inline-form-header: #F2F2F2;
+  /**
+   * Scroll padding for viewports with fixed `BottomNav` (lg:hidden), including the
+   * elevated center tab and iOS home-indicator safe area. Use on scroll containers
+   * so the last controls stay above the bar.
+   */
+  --app-mobile-bottom-nav-scroll-padding: calc(7.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 @layer base {

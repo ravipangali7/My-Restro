@@ -374,7 +374,7 @@ export function StaffPosView({
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-min">
+        <div className="flex-1 grid auto-rows-min grid-cols-2 gap-3 overflow-y-auto px-4 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] sm:grid-cols-3 lg:grid-cols-4 lg:pb-4">
           {isLoading && <div className="col-span-full text-sm text-text-muted">Loading menu...</div>}
           {loadError && <div className="col-span-full text-sm text-error">{loadError}</div>}
           {filteredProducts.map((product) => {
@@ -567,7 +567,7 @@ export function StaffPosView({
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+        <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] lg:pb-2">
           {cart.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-text-muted text-sm">No items added</div>
           ) : (

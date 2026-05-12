@@ -471,7 +471,7 @@ function LiveOrders() {
                     </span>
                   </div>
                 </header>
-                <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-2.5 min-h-[200px]">
+                <div className="flex min-h-[200px] flex-1 flex-col gap-2.5 overflow-y-auto p-2.5 max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)]">
                   {list.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-border/80 py-8 text-center">
                       <p className="text-xs font-medium text-text-muted">No orders</p>

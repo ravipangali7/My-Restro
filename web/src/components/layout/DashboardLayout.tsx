@@ -6,6 +6,7 @@ import { BottomNav } from "./BottomNav";
 import { MOBILE_NAV_ID, MobileNavDrawer } from "./MobileNavDrawer";
 import { useAuth } from "@/lib/auth-context";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { cn } from "@/lib/utils";
 
 interface BottomTab {
   title: string;
@@ -65,7 +66,14 @@ export function DashboardLayout({
           mobileMenuExpanded={mobileNavOpen}
           mobileMenuControlsId={MOBILE_NAV_ID}
         />
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 lg:p-6 pb-20 lg:pb-6">
+        <main
+          className={cn(
+            "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 lg:p-6",
+            bottomTabs != null && bottomTabs.length > 0
+              ? "max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] lg:pb-6"
+              : undefined,
+          )}
+        >
           {children}
         </main>
       </div>
