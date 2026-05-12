@@ -71,7 +71,7 @@ function StaffLayout() {
   const cashierBottomTabs = [
     { title: "Home", to: STAFF_PATH.cashierDashboard, icon: Home },
     { title: "Transactions", to: STAFF_PATH.transactions, icon: ArrowLeftRight },
-    { title: "Alerts", to: STAFF_PATH.paymentAlerts, icon: Bell },
+    { title: "Alerts", to: STAFF_PATH.paymentAlerts, icon: AlertTriangle },
     { title: "Ledgers", to: STAFF_PATH.ledger, icon: BookOpen },
     { title: "Profile", to: STAFF_PATH.profile, icon: User },
   ];

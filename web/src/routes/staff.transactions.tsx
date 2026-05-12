@@ -1,13 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrders, useTransactions } from "@/hooks/use-rest-api";
 import { resolvePaidOrderForTransaction, type OrderLinkFields } from "@/lib/transaction-order-link";
 import { useAuth } from "@/lib/auth-context";
-import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
+import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
+import { MapPin, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/staff/transactions")({ component: StaffTransactions });
 
@@ -25,6 +26,7 @@ interface TxRow {
 }
 
 function StaffTransactions() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { restaurantId } = useRestaurantScope();
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user);
@@ -63,42 +65,67 @@ function StaffTransactions() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <DataTable
-        columns={[
-          ...(showRestaurantCol ? [restaurantTableColumn<TxRow>()] : []),
-          { header: "Amount", accessor: (t) => `₹${Number(t.amount).toLocaleString()}` },
-          { header: "Payment", accessor: (t) => <StatusBadge status={t.payment_status} /> },
-          { header: "Flow", accessor: (t) => <StatusBadge status={t.transaction_type} /> },
-          { header: "Category", accessor: (t) => <StatusBadge status={t.category} /> },
-          {
-            header: "Related order",
-            accessor: (t) => {
-              const o = resolvePaidOrderForTransaction(t, orders as OrderLinkFields[]);
-              if (!o) return <span className="text-text-muted">—</span>;
-              return (
-                <div className="flex flex-col gap-1 text-xs">
-                  <span className="text-foreground font-medium">{o.order_id}</span>
-                  <span className="text-text-secondary">₹{Number(o.total).toLocaleString()}</span>
-                  <div className="flex flex-wrap gap-1">
-                    <StatusBadge status={o.payment_status} />
-                    {o.payment_method ? <StatusBadge status={o.payment_method} /> : null}
+      {filteredRows.length === 0 ? (
+        <p className="text-sm text-text-muted">No transactions in this view.</p>
+      ) : (
+        <OwnerEntityCardStack>
+          {filteredRows.map((t) => {
+            const o = resolvePaidOrderForTransaction(t, orders as OrderLinkFields[]);
+            const remarks = (t.remarks ?? "").trim();
+
+            return (
+              <OwnerEntityCard
+                key={t.id}
+                onClick={() => {
+                  void navigate({ to: "/staff/transactions/$id", params: { id: String(t.id) } });
+                }}
+                leading={
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Wallet strokeWidth={2} aria-hidden />
                   </div>
-                </div>
-              );
-            },
-          },
-          { header: "Remarks", accessor: "remarks" },
-          {
-            header: "Actions",
-            accessor: (t) => (
-              <Link to="/staff/transactions/$id" params={{ id: String(t.id) }} className="text-xs text-primary font-medium">
-                View
-              </Link>
-            ),
-          },
-        ]}
-        data={filteredRows}
-      />
+                }
+                title={`₹${Number(t.amount).toLocaleString()}`}
+                subtitle={
+                  <span className="line-clamp-2 text-text-secondary">
+                    {remarks || <span className="text-text-muted">No remarks</span>}
+                  </span>
+                }
+                meta={
+                  <>
+                    {showRestaurantCol && t.restaurant_name ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                        <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
+                        {t.restaurant_name}
+                      </span>
+                    ) : null}
+                    <StatusBadge status={t.payment_status} />
+                    <StatusBadge status={t.transaction_type} />
+                    <StatusBadge status={t.category} />
+                    {o ? (
+                      <span className="text-xs tabular-nums text-text-muted">
+                        Order <span className="font-medium text-foreground">{o.order_id}</span>
+                        <span className="mx-1">·</span>
+                        ₹{Number(o.total).toLocaleString()}
+                      </span>
+                    ) : null}
+                    {o?.payment_method ? <StatusBadge status={o.payment_method} /> : null}
+                  </>
+                }
+                actions={
+                  <Link
+                    to="/staff/transactions/$id"
+                    params={{ id: String(t.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View transaction
+                  </Link>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
     </>
   );
 }

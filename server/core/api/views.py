@@ -1,4 +1,3 @@
-import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.db.models import Prefetch, Q
@@ -72,32 +71,6 @@ _ORDER_STAFF_PAYMENTS_PREFETCH = Prefetch(
     "staff_payment_records",
     queryset=OrderStaffPaymentRecord.objects.select_related("recorded_by").order_by("-created_at"),
 )
-
-
-def _payment_alert_identity_key(order: Order) -> str:
-    if order.customer_id is not None:
-        return f"c:{order.customer_id}"
-    ph = re.sub(r"\D", "", order.guest_customer_phone or "")
-    if ph:
-        return f"p:{ph}"
-    nm = (order.guest_customer_name or "").strip().lower()
-    if nm:
-        return f"n:{nm}"
-    return f"o:{order.pk}"
-
-
-def _iter_latest_order_per_payment_alert_key(qs) -> list[Order]:
-    """One row per customer: the most recent non-rejected order for that person (stays on list when paid)."""
-    by_newest = qs.order_by("-created_at", "-pk")
-    seen: set[str] = set()
-    out: list[Order] = []
-    for o in by_newest:
-        k = _payment_alert_identity_key(o)
-        if k in seen:
-            continue
-        seen.add(k)
-        out.append(o)
-    return out
 
 
 def _restaurant_proximity_anchor(restaurant: Restaurant) -> tuple[float, float] | None:
@@ -436,9 +409,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="payment-pending-alerts")
     def payment_pending_alerts(self, request):
         """
-        Latest order per customer for the counter (not GPS-filtered). Includes fully paid
-        customers so the row does not disappear after success; a new order for the same
-        phone/customer supersedes with a fresh row.
+        All non-rejected orders for the restaurant counter (not GPS-filtered), newest first.
+        Cashiers see every bill; paid rows remain visible with payment_status=success.
         """
         rid = request.query_params.get("restaurant_id")
         if not rid:
@@ -468,15 +440,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         else:
             return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
 
-        base = (
+        qs = (
             Order.objects.filter(restaurant_id=restaurant_id)
             .exclude(status=OrderStatus.REJECTED)
             .select_related("customer", "restaurant", "table", "waiter")
             .prefetch_related(_ORDER_ITEMS_PREFETCH, _ORDER_STAFF_PAYMENTS_PREFETCH)
+            .order_by("-created_at", "-pk")
         )
-        latest = _iter_latest_order_per_payment_alert_key(base)
-        latest.sort(key=lambda o: o.created_at, reverse=True)
-        return Response(OrderSerializer(latest, many=True, context={"request": request}).data)
+        return Response(OrderSerializer(qs, many=True, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], url_path="dismiss-proximity-alert")
     def dismiss_proximity_alert(self, request, pk=None):

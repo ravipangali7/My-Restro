@@ -1117,7 +1117,7 @@ class ProximityAlertsApiTests(APITestCase):
 
 
 class PaymentPendingAlertsApiTests(APITestCase):
-    """GET /api/orders/payment-pending-alerts/ lists latest order per customer (no GPS filter)."""
+    """GET /api/orders/payment-pending-alerts/ lists all non-rejected orders for the restaurant (no GPS filter)."""
 
     def setUp(self):
         User = get_user_model()
@@ -1204,7 +1204,7 @@ class PaymentPendingAlertsApiTests(APITestCase):
         self.assertEqual(res.json()[0]["id"], paid.pk)
         self.assertEqual(res.json()[0]["payment_status"], PaymentStatus.SUCCESS)
 
-    def test_newest_per_guest_phone_replaces_paid_in_list(self):
+    def test_same_guest_phone_shows_both_orders_newest_first(self):
         old = create_order_with_items(
             restaurant=self.restaurant,
             lines=[{"product_item_id": self.item.pk, "quantity": "1"}],
@@ -1222,9 +1222,12 @@ class PaymentPendingAlertsApiTests(APITestCase):
         self.client.force_authenticate(user=self.owner)
         res = self.client.get(self._pending_url())
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(res.json()), 1)
-        self.assertEqual(res.json()[0]["id"], new_order.pk)
-        self.assertEqual(res.json()[0]["payment_status"], PaymentStatus.PENDING)
+        data = res.json()
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]["id"], new_order.pk)
+        self.assertEqual(data[0]["payment_status"], PaymentStatus.PENDING)
+        self.assertEqual(data[1]["id"], old.pk)
+        self.assertEqual(data[1]["payment_status"], PaymentStatus.SUCCESS)
 
     def test_staff_must_belong_to_restaurant(self):
         User = get_user_model()

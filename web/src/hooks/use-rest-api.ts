@@ -1079,7 +1079,7 @@ export function useProximityAlerts(restaurantId: number | null, enabled: boolean
   });
 }
 
-/** Latest order per customer for the counter, including fully paid (same restaurant; staff, owner, super-admin). */
+/** All non-rejected orders for the counter (newest first); same serializer as order detail. */
 export function usePendingPaymentAlerts(restaurantId: number | null, enabled: boolean) {
   const { token, isAuthenticated } = useAuth();
   return useQuery({

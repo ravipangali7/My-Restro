@@ -1,10 +1,8 @@
-import { useState } from "react";
-import { Bell, Menu, LogOut } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "@tanstack/react-router";
 import { resolveMediaUrl } from "@/lib/api";
 import { PortalNotificationBell } from "@/components/layout/StaffNotificationBell";
-import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
 interface TopAppBarProps {
   title: string;
@@ -21,8 +19,7 @@ export function TopAppBar({
   mobileMenuExpanded = false,
   mobileMenuControlsId,
 }: TopAppBarProps) {
-  const { userName, role, logout, user } = useAuth();
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const { userName, role, user } = useAuth();
   const headerAvatarUrl = resolveMediaUrl(user?.image ?? null);
   const showsPortalBell =
     role === "owner" ||
@@ -35,7 +32,6 @@ export function TopAppBar({
   const superAdminProfileTo = "/superadmin/profile" as const;
 
   return (
-    <>
     <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 shrink-0 z-40">
       {showMobileMenu && (
         <button
@@ -152,28 +148,7 @@ export function TopAppBar({
             </div>
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => setLogoutConfirmOpen(true)}
-          className="text-text-muted hover:text-destructive lg:hidden"
-          aria-label="Logout"
-        >
-          <LogOut size={18} />
-        </button>
       </div>
     </header>
-    <ConfirmModal
-      open={logoutConfirmOpen}
-      title="Logout"
-      message="Are you sure you want to logout?"
-      confirmLabel="Logout"
-      variant="danger"
-      onConfirm={() => {
-        setLogoutConfirmOpen(false);
-        void logout();
-      }}
-      onCancel={() => setLogoutConfirmOpen(false)}
-    />
-    </>
   );
 }
