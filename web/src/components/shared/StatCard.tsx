@@ -18,19 +18,32 @@ export function StatCardsGrid({ children, className }: { children: ReactNode; cl
 
 export function StatCard({ icon: Icon, label, value, trend, trendUp, className }: StatCardProps) {
   return (
-    <div className={cn("bg-card rounded-xl border border-border p-4 lg:p-5 shadow-sm", className)}>
-      <div className="flex items-start justify-between">
-        <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center">
+    <div className={cn("bg-card rounded-xl border border-border p-4 lg:p-5 shadow-sm flex flex-col min-w-0", className)}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="w-10 h-10 shrink-0 rounded-lg bg-primary-50 flex items-center justify-center">
           <Icon size={20} className="text-primary" />
         </div>
         {trend && (
-          <span className={`text-xs font-semibold ${trendUp ? "text-success" : "text-destructive"}`}>
+          <span
+            className={`text-xs font-semibold truncate max-w-[50%] ${trendUp ? "text-success" : "text-destructive"}`}
+            title={trend}
+          >
             {trendUp ? "↑" : "↓"} {trend}
           </span>
         )}
       </div>
-      <p className="mt-3 text-sm text-text-secondary">{label}</p>
-      <p className="mt-1 text-2xl lg:text-3xl font-display font-bold text-foreground">{value}</p>
+      <p
+        className="mt-3 text-sm text-text-secondary line-clamp-2 break-words"
+        title={label}
+      >
+        {label}
+      </p>
+      <p
+        className="mt-1 text-xl sm:text-2xl lg:text-3xl font-display font-bold text-foreground break-words leading-tight"
+        title={String(value)}
+      >
+        {value}
+      </p>
     </div>
   );
 }

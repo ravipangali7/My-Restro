@@ -526,12 +526,12 @@ export function CashierDashboard() {
           title="Workspace"
           description="Each card mirrors a sidebar destination — open alerts first when guests are approaching unpaid."
         />
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           {moduleCards.map((m) => (
             <Link
               key={m.title}
               to={m.to}
-              className="group relative overflow-hidden rounded-2xl border border-border/90 bg-gradient-to-br from-card via-card to-muted/25 p-5 shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/25 hover:shadow-lg"
+              className="group relative flex overflow-hidden rounded-2xl border border-border/90 bg-gradient-to-br from-card via-card to-muted/25 p-4 sm:p-5 shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-500/25 hover:shadow-lg"
             >
               <div
                 className={cn(
@@ -539,26 +539,37 @@ export function CashierDashboard() {
                   m.stripe,
                 )}
               />
-              <div className="relative flex items-start gap-4 pl-2">
+              <div className="relative flex w-full min-w-0 items-start gap-3 pl-2 sm:gap-4">
                 <div
                   className={cn(
-                    "flex size-11 shrink-0 items-center justify-center rounded-xl ring-1 shadow-inner transition-transform duration-300 group-hover:scale-105",
+                    "flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl ring-1 shadow-inner transition-transform duration-300 group-hover:scale-105",
                     m.iconBg,
                   )}
                 >
                   <m.icon className="size-5" aria-hidden />
                 </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="font-display text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-amber-800">
+                <div className="flex min-w-0 flex-1 flex-col pt-0.5">
+                  <p
+                    className="font-display text-base font-bold leading-tight tracking-tight text-foreground transition-colors group-hover:text-amber-800 line-clamp-2 break-words"
+                    title={m.title}
+                  >
                     {m.title}
                   </p>
-                  <p className="mt-1 text-sm text-text-muted">{m.desc}</p>
-                  <p className="mt-3 inline-flex items-center rounded-lg bg-muted/60 px-2.5 py-1 text-xs font-semibold text-text-secondary ring-1 ring-border/60">
-                    {m.stat}
+                  <p
+                    className="mt-1 text-sm leading-snug text-text-muted line-clamp-2 break-words"
+                    title={m.desc}
+                  >
+                    {m.desc}
                   </p>
+                  <span
+                    className="mt-3 inline-flex max-w-full items-center self-start rounded-lg bg-muted/60 px-2.5 py-1 text-xs font-semibold text-text-secondary ring-1 ring-border/60"
+                    title={m.stat}
+                  >
+                    <span className="block max-w-full truncate">{m.stat}</span>
+                  </span>
                 </div>
                 <ChevronRight
-                  className="size-5 shrink-0 text-text-muted transition-all group-hover:translate-x-0.5 group-hover:text-amber-700"
+                  className="size-5 shrink-0 self-center text-text-muted transition-all group-hover:translate-x-0.5 group-hover:text-amber-700"
                   aria-hidden
                 />
               </div>
