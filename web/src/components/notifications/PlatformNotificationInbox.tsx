@@ -21,15 +21,16 @@ export function PlatformNotificationInbox({ subtitle = "Platform announcements" 
   const userId = user?.id;
   const { data: bulkRaw, isPending } = useBulkNotifications(null);
 
-  const [, bumpReads] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => subscribeStaffBulkNotificationReads(() => bumpReads()), []);
+  const [bulkReadEpoch, bumpBulkReadEpoch] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => subscribeStaffBulkNotificationReads(() => bumpBulkReadEpoch()), []);
 
   const apiRows = useMemo(() => ((bulkRaw as ApiBulkNotificationRow[] | undefined) ?? []).slice(0, 200), [bulkRaw]);
 
   const unreadCount = useMemo(() => {
+    void bulkReadEpoch;
     if (userId == null) return 0;
     return apiRows.filter((r) => !isStaffBulkNotificationRead(userId, r.id)).length;
-  }, [apiRows, userId, bumpReads]);
+  }, [apiRows, userId, bulkReadEpoch]);
 
   const portalRole = role as PortalRole;
   const home = portalHomeByRole[portalRole] ?? "/";

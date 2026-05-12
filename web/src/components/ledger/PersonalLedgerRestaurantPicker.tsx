@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import { DataTable } from "@/components/shared/DataTable";
 import { useAuth } from "@/lib/auth-context";
 import { useLedgersAcrossRestaurantIds, useRestaurants } from "@/hooks/use-rest-api";
@@ -60,6 +61,46 @@ export function PersonalLedgerRestaurantPicker({
   if (withLedger.length >= 2) {
     const linkTo = mode === "customer" ? "/customer/ledger/$restaurantId" : "/staff/ledger/$restaurantId";
     const rowsForTable = withLedger.map((s) => ({ id: s.rid, ...s }));
+    const orderStyleCardClass =
+      "w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between text-left hover:shadow-sm transition-shadow";
+
+    if (mode === "customer") {
+      return (
+        <>
+          {showPageTitle ? (
+            <>
+              <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Ledger</h2>
+              <p className="mb-4 text-xs text-text-muted">
+                You have ledger activity at more than one restaurant. Pick one to view entries.
+              </p>
+            </>
+          ) : null}
+          <div className="space-y-3">
+            {withLedger.map((s) => (
+              <Link
+                key={s.rid}
+                to={linkTo}
+                params={{ restaurantId: String(s.rid) }}
+                className={orderStyleCardClass}
+              >
+                <div className="min-w-0 flex-1 pr-3">
+                  <p className="text-sm font-semibold text-foreground">{labelForRestaurant(s.rid)}</p>
+                  <p className="text-xs text-text-muted mt-1">{s.rows.length} entries</p>
+                </div>
+                <div className="text-right flex items-center gap-2 shrink-0">
+                  <div>
+                    <p className="text-sm font-bold text-foreground font-mono">{money(balanceForRows(s.rows))}</p>
+                    <p className="text-xs text-text-muted mt-0.5">Balance</p>
+                  </div>
+                  <ChevronRight size={16} className="text-text-muted shrink-0" aria-hidden />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         {showPageTitle ? (
@@ -114,6 +155,7 @@ export function PersonalLedgerRestaurantPicker({
       partyLabel={partyLabel}
       backHref={mode === "customer" ? "/customer/ledger" : "/staff"}
       canMutate={false}
+      useOrderStyleEntryCards={mode === "customer"}
     />
   );
 }

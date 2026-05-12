@@ -18,6 +18,9 @@ function formatLedgerDate(iso: string | undefined): string {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+const orderStyleCardClass =
+  "w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between text-left hover:shadow-sm transition-shadow";
+
 export function PartyLedgerDetailView({
   restaurantId,
   partyType,
@@ -25,6 +28,8 @@ export function PartyLedgerDetailView({
   partyLabel,
   backHref,
   canMutate,
+  /** Customer portal: list each ledger line as a card matching My Orders row styling. */
+  useOrderStyleEntryCards = false,
 }: {
   restaurantId: number;
   partyType: string;
@@ -32,6 +37,7 @@ export function PartyLedgerDetailView({
   partyLabel: string;
   backHref: string;
   canMutate: boolean;
+  useOrderStyleEntryCards?: boolean;
 }) {
   const { data = [], isLoading, error } = useLedgers(restaurantId, partyType, partyId);
   const rows = data as LedgerListRow[];
@@ -195,58 +201,82 @@ export function PartyLedgerDetailView({
       )}
 
       <ViewSection title="Ledger">
-        <DataTable
-          columns={[
-            { header: "Date", accessor: (r) => formatLedgerDate((r as LedgerListRow).created_at) },
-            { header: "Particular", accessor: (r) => (r as LedgerListRow).particular },
-            {
-              header: "Debit",
-              accessor: (r) => {
-                const row = r as LedgerListRow;
-                return row.type === "debit" ? <span className="font-mono text-error">{money(row.amount)}</span> : "—";
+        {useOrderStyleEntryCards && !canMutate ? (
+          <div className="space-y-3">
+            {sorted.map((r) => (
+              <div key={r.id} className={orderStyleCardClass}>
+                <div className="min-w-0 flex-1 pr-3">
+                  <p className="text-sm font-semibold text-foreground break-words">{r.particular}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{formatLedgerDate(r.created_at)}</p>
+                  <p className="text-xs text-text-muted mt-1 capitalize">{r.type}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p
+                    className={`text-sm font-bold font-mono ${
+                      r.type === "credit" ? "text-success" : "text-error"
+                    }`}
+                  >
+                    {money(r.amount)}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {sorted.length === 0 && <p className="text-sm text-text-muted px-1 py-2">No ledger entries yet.</p>}
+          </div>
+        ) : (
+          <DataTable
+            columns={[
+              { header: "Date", accessor: (r) => formatLedgerDate((r as LedgerListRow).created_at) },
+              { header: "Particular", accessor: (r) => (r as LedgerListRow).particular },
+              {
+                header: "Debit",
+                accessor: (r) => {
+                  const row = r as LedgerListRow;
+                  return row.type === "debit" ? <span className="font-mono text-error">{money(row.amount)}</span> : "—";
+                },
               },
-            },
-            {
-              header: "Credit",
-              accessor: (r) => {
-                const row = r as LedgerListRow;
-                return row.type === "credit" ? <span className="font-mono text-success">{money(row.amount)}</span> : "—";
+              {
+                header: "Credit",
+                accessor: (r) => {
+                  const row = r as LedgerListRow;
+                  return row.type === "credit" ? <span className="font-mono text-success">{money(row.amount)}</span> : "—";
+                },
               },
-            },
-            ...(canMutate
-              ? [
-                  {
-                    header: "Action",
-                    accessor: (r: LedgerListRow) => (
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-text-secondary hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(r);
-                          }}
-                        >
-                          <Pencil size={14} /> Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-error hover:opacity-90"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(r);
-                          }}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      </div>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-          data={sorted}
-        />
+              ...(canMutate
+                ? [
+                    {
+                      header: "Action",
+                      accessor: (r: LedgerListRow) => (
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-text-secondary hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(r);
+                            }}
+                          >
+                            <Pencil size={14} /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-error hover:opacity-90"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(r);
+                            }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+            data={sorted}
+          />
+        )}
       </ViewSection>
 
       {editing && canMutate && (

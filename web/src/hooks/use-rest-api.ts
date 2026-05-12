@@ -948,11 +948,13 @@ export function useBulkNotifications(restaurantId: number | null) {
   const { token, isAuthenticated, user } = useAuth();
   const isSuper = user?.portal_role === "superadmin";
   const pr = user?.portal_role;
+  const userId = user?.id ?? null;
   const mayListForRestaurant =
     pr === "owner" || pr === "waiter" || pr === "cashier" || pr === "kitchen";
   const isPlatformInbox = pr === "customer" || pr === "shareholder";
   return useQuery({
-    queryKey: ["bulk-notifications", restaurantId, isSuper, pr, token],
+    /** Key on user id, not token, so token refresh does not drop cached rows (read state is client-side). */
+    queryKey: ["bulk-notifications", restaurantId, isSuper, pr, userId],
     queryFn: () => {
       const qs = new URLSearchParams();
       if (restaurantId != null) qs.set("restaurant_id", String(restaurantId));

@@ -31,6 +31,7 @@ function CustomerPartyLedgerPage() {
       partyLabel={user?.name ?? "Your ledger"}
       backHref="/customer/ledger"
       canMutate={false}
+      useOrderStyleEntryCards
     />
   );
 }
