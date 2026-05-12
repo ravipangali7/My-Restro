@@ -76,22 +76,30 @@ function StaffLayout() {
     { title: "Profile", to: STAFF_PATH.profile, icon: User },
   ];
 
+  /** Waiter mobile bottom bar: five equal tabs, concise labels for small screens. */
+  const waiterBottomTabs = [
+    { title: "Home", to: STAFF_PATH.home, icon: Home },
+    { title: "Pickup", to: STAFF_PATH.waitingPickup, icon: Package },
+    { title: "POS", to: STAFF_PATH.pos, icon: ShoppingCart },
+    { title: "Ledger", to: STAFF_PATH.ledger, icon: BookOpen },
+    { title: "Profile", to: STAFF_PATH.profile, icon: User },
+  ];
+
   const bottomTabs =
     staffRole === "cashier"
       ? cashierBottomTabs
-      : [
-          {
-            title: "Dashboard",
-            to: STAFF_PATH.home,
-            icon: LayoutDashboard,
-          },
-          ...(staffRole === "waiter" ? [{ title: "POS", to: STAFF_PATH.pos, icon: ShoppingCart }] : []),
-          ...(staffRole === "kitchen" ? [{ title: "Live Orders", to: STAFF_PATH.liveorders, icon: ClipboardList }] : []),
-          ...(staffRole === "waiter" || staffRole === "kitchen"
-            ? [{ title: "Waiting Pickup Orders", to: STAFF_PATH.waitingPickup, icon: Package }]
-            : []),
-          { title: "Profile", to: STAFF_PATH.profile, icon: User },
-        ];
+      : staffRole === "waiter"
+        ? waiterBottomTabs
+        : [
+            {
+              title: "Dashboard",
+              to: STAFF_PATH.home,
+              icon: LayoutDashboard,
+            },
+            { title: "Live Orders", to: STAFF_PATH.liveorders, icon: ClipboardList },
+            { title: "Pickup", to: STAFF_PATH.waitingPickup, icon: Package },
+            { title: "Profile", to: STAFF_PATH.profile, icon: User },
+          ];
 
   return (
     <PortalGate allow={["waiter", "cashier", "kitchen"]}>
