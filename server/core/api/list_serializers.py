@@ -33,6 +33,7 @@ class RestaurantListSerializer(serializers.ModelSerializer):
     effective_per_transaction_fee = serializers.SerializerMethodField()
     effective_subscription_fee_per_month = serializers.SerializerMethodField()
     effective_sms_per_usage = serializers.SerializerMethodField()
+    effective_due_threshold = serializers.SerializerMethodField()
     due_sms_usage = serializers.SerializerMethodField()
     due_service_charge = serializers.SerializerMethodField()
 
@@ -62,9 +63,11 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             "per_transaction_fee",
             "subscription_fee_per_month",
             "sms_per_usage",
+            "due_threshold",
             "effective_per_transaction_fee",
             "effective_subscription_fee_per_month",
             "effective_sms_per_usage",
+            "effective_due_threshold",
             "can_delivery",
             "delivery_fee_per_km",
             "delivery_radius_km",
@@ -86,6 +89,11 @@ class RestaurantListSerializer(serializers.ModelSerializer):
         from core.services.platform_pricing import effective_sms_per_usage
 
         return effective_sms_per_usage(obj)
+
+    def get_effective_due_threshold(self, obj: Restaurant):
+        from core.services.platform_pricing import effective_due_threshold
+
+        return effective_due_threshold(obj)
 
     def get_reference_distance_m(self, obj: Restaurant):
         if obj.latitude is None or obj.longitude is None:

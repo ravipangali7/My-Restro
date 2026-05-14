@@ -47,6 +47,8 @@ type RestaurantDetail = {
   delivery_fee_per_km?: string | number;
   delivery_radius_km?: string | number;
   per_transaction_fee?: string | number;
+  due_threshold?: string | number | null;
+  effective_due_threshold?: string | number;
   subscription_start?: string | null;
   subscription_end?: string | null;
   created_at?: string;
@@ -88,7 +90,11 @@ function OwnerRestaurantDetailPage() {
   }, [restaurants, restaurantId]);
 
   const pd = platformDefaults as PlatformDefaultsDTO | undefined;
-  const threshold = pd != null ? Number(pd.due_threshold) : NaN;
+  const threshold = Number(
+    restaurant != null
+      ? (restaurant.effective_due_threshold ?? restaurant.due_threshold ?? pd?.due_threshold ?? NaN)
+      : NaN,
+  );
   const dueNum = restaurant != null ? Number(restaurant.due_balance ?? 0) : NaN;
   const thresholdActive = Number.isFinite(threshold) && threshold > 0;
   const dueExceedsThreshold = thresholdActive && Number.isFinite(dueNum) && dueNum >= threshold;
@@ -185,7 +191,7 @@ function OwnerRestaurantDetailPage() {
             </div>
             {thresholdActive ? (
               <p className="text-sm text-text-secondary">
-                Platform due threshold: {money(threshold)}
+                Effective due threshold (for this venue): {money(threshold)}
                 {dueExceedsThreshold ? (
                   <span className="text-amber-800 dark:text-amber-200"> (threshold reached — location may be inactive)</span>
                 ) : null}

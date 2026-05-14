@@ -31,6 +31,7 @@ type R = {
   per_transaction_fee: number;
   subscription_fee_per_month?: number | string | null;
   sms_per_usage?: number | string | null;
+  due_threshold?: number | string | null;
   can_delivery: boolean;
   delivery_radius_km?: number;
   address?: string;
@@ -316,6 +317,7 @@ function RestaurantsPage() {
                 }
                 const subFeeRaw = String(fd.get("subscription_fee_per_month") ?? "").trim();
                 const smsRaw = String(fd.get("sms_per_usage") ?? "").trim();
+                const dueThreshRaw = String(fd.get("due_threshold") ?? "").trim();
                 const subStart = String(fd.get("subscription_start") ?? "").trim();
                 const subEnd = String(fd.get("subscription_end") ?? "").trim();
                 const dueBalRaw = fd.get("due_balance");
@@ -355,6 +357,7 @@ function RestaurantsPage() {
                   data.append("per_transaction_fee", String(perTx));
                   data.append("subscription_fee_per_month", subFeeRaw);
                   data.append("sms_per_usage", smsRaw);
+                  data.append("due_threshold", dueThreshRaw);
                   data.append("subscription_start", subStart);
                   data.append("subscription_end", subEnd);
                   data.append("is_open", formIsOpen ? "true" : "false");
@@ -595,6 +598,29 @@ function RestaurantsPage() {
                 />
                 <p className="mt-1 text-xs text-text-muted">
                   Applies to staff OTP and order-status SMS for this venue. Owner OTP still uses the global rate from Settings.
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-text-secondary mb-1.5 block" htmlFor="rest-due-thresh">
+                  Due threshold (₹) — optional override
+                </label>
+                <input
+                  id="rest-due-thresh"
+                  name="due_threshold"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  defaultValue={
+                    editRestaurant?.due_threshold != null && String(editRestaurant.due_threshold).trim() !== ""
+                      ? String(editRestaurant.due_threshold)
+                      : ""
+                  }
+                  placeholder="Leave blank for platform default"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+                <p className="mt-1 text-xs text-text-muted">
+                  When this venue&apos;s due balance reaches this amount (and the value is greater than zero), it can be
+                  auto-suspended. Blank uses the value from Super Admin Settings.
                 </p>
               </div>
               <div>

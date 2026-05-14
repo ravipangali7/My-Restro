@@ -179,6 +179,7 @@ class RestaurantAdmin(BaseAdmin):
         "per_transaction_fee",
         "subscription_fee_per_month",
         "sms_per_usage",
+        "due_threshold",
         "subscription_start",
         "subscription_end",
     )
@@ -201,6 +202,7 @@ class RestaurantAdmin(BaseAdmin):
                     "per_transaction_fee",
                     "subscription_fee_per_month",
                     "sms_per_usage",
+                    "due_threshold",
                     "subscription_start",
                     "subscription_end",
                 )

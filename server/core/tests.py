@@ -505,6 +505,21 @@ class OrderServiceTests(TestCase):
         self.restaurant.refresh_from_db()
         self.assertFalse(self.restaurant.is_active)
 
+    def test_platform_fee_deactivates_using_restaurant_due_threshold_override(self):
+        s = get_super_setting()
+        s.per_transaction_fee = Decimal("10.00")
+        s.due_threshold = Decimal("1000.00")
+        s.save(update_fields=["per_transaction_fee", "due_threshold", "updated_at"])
+        self.restaurant.due_threshold = Decimal("10.00")
+        self.restaurant.is_active = True
+        self.restaurant.save(update_fields=["due_threshold", "is_active", "updated_at"])
+        create_order_with_items(
+            restaurant=self.restaurant,
+            lines=[{"product_item_id": self.item.pk, "quantity": "1"}],
+        )
+        self.restaurant.refresh_from_db()
+        self.assertFalse(self.restaurant.is_active)
+
 
 class WithdrawalServiceTests(TestCase):
     def setUp(self):

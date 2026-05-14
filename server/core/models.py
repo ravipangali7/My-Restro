@@ -241,6 +241,13 @@ class Restaurant(TimeStampedModel, ActiveModel):
         blank=True,
         help_text="If set, overrides platform SMS unit rate for this venue only.",
     )
+    due_threshold = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="If set, overrides platform due auto-suspend threshold for this venue only.",
+    )
     can_delivery = models.BooleanField(default=False)
     delivery_fee_per_km = models.DecimalField(
         max_digits=10,

@@ -64,6 +64,8 @@ function RestaurantViewPage() {
     effective_per_transaction_fee?: number | string;
     effective_subscription_fee_per_month?: number | string;
     effective_sms_per_usage?: number | string;
+    due_threshold?: number | string | null;
+    effective_due_threshold?: number | string;
     can_delivery: boolean;
     delivery_radius_km?: number;
     subscription_start?: string;
@@ -132,6 +134,10 @@ function RestaurantViewPage() {
             value={fmtInr(r.effective_sms_per_usage)}
           />
           <ViewField
+            label="Due threshold (effective)"
+            value={fmtInr(r.effective_due_threshold)}
+          />
+          <ViewField
             label="Venue overrides (blank = use platform Settings)"
             value={
               <span className="text-sm">
@@ -146,6 +152,11 @@ function RestaurantViewPage() {
                 {r.sms_per_usage != null && String(r.sms_per_usage).trim() !== ""
                   ? `${fmtInr(r.sms_per_usage)} (venue override)`
                   : `${fmtInr(r.effective_sms_per_usage)} (platform default)`}
+                <br />
+                Due threshold:{" "}
+                {r.due_threshold != null && String(r.due_threshold).trim() !== ""
+                  ? `${fmtInr(r.due_threshold)} (venue override)`
+                  : `${fmtInr(r.effective_due_threshold)} (platform default)`}
               </span>
             }
           />

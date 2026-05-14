@@ -566,6 +566,17 @@ def _create_restaurant_response(request):
                     {"detail": "sms_per_usage must be non-negative."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+        due_thresh_override = None
+        if request.data.get("due_threshold") not in (None, ""):
+            try:
+                due_thresh_override = Decimal(str(request.data.get("due_threshold")))
+            except Exception:
+                return Response({"detail": "Invalid due_threshold."}, status=status.HTTP_400_BAD_REQUEST)
+            if due_thresh_override < 0:
+                return Response(
+                    {"detail": "due_threshold must be non-negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
     r = Restaurant(
         user=owner,
@@ -582,6 +593,7 @@ def _create_restaurant_response(request):
         per_transaction_fee=ptf,
         subscription_fee_per_month=sub_fee_override,
         sms_per_usage=sms_override,
+        due_threshold=due_thresh_override if actor_role == UserRole.SUPER_ADMIN else None,
         subscription_start=sub_start if actor_role == UserRole.SUPER_ADMIN else None,
         subscription_end=sub_end if actor_role == UserRole.SUPER_ADMIN else None,
         is_open=is_open,
@@ -845,6 +857,22 @@ def _patch_restaurant_response(request, pk: int):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             r.sms_per_usage = smsv
+
+    if "due_threshold" in data:
+        raw_dt = data.get("due_threshold")
+        if raw_dt in (None, ""):
+            r.due_threshold = None
+        else:
+            try:
+                dtv = Decimal(str(raw_dt))
+            except Exception:
+                return Response({"detail": "Invalid due_threshold."}, status=status.HTTP_400_BAD_REQUEST)
+            if dtv < 0:
+                return Response(
+                    {"detail": "due_threshold must be non-negative."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            r.due_threshold = dtv
 
     if "due_balance" in data and data.get("due_balance") not in (None, ""):
         try:

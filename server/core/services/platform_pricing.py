@@ -32,3 +32,12 @@ def effective_sms_per_usage(restaurant) -> Decimal:
         return Decimal(str(v))
     setting = get_super_setting()
     return setting.sms_per_usage or Decimal("0.00")
+
+
+def effective_due_threshold(restaurant) -> Decimal:
+    """Non-null ``restaurant.due_threshold`` wins; otherwise SuperSetting (venue auto-suspend cap)."""
+    v = getattr(restaurant, "due_threshold", None)
+    if v is not None:
+        return Decimal(str(v))
+    setting = get_super_setting()
+    return setting.due_threshold or Decimal("0.00")

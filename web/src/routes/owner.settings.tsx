@@ -28,6 +28,8 @@ interface RestaurantDTO {
   effective_per_transaction_fee?: string | number;
   effective_subscription_fee_per_month?: string | number;
   effective_sms_per_usage?: string | number;
+  due_threshold?: string | number | null;
+  effective_due_threshold?: string | number;
   subscription_start: string | null;
   subscription_end: string | null;
 }
@@ -272,10 +274,19 @@ function SettingsPage() {
               )}
             </p>
             <p className="text-sm text-text-muted">
-              Due alert threshold:{" "}
+              Due alert threshold (effective):{" "}
               <span className="font-medium text-foreground">
-                {pd != null ? `₹${Number(pd.due_threshold).toLocaleString()}` : "—"}
+                ₹{Number(restaurant.effective_due_threshold ?? pd?.due_threshold ?? 0).toLocaleString()}
               </span>
+              {restaurant.due_threshold != null ? (
+                <span className="block mt-1 text-xs">Custom cap for this restaurant; global default is not used.</span>
+              ) : (
+                <span className="block mt-1 text-xs">
+                  {pd != null
+                    ? `Uses platform default (₹${Number(pd.due_threshold).toLocaleString()}) until a custom cap is set.`
+                    : null}
+                </span>
+              )}
             </p>
             <p className="text-sm text-text-muted">
               SMS cost per successful billable SMS (effective):{" "}

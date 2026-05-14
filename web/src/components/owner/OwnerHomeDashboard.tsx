@@ -1046,9 +1046,11 @@ export function OwnerHomeDashboard() {
     if (restaurantId == null) return null;
     if (compareAllVenues && multiVenue) return null;
     const pd = platformDefaults as PlatformDefaultsDTO | undefined;
-    const threshold = pd != null ? Number(pd.due_threshold) : NaN;
+    const r = (restaurants as { id: number; due_balance?: string | number; effective_due_threshold?: string | number }[]).find(
+      (x) => x.id === restaurantId,
+    );
+    const threshold = r != null ? Number(r.effective_due_threshold ?? pd?.due_threshold ?? NaN) : NaN;
     if (!Number.isFinite(threshold) || threshold <= 0) return null;
-    const r = (restaurants as { id: number; due_balance?: string | number }[]).find((x) => x.id === restaurantId);
     const due = r != null ? Number(r.due_balance ?? 0) : NaN;
     if (!Number.isFinite(due) || due < threshold) return null;
     return { due, threshold };

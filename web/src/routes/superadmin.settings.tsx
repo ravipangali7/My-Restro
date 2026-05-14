@@ -119,8 +119,8 @@ function SettingsPage() {
               className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
             />
             <p className="mt-1 text-xs text-text-muted">
-              When a restaurant&apos;s due balance reaches or exceeds this amount (and the threshold is greater than
-              zero), the venue is set inactive: it disappears from the customer portal until dues are cleared.
+              Global default when a venue has no custom due auto-suspend cap. If a restaurant has its own due threshold set on
+              the restaurant record, that value is used instead for that venue.
             </p>
           </div>
           <div>
