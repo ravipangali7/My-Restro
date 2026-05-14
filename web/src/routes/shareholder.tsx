@@ -16,18 +16,27 @@ const sidebarItems = [
   { title: "Profile", to: "/shareholder/profile", icon: User },
 ];
 
+/** Mobile bottom bar: same hub pattern as owner portal (five tabs, center elevated). Icons unchanged from prior shareholder tabs. */
 const bottomTabs = [
-  { title: "Dashboard", to: "/shareholder", icon: LayoutDashboard },
-  { title: "Withdrawals", to: "/shareholder/withdrawals", icon: Wallet },
+  { title: "Home", to: "/shareholder", icon: LayoutDashboard },
   { title: "Transactions", to: "/shareholder/transactions", icon: ArrowLeftRight },
+  { title: "Withdrawals", to: "/shareholder/withdrawals", icon: Wallet },
   { title: "Notifications", to: "/shareholder/notifications", icon: Bell },
   { title: "Profile", to: "/shareholder/profile", icon: User },
 ];
 
+const shareholderBottomNavFeaturedTo = "/shareholder/withdrawals" as const;
+
 function ShareholderLayout() {
   return (
     <PortalGate allow={["shareholder"]}>
-      <DashboardLayout title="Shareholder Portal" sidebarItems={sidebarItems} bottomTabs={bottomTabs}>
+      <DashboardLayout
+        title="Shareholder Portal"
+        sidebarItems={sidebarItems}
+        bottomTabs={bottomTabs}
+        bottomNavFeaturedTo={shareholderBottomNavFeaturedTo}
+        bottomNavFeaturedIcon="tab"
+      >
         <Outlet />
       </DashboardLayout>
     </PortalGate>

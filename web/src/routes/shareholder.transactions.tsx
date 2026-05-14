@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { ArrowLeftRight } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants, useTransactions, useWithdrawals } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurantScope } from "@/lib/restaurant-context";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/shareholder/transactions")({
   component: ShareholderTransactions,
@@ -45,6 +46,19 @@ type WithdrawalRow = {
 };
 
 type FlowFilter = "all" | "in" | "out";
+
+function formatWhen(iso?: string) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
+
+function categoryLabel(cat: string) {
+  return String(cat).replace(/_/g, " ");
+}
 
 function ShareholderTransactions() {
   const { user } = useAuth();
@@ -90,8 +104,8 @@ function ShareholderTransactions() {
       <div className="space-y-2">
         <h2 className="font-display font-semibold text-lg text-foreground">Transactions</h2>
         <p className="text-sm text-text-muted">
-          Restaurant activity is available when your account is linked to a restaurant (for example as an owner). Platform-wide
-          history is available for super administrators with a shareholder seat.
+          Restaurant activity is available when your account is linked to a restaurant (for example as an owner).
+          Platform-wide history is available for super administrators with a shareholder seat.
         </p>
       </div>
     );
@@ -107,99 +121,118 @@ function ShareholderTransactions() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-1">{title}</h2>
-      <p className="text-sm text-text-muted mb-4">{subtitle}</p>
-
-      <div className="flex gap-2 mb-4">
-        {(["all", "in", "out"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setFlowFilter(t)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
-              flowFilter === t ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary hover:bg-primary-50"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+        <div>
+          <h2 className="font-display font-semibold text-lg text-foreground">{title}</h2>
+          <p className="text-[11px] text-text-muted mt-0.5 max-w-prose">{subtitle}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          {(["all", "in", "out"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setFlowFilter(t)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-[11px] font-semibold capitalize transition-colors",
+                flowFilter === t
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-alt text-text-secondary hover:bg-accent/50",
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {myPendingWithdrawals.length > 0 && (
-        <section className="mb-8">
-          <h3 className="font-display font-semibold text-base text-foreground mb-2">Pending withdrawal requests</h3>
-          <p className="text-sm text-text-muted mb-3">
+        <section className="mb-6">
+          <h3 className="font-semibold text-sm text-foreground mb-2">Pending withdrawal requests</h3>
+          <p className="text-xs text-text-secondary mb-3">
             These requests are awaiting review. Your balance is unchanged until a request is approved.
           </p>
-          <DataTable
-            columns={[
-              { header: "Requested", accessor: (w) => (w.created_at ? new Date(w.created_at).toLocaleString() : "—") },
-              { header: "Amount", accessor: (w) => `₹${Number(w.amount).toLocaleString()}` },
-              { header: "Status", accessor: (w) => <StatusBadge status={w.status} /> },
-              { header: "Note", accessor: (w) => w.remarks || "—" },
-            ]}
-            data={myPendingWithdrawals}
-          />
+          <div className="space-y-2">
+            {myPendingWithdrawals.map((w) => (
+              <div
+                key={w.id}
+                className="rounded-xl border transition-colors bg-primary-50 border-primary/30"
+              >
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-2 min-w-0">
+                    <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">
+                      ₹{Number(w.amount).toLocaleString()}
+                    </p>
+                    <StatusBadge status={w.status} />
+                  </div>
+                  <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
+                  <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
+                    {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
+                    {w.remarks?.trim() || "—"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
-      <section>
-        <h3 className="font-display font-semibold text-base text-foreground mb-2">Ledger transactions</h3>
+      <section className="rounded-xl border border-border bg-card p-3 sm:p-4">
+        <h3 className="font-semibold text-sm text-foreground mb-3">Ledger transactions</h3>
         {filtered.length === 0 ? (
-          <p className="text-sm text-text-muted py-8 text-center rounded-xl border border-dashed border-border">
-            No ledger transactions in this view yet.
-          </p>
+          <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
+            <ArrowLeftRight className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
+            <p className="text-sm text-text-muted">No ledger transactions in this view yet.</p>
+          </div>
         ) : (
-          <DataTable
-            columns={[
-              {
-                header: "Date",
-                accessor: (t) =>
-                  t.created_at ? new Date(t.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—",
-              },
-              { header: "Restaurant", accessor: (t) => restName(t.restaurant) },
-              { header: "Per-txn fee", accessor: (t) => perTxnFee(t) },
-              {
-                header: "Amount",
-                accessor: (t) => {
-                  const n = Number(t.amount);
-                  const sign = t.transaction_type === "out" ? "−" : t.transaction_type === "in" ? "+" : "";
-                  return `${sign}₹${n.toLocaleString()}`;
-                },
-              },
-              { header: "Status", accessor: (t) => <StatusBadge status={t.payment_status} /> },
-              { header: "Type", accessor: (t) => <StatusBadge status={t.transaction_type} /> },
-              {
-                header: "Category",
-                accessor: (t) => (
-                  <span className="capitalize text-sm">{String(t.category).replace(/_/g, " ")}</span>
-                ),
-              },
-              { header: "Reason", accessor: (t) => t.remarks?.trim() || "—" },
-              {
-                header: "System",
-                accessor: (t) =>
-                  t.is_system ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-info/10 text-info">System</span>
-                  ) : (
-                    <span className="text-xs text-text-muted">Manual</span>
-                  ),
-              },
-              {
-                header: "Actions",
-                accessor: (t) => (
+          <div className="space-y-2">
+            {filtered.map((t) => {
+              const n = Number(t.amount);
+              const sign = t.transaction_type === "out" ? "−" : t.transaction_type === "in" ? "+" : "";
+              const amountLine = `${sign}₹${n.toLocaleString()}`;
+              return (
+                <div key={t.id} className="rounded-xl border border-border bg-card transition-colors">
                   <Link
                     to="/shareholder/transactions/$id"
                     params={{ id: String(t.id) }}
-                    className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
+                    className="block w-full text-left p-3 rounded-xl hover:bg-accent/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                   >
-                    View
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">{amountLine}</p>
+                      <span className="text-[10px] font-medium text-primary shrink-0">View</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <StatusBadge status={t.payment_status} />
+                      <StatusBadge status={t.transaction_type} />
+                      <span className="text-[10px] uppercase tracking-wide text-text-muted px-1.5 py-0.5 rounded-md bg-surface-alt">
+                        {categoryLabel(t.category)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-muted mt-1">{formatWhen(t.created_at)}</p>
+                    <p className="text-xs text-text-secondary mt-1 line-clamp-2">
+                      <span className="font-medium text-foreground">{restName(t.restaurant)}</span>
+                      <span className="text-text-muted"> · </span>
+                      Fee {perTxnFee(t)}
+                      {t.remarks?.trim() ? (
+                        <>
+                          <span className="text-text-muted"> · </span>
+                          {t.remarks.trim()}
+                        </>
+                      ) : null}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      {t.is_system ? (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-info/10 text-info">
+                          System
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-text-muted">Manual</span>
+                      )}
+                    </div>
                   </Link>
-                ),
-              },
-            ]}
-            data={filtered}
-          />
+                </div>
+              );
+            })}
+          </div>
         )}
       </section>
     </>
