@@ -1,15 +1,21 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
-import { DataTable } from "@/components/shared/DataTable";
+import {
+  OwnerEntityCard,
+  OwnerEntityCardStack,
+  ownerListActionClass,
+  ownerListActionDangerClass,
+} from "@/components/owner/OwnerEntityCard";
+import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { slugifyName } from "@/lib/slugify";
 import { useAuth } from "@/lib/auth-context";
-import { Plus } from "lucide-react";
+import { Plus, Store } from "lucide-react";
 
 type R = {
   id: number;
@@ -57,6 +63,7 @@ function syncRestaurantsListAfterUpsert(queryClient: QueryClient, row: R) {
 export const Route = createFileRoute("/superadmin/restaurants")({ component: RestaurantsPage });
 
 function RestaurantsPage() {
+  const navigate = useNavigate();
   const { token, user } = useAuth();
   const queryClient = useQueryClient();
   const { data: restaurants, isLoading } = useRestaurants();
@@ -122,118 +129,141 @@ function RestaurantsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Restaurants</h2>
-        <button
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> Add Restaurant
-        </button>
-      </div>
-      <DataTable
-        columns={[
-          {
-            header: "Logo",
-            accessor: (row) => {
-              const src = resolveMediaUrl((row as R).logo);
-              if (!src) {
-                return <span className="text-text-muted">—</span>;
-              }
-              return (
-                <img
-                  src={src}
-                  alt=""
-                  className="w-9 h-9 rounded-lg object-cover border border-border bg-surface"
-                />
-              );
-            },
-          },
-          { header: "Name", accessor: "name" },
-          { header: "Owner", accessor: (r) => ownerName(r.user) },
-          { header: "Phone", accessor: "phone" },
-          { header: "Slug", accessor: "slug" },
-          {
-            header: "Subscription",
-            accessor: (r) => `${r.subscription_start ?? "—"} — ${r.subscription_end ?? "—"}`,
-          },
-          { header: "Due Balance", accessor: (r) => `₹${Number(r.due_balance).toLocaleString()}` },
-          {
-            header: "Activation",
-            accessor: (r) =>
-              r.is_active === false ? (
-                <StatusBadge status="pending" />
-              ) : (
-                <StatusBadge status="active" />
-              ),
-          },
-          { header: "Open", accessor: (r) => <StatusBadge status={r.is_open ? "open" : "closed"} /> },
-          {
-            header: "Actions",
-            accessor: (r) => (
-              <div className="flex gap-1">
-                <Link
-                  to="/superadmin/restaurants/$id"
-                  params={{ id: String(r.id) }}
-                  className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-                >
-                  View
-                </Link>
-                <button
-                  onClick={() => openEdit(r)}
-                  className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-                >
-                  Edit
-                </button>
-                {isSuperAdmin && r.is_active === false ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!token) return;
-                      try {
-                        const updated = await apiPatch<R>(`/api/restaurants/${r.id}/`, { is_active: true }, token);
-                        await syncRestaurantsListAfterUpsert(queryClient, updated);
-                        void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
-                      } catch {
-                        /* toast optional */
-                      }
-                    }}
-                    className="px-2 py-1 text-xs rounded-lg bg-success/15 text-success font-medium hover:bg-success/25"
-                  >
-                    Approve
-                  </button>
-                ) : null}
-                <button
-                  onClick={() => setSuspendId(String(r.id))}
-                  className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium hover:bg-error/20"
-                >
-                  Suspend
-                </button>
-                {isSuperAdmin ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!token) return;
-                      setDeletingId(r.id);
-                      try {
-                        await apiDelete(`/api/restaurants/${r.id}/`, token);
-                        await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
-                      } finally {
-                        setDeletingId(null);
-                      }
-                    }}
-                    disabled={deletingId === r.id}
-                    className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium disabled:opacity-50"
-                  >
-                    {deletingId === r.id ? "Deleting..." : "Delete"}
-                  </button>
-                ) : null}
-              </div>
-            ),
-          },
-        ]}
-        data={rows}
+      <SuperAdminPageHeader
+        title="Restaurants"
+        description="Locations, billing, subscription windows, and activation status for every venue on the platform."
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+          >
+            <Plus size={14} aria-hidden /> Add restaurant
+          </button>
+        }
       />
+      {rows.length === 0 ? (
+        <SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {rows.map((r) => {
+            const logoSrc = resolveMediaUrl(r.logo);
+            return (
+              <OwnerEntityCard
+                key={r.id}
+                onClick={() => {
+                  void navigate({ to: "/superadmin/restaurants/$id", params: { id: String(r.id) } });
+                }}
+                leading={
+                  logoSrc ? (
+                    <img
+                      src={logoSrc}
+                      alt=""
+                      className="h-12 w-12 rounded-xl border border-border bg-surface object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/10 text-teal-700">
+                      <Store strokeWidth={2} aria-hidden />
+                    </div>
+                  )
+                }
+                title={r.name}
+                subtitle={
+                  <span className="line-clamp-2 text-text-secondary">
+                    <span className="font-medium text-foreground">{ownerName(r.user)}</span>
+                    <span className="text-text-muted"> · </span>
+                    {r.phone}
+                    <span className="text-text-muted"> · </span>/{r.slug}
+                  </span>
+                }
+                meta={
+                  <>
+                    {r.is_active === false ? <StatusBadge status="pending" /> : <StatusBadge status="active" />}
+                    <StatusBadge status={r.is_open ? "open" : "closed"} />
+                    <span className="text-xs font-medium text-text-secondary">
+                      Due ₹{Number(r.due_balance).toLocaleString()}
+                    </span>
+                    <span className="text-xs text-text-muted">
+                      {r.subscription_start ?? "—"} — {r.subscription_end ?? "—"}
+                    </span>
+                  </>
+                }
+                actions={
+                  <>
+                    <Link
+                      to="/superadmin/restaurants/$id"
+                      params={{ id: String(r.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={ownerListActionClass}
+                    >
+                      View
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(r);
+                      }}
+                      className={ownerListActionClass}
+                    >
+                      Edit
+                    </button>
+                    {isSuperAdmin && r.is_active === false ? (
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!token) return;
+                          try {
+                            const updated = await apiPatch<R>(`/api/restaurants/${r.id}/`, { is_active: true }, token);
+                            await syncRestaurantsListAfterUpsert(queryClient, updated);
+                            void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
+                          } catch {
+                            /* toast optional */
+                          }
+                        }}
+                        className={ownerListActionClass}
+                      >
+                        Approve
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSuspendId(String(r.id));
+                      }}
+                      className={ownerListActionDangerClass}
+                    >
+                      Suspend
+                    </button>
+                    {isSuperAdmin ? (
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!token) return;
+                          setDeletingId(r.id);
+                          try {
+                            await apiDelete(`/api/restaurants/${r.id}/`, token);
+                            await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
+                          } finally {
+                            setDeletingId(null);
+                          }
+                        }}
+                        disabled={deletingId === r.id}
+                        className={ownerListActionDangerClass}
+                      >
+                        {deletingId === r.id ? "Deleting…" : "Delete"}
+                      </button>
+                    ) : null}
+                  </>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       <ConfirmModal
         open={!!suspendId}

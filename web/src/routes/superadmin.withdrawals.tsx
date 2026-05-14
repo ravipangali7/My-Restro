@@ -1,26 +1,36 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { Plus, Wallet } from "lucide-react";
+import {
+  OwnerEntityCard,
+  OwnerEntityCardStack,
+  ownerListActionClass,
+  ownerListActionDangerClass,
+} from "@/components/owner/OwnerEntityCard";
+import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useApproveShareholderWithdrawal,
   useRejectShareholderWithdrawal,
   useUsers,
   useWithdrawals,
 } from "@/hooks/use-rest-api";
-import { Plus } from "lucide-react";
 
 type W = { id: number; user: number; amount: number; status: string; remarks: string; reject_reason?: string };
+
+type FilterTab = "all" | "pending" | "approved" | "rejected";
 
 export const Route = createFileRoute("/superadmin/withdrawals")({ component: WithdrawalsPage });
 
 function WithdrawalsPage() {
+  const navigate = useNavigate();
   const { data: withdrawals, isLoading } = useWithdrawals();
   const { data: users } = useUsers();
   const approveMut = useApproveShareholderWithdrawal();
   const rejectMut = useRejectShareholderWithdrawal();
 
-  const [filter, setFilter] = useState<string>("all");
+  const [tab, setTab] = useState<FilterTab>("all");
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
@@ -28,8 +38,7 @@ function WithdrawalsPage() {
   const [editWithdrawal, setEditWithdrawal] = useState<W | null>(null);
 
   const list = (withdrawals as W[] | undefined) ?? [];
-  const filtered = filter === "all" ? list : list.filter((w) => w.status === filter);
-  const filters = ["all", "pending", "approved", "rejected"];
+  const filtered = tab === "all" ? list : list.filter((w) => w.status === tab);
 
   const userName = (uid: number) =>
     (users as { id: number; name: string; phone: string }[] | undefined)?.find((u) => u.id === uid)?.name ?? String(uid);
@@ -68,83 +77,119 @@ function WithdrawalsPage() {
     return <p className="text-sm text-text-muted">Loading…</p>;
   }
 
+  const addButton = (
+    <button
+      type="button"
+      onClick={openAdd}
+      className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+    >
+      <Plus size={14} aria-hidden /> Add withdrawal
+    </button>
+  );
+
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Shareholder Withdrawals</h2>
-        <button
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> Add Withdrawal
-        </button>
-      </div>
-
-      {actionError && <p className="text-sm text-error mb-3">{actionError}</p>}
-
-      <div className="flex gap-2 mb-4">
-        {filters.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
-              filter === f ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary hover:bg-primary-50"
-            }`}
-          >
-            {f} ({f === "all" ? counts.all : counts[f] ?? 0})
-          </button>
-        ))}
-      </div>
-
-      <DataTable
-        columns={[
-          { header: "User", accessor: (w) => userName(w.user) },
-          { header: "Phone", accessor: (w) => userPhone(w.user) },
-          { header: "Amount", accessor: (w) => `₹${Number(w.amount).toLocaleString()}` },
-          { header: "Status", accessor: (w) => <StatusBadge status={w.status} /> },
-          { header: "Remarks", accessor: "remarks" },
-          {
-            header: "Actions",
-            accessor: (w) => (
-              <div className="flex gap-1">
-                <Link
-                  to="/superadmin/withdrawals/$id"
-                  params={{ id: String(w.id) }}
-                  className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-                >
-                  View
-                </Link>
-                <button
-                  onClick={() => openEdit(w)}
-                  className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-                >
-                  Edit
-                </button>
-                {w.status === "pending" && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={approveMut.isPending}
-                      onClick={() => onApprove(w)}
-                      className="px-2 py-1 text-xs rounded-lg bg-success/10 text-success font-medium hover:bg-success/20 disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openReject(w)}
-                      className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium hover:bg-error/20"
-                    >
-                      Reject
-                    </button>
-                  </>
-                )}
-              </div>
-            ),
-          },
-        ]}
-        data={filtered}
+      <SuperAdminPageHeader
+        title="Shareholder withdrawals"
+        description="Review payout requests, approve settlements, or reject with a reason."
+        actions={addButton}
       />
+
+      {actionError ? <p className="mb-3 text-sm text-error">{actionError}</p> : null}
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)} className="mb-4">
+        <TabsList className="w-full max-w-2xl flex-wrap justify-stretch sm:w-auto">
+          {(["all", "pending", "approved", "rejected"] as const).map((t) => (
+            <TabsTrigger key={t} value={t} className="flex-1 capitalize sm:flex-none">
+              {t} ({t === "all" ? counts.all : counts[t] ?? 0})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {filtered.length === 0 ? (
+        <SuperAdminEmptyState>No withdrawals in this view.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {filtered.map((w) => (
+            <OwnerEntityCard
+              key={w.id}
+              onClick={() => {
+                void navigate({ to: "/superadmin/withdrawals/$id", params: { id: String(w.id) } });
+              }}
+              leading={
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Wallet strokeWidth={2} aria-hidden />
+                </div>
+              }
+              title={`₹${Number(w.amount).toLocaleString()}`}
+              subtitle={
+                <span className="line-clamp-2 text-text-secondary">
+                  <span className="font-medium text-foreground">{userName(w.user)}</span>
+                  <span className="text-text-muted"> · </span>
+                  {userPhone(w.user)}
+                  {(w.remarks ?? "").trim() ? (
+                    <>
+                      <span className="text-text-muted"> · </span>
+                      {(w.remarks ?? "").trim()}
+                    </>
+                  ) : (
+                    <span className="text-text-muted"> · No remarks</span>
+                  )}
+                </span>
+              }
+              meta={<StatusBadge status={w.status} />}
+              actions={
+                <>
+                  <Link
+                    to="/superadmin/withdrawals/$id"
+                    params={{ id: String(w.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={ownerListActionClass}
+                  >
+                    View
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(w);
+                    }}
+                    className={ownerListActionClass}
+                  >
+                    Edit
+                  </button>
+                  {w.status === "pending" ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={approveMut.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onApprove(w);
+                        }}
+                        className={ownerListActionClass}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openReject(w);
+                        }}
+                        className={ownerListActionDangerClass}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  ) : null}
+                </>
+              }
+            />
+          ))}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -210,12 +255,14 @@ function WithdrawalsPage() {
             </div>
             <div className="flex gap-3 mt-6">
               <button
+                type="button"
                 onClick={() => setShowForm(false)}
                 className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-text-secondary hover:bg-surface"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => setShowForm(false)}
                 className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-600"
               >

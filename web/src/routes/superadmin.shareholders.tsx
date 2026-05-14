@@ -1,11 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import {
+  OwnerEntityCard,
+  OwnerEntityCardStack,
+  ownerListActionClass,
+} from "@/components/owner/OwnerEntityCard";
+import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { useUsers } from "@/hooks/use-rest-api";
 import { apiPatch, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Plus } from "lucide-react";
+import { Plus, TrendingUp } from "lucide-react";
 
 type UserRow = {
   id: number;
@@ -53,6 +58,7 @@ function syncShareholderCachesAfterSave(queryClient: QueryClient, token: string 
 export const Route = createFileRoute("/superadmin/shareholders")({ component: ShareholdersPage });
 
 function ShareholdersPage() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const { data: allUsers } = useUsers();
@@ -89,57 +95,83 @@ function ShareholdersPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Shareholders</h2>
-        <button
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> Add Shareholder
-        </button>
-      </div>
-      <DataTable
-        columns={[
-          {
-            header: "Photo",
-            accessor: (u) => {
-              const src = resolveMediaUrl(u.image);
-              return src ? (
-                <img src={src} alt="" className="w-9 h-9 rounded-lg object-cover border border-border" />
-              ) : (
-                <span className="text-xs text-text-muted">—</span>
-              );
-            },
-          },
-          { header: "Name", accessor: "name" },
-          { header: "Phone", accessor: "phone" },
-          { header: "Role", accessor: "role" },
-          { header: "Share %", accessor: (u) => `${u.share_percentage}%` },
-          { header: "Balance", accessor: (u) => `₹${Number(u.balance).toLocaleString()}` },
-          { header: "Due Balance", accessor: (u) => `₹${Number(u.due_balance).toLocaleString()}` },
-          {
-            header: "Actions",
-            accessor: (u) => (
-              <div className="flex gap-1">
-                <Link
-                  to="/superadmin/shareholders/$id"
-                  params={{ id: String(u.id) }}
-                  className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-                >
-                  View
-                </Link>
-                <button
-                  onClick={() => openEdit(u)}
-                  className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-                >
-                  Edit
-                </button>
-              </div>
-            ),
-          },
-        ]}
-        data={shareholders}
+      <SuperAdminPageHeader
+        title="Shareholders"
+        description="Platform equity participants drawn from super administrator accounts: share weights and wallet posture."
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+          >
+            <Plus size={14} aria-hidden /> Add shareholder
+          </button>
+        }
       />
+      {shareholders.length === 0 ? (
+        <SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {shareholders.map((u) => {
+            const src = resolveMediaUrl(u.image);
+            return (
+              <OwnerEntityCard
+                key={u.id}
+                onClick={() => {
+                  void navigate({ to: "/superadmin/shareholders/$id", params: { id: String(u.id) } });
+                }}
+                leading={
+                  src ? (
+                    <img src={src} alt="" className="h-12 w-12 rounded-xl border border-border object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-700">
+                      <TrendingUp strokeWidth={2} aria-hidden />
+                    </div>
+                  )
+                }
+                title={u.name}
+                subtitle={
+                  <span className="text-text-secondary">
+                    {u.phone} · {u.share_percentage}% share
+                  </span>
+                }
+                meta={
+                  <>
+                    <span className="rounded-full bg-surface-alt px-2 py-0.5 text-xs font-medium text-text-secondary">
+                      {u.role}
+                    </span>
+                    <span className="text-xs text-text-secondary">
+                      Bal ₹{Number(u.balance).toLocaleString()} · Due ₹{Number(u.due_balance).toLocaleString()}
+                    </span>
+                  </>
+                }
+                actions={
+                  <>
+                    <Link
+                      to="/superadmin/shareholders/$id"
+                      params={{ id: String(u.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={ownerListActionClass}
+                    >
+                      View
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(u);
+                      }}
+                      className={ownerListActionClass}
+                    >
+                      Edit
+                    </button>
+                  </>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

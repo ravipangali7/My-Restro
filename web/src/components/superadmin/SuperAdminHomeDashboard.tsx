@@ -21,7 +21,6 @@ import {
   Bell,
   Building2,
   ChevronRight,
-  LayoutDashboard,
   Settings,
   Store,
   TrendingUp,
@@ -30,6 +29,7 @@ import {
 } from "lucide-react";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   useBulkNotifications,
@@ -410,17 +410,10 @@ export function SuperAdminHomeDashboard() {
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-primary">
-          <LayoutDashboard className="size-5" aria-hidden />
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Super admin</p>
-        </div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Control center</h2>
-        <p className="max-w-3xl text-sm leading-relaxed text-text-secondary">
-          Cross-tenant snapshot of every module in the sidebar: KPIs, charts, quick navigation, and five-row previews with
-          See All for full lists.
-        </p>
-      </div>
+      <SuperAdminPageHeader
+        title="Dashboard"
+        description="Cross-tenant snapshot of KPIs, charts, module shortcuts, and live previews aligned with each list page in the sidebar."
+      />
 
       <section className="space-y-5">
         <SectionHeader

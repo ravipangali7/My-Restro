@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { Bell } from "lucide-react";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { SuperAdminEmptyState, SuperAdminPageHeader, SuperAdminPanel } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useBulkNotifications, useCreateSuperadminBulkNotification, useUsers } from "@/hooks/use-rest-api";
 
@@ -128,13 +130,14 @@ function NotificationsPage() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-4">Bulk Notifications</h2>
+      <SuperAdminPageHeader
+        title="Bulk notifications"
+        description="Send SMS or push campaigns to scoped audiences, then review delivery history below."
+      />
 
-      <form
-        onSubmit={onSubmit}
-        className="bg-card rounded-xl border border-border p-5 mb-6"
-      >
-        <h3 className="font-display font-semibold text-md text-foreground mb-4">Send Notification</h3>
+      <SuperAdminPanel className="mb-6">
+        <form onSubmit={onSubmit}>
+          <h3 className="font-display font-semibold text-base text-foreground mb-4">Send notification</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-text-secondary mb-1.5 block">Type</label>
@@ -252,44 +255,52 @@ function NotificationsPage() {
           disabled={createBulk.isPending}
           className="mt-4 h-11 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 transition-all disabled:opacity-60"
         >
-          {createBulk.isPending ? "Sending…" : "Send Notification"}
+          {createBulk.isPending ? "Sending…" : "Send notification"}
         </button>
-      </form>
+        </form>
+      </SuperAdminPanel>
 
-      <h3 className="font-display font-semibold text-md text-foreground mb-3">Notification History</h3>
-      <DataTable
-        columns={[
-          { header: "Restaurant", accessor: (n) => n.restaurant_name ?? "—" },
-          { header: "Message", accessor: (n) => <span className="text-sm line-clamp-2">{n.message}</span> },
-          { header: "Type", accessor: (n) => <StatusBadge status={n.type} /> },
-          {
-            header: "Receivers",
-            accessor: (n) => {
+      <SuperAdminPanel>
+        <h3 className="font-display font-semibold text-base text-foreground mb-4">Notification history</h3>
+        {rows.length === 0 ? (
+          <SuperAdminEmptyState>No bulk campaigns yet.</SuperAdminEmptyState>
+        ) : (
+          <OwnerEntityCardStack>
+            {rows.map((n) => {
               const count = Array.isArray(n.receivers) ? n.receivers.length : 0;
-              const label =
+              const receiverLabel =
                 count === 0 && n.restaurant == null
                   ? "All platform users"
                   : count === 0
                     ? "All staff"
                     : `${count} selected`;
-              return <span className="text-xs text-text-muted">{label}</span>;
-            },
-          },
-          {
-            header: "Actions",
-            accessor: (n) => (
-              <Link
-                to="/superadmin/notifications/$id"
-                params={{ id: String(n.id) }}
-                className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-              >
-                View
-              </Link>
-            ),
-          },
-        ]}
-        data={rows}
-      />
+              return (
+                <OwnerEntityCard
+                  key={n.id}
+                  leading={
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-700">
+                      <Bell strokeWidth={2} aria-hidden />
+                    </div>
+                  }
+                  title={n.restaurant_name ?? "Platform-wide"}
+                  subtitle={<span className="line-clamp-3 text-text-secondary">{n.message}</span>}
+                  meta={
+                    <>
+                      <StatusBadge status={n.type} />
+                      <span className="text-xs text-text-muted">{receiverLabel}</span>
+                    </>
+                  }
+                  actions={
+                    <Link to="/superadmin/notifications/$id" params={{ id: String(n.id) }} className={ownerListActionClass}>
+                      View campaign
+                    </Link>
+                  }
+                />
+              );
+            })}
+          </OwnerEntityCardStack>
+        )}
+      </SuperAdminPanel>
     </>
   );
 }

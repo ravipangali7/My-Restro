@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { SuperAdminPageHeader, SuperAdminPanel } from "@/components/superadmin/super-admin-ui";
 import { useSuperSettings, useUpdateSuperSettings } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
 import type { SuperSettingsDTO } from "@/lib/super-settings-cache";
@@ -69,10 +70,14 @@ function SettingsPage() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-4">Platform Settings</h2>
-      <form onSubmit={onSubmit} className="bg-card rounded-xl border border-border p-5 max-w-lg">
-        <h3 className="font-display font-semibold text-md text-foreground mb-4">Super Settings</h3>
-        <div className="space-y-4">
+      <SuperAdminPageHeader
+        title="Platform settings"
+        description="Default fees, SMS rates, due thresholds, and the QR owners use when settling platform balances."
+      />
+      <SuperAdminPanel className="max-w-2xl">
+        <form onSubmit={onSubmit}>
+          <h3 className="font-display font-semibold text-base text-foreground mb-4">Super settings</h3>
+          <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-text-secondary mb-1.5 block">Subscription Fee / Month (₹)</label>
             <input
@@ -184,14 +189,15 @@ function SettingsPage() {
             {errMsg}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={update.isPending}
-          className="mt-6 h-11 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 transition-all disabled:opacity-60"
-        >
-          {update.isPending ? "Saving…" : "Save Settings"}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={update.isPending}
+            className="mt-6 h-11 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 transition-all disabled:opacity-60"
+          >
+            {update.isPending ? "Saving…" : "Save settings"}
+          </button>
+        </form>
+      </SuperAdminPanel>
     </>
   );
 }

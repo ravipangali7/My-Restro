@@ -1,13 +1,19 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import {
+  OwnerEntityCard,
+  OwnerEntityCardStack,
+  ownerListActionClass,
+  ownerListActionDangerClass,
+} from "@/components/owner/OwnerEntityCard";
+import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Plus } from "lucide-react";
+import { Plus, UsersRound } from "lucide-react";
 
 type StaffPlacement = {
   restaurant_id: number;
@@ -41,6 +47,7 @@ function syncUsersListAfterCreate(queryClient: QueryClient, created: UserRow) {
 export const Route = createFileRoute("/superadmin/users")({ component: UsersPage });
 
 function UsersPage() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const { data: restaurants } = useRestaurants();
@@ -84,120 +91,120 @@ function UsersPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Users</h2>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> Add User
-        </button>
-      </div>
-
-      <DataTable
-        columns={[
-          {
-            header: "Photo",
-            accessor: (u) => {
-              const src = resolveMediaUrl(u.image);
-              return src ? (
-                <img src={src} alt="" className="w-9 h-9 rounded-lg object-cover border border-border" />
-              ) : (
-                <span className="text-xs text-text-muted">—</span>
-              );
-            },
-          },
-          { header: "Name", accessor: "name" },
-          { header: "Phone", accessor: "phone" },
-          { header: "Role", accessor: (u) => <StatusBadge status={u.role} /> },
-          {
-            header: "Staff position",
-            accessor: (u) => {
-              const placements = u.staff_placements ?? [];
-              if (u.role !== "staff" || placements.length === 0) {
-                return <span className="text-xs text-text-muted">—</span>;
-              }
-              return (
-                <div className="flex flex-col gap-1 items-start">
-                  {placements.map((p) => (
-                    <StatusBadge key={`${p.restaurant_id}-${p.staff_role}`} status={p.staff_role} />
-                  ))}
-                </div>
-              );
-            },
-          },
-          {
-            header: "Restaurant",
-            accessor: (u) => {
-              const placements = u.staff_placements ?? [];
-              if (u.role !== "staff" || placements.length === 0) {
-                return <span className="text-xs text-text-muted">—</span>;
-              }
-              return (
-                <div className="flex flex-col gap-1 text-xs text-foreground">
-                  {placements.map((p) => (
-                    <span key={`${p.restaurant_id}-r`}>{p.restaurant_name}</span>
-                  ))}
-                </div>
-              );
-            },
-          },
-          {
-            header: "Shareholder",
-            accessor: (u) => (
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  u.is_shareholder ? "bg-success/10 text-success" : "bg-surface-alt text-text-muted"
-                }`}
-              >
-                {u.is_shareholder ? "Yes" : "No"}
-              </span>
-            ),
-          },
-          { header: "Balance", accessor: (u) => `₹${Number(u.balance).toLocaleString()}` },
-          { header: "Due Balance", accessor: (u) => `₹${Number(u.due_balance).toLocaleString()}` },
-          {
-            header: "Actions",
-            accessor: (u) => (
-              <div className="flex gap-1">
-                <Link
-                  to="/superadmin/users/$id"
-                  params={{ id: String(u.id) }}
-                  className="px-2 py-1 text-xs rounded-lg bg-primary-50 text-primary font-medium hover:bg-primary-100"
-                >
-                  View
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => openEdit(u)}
-                  className="px-2 py-1 text-xs rounded-lg bg-info/10 text-info font-medium hover:bg-info/20"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!token) return;
-                    setDeletingId(u.id);
-                    try {
-                      await apiDelete(`/api/users/${u.id}/`, token);
-                      await queryClient.invalidateQueries({ queryKey: ["users"] });
-                    } finally {
-                      setDeletingId(null);
-                    }
-                  }}
-                  disabled={deletingId === u.id}
-                  className="px-2 py-1 text-xs rounded-lg bg-error/10 text-error font-medium disabled:opacity-50"
-                >
-                  {deletingId === u.id ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            ),
-          },
-        ]}
-        data={users}
+      <SuperAdminPageHeader
+        title="Users"
+        description="Owners, staff, customers, shareholder flags, and wallet balances across the directory."
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+          >
+            <Plus size={14} aria-hidden /> Add user
+          </button>
+        }
       />
+
+      {users.length === 0 ? (
+        <SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {users.map((u) => {
+            const src = resolveMediaUrl(u.image);
+            const placements = u.staff_placements ?? [];
+            return (
+              <OwnerEntityCard
+                key={u.id}
+                onClick={() => {
+                  void navigate({ to: "/superadmin/users/$id", params: { id: String(u.id) } });
+                }}
+                leading={
+                  src ? (
+                    <img src={src} alt="" className="h-12 w-12 rounded-xl border border-border object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <UsersRound strokeWidth={2} aria-hidden />
+                    </div>
+                  )
+                }
+                title={u.name}
+                subtitle={
+                  <span className="text-text-secondary">
+                    {u.phone}
+                    {u.role === "staff" && placements.length > 0 ? (
+                      <span className="text-text-muted">
+                        {" "}
+                        ·{" "}
+                        {placements.map((p) => p.restaurant_name).join(", ")}
+                      </span>
+                    ) : null}
+                  </span>
+                }
+                meta={
+                  <>
+                    <StatusBadge status={u.role} />
+                    {u.role === "staff" && placements.length > 0
+                      ? placements.map((p) => (
+                          <StatusBadge key={`${p.restaurant_id}-${p.staff_role}`} status={p.staff_role} />
+                        ))
+                      : null}
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        u.is_shareholder ? "bg-success/10 text-success" : "bg-surface-alt text-text-muted"
+                      }`}
+                    >
+                      {u.is_shareholder ? "Shareholder" : "Not shareholder"}
+                    </span>
+                    <span className="text-xs text-text-secondary">
+                      Bal ₹{Number(u.balance).toLocaleString()} · Due ₹{Number(u.due_balance).toLocaleString()}
+                    </span>
+                  </>
+                }
+                actions={
+                  <>
+                    <Link
+                      to="/superadmin/users/$id"
+                      params={{ id: String(u.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={ownerListActionClass}
+                    >
+                      View
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(u);
+                      }}
+                      className={ownerListActionClass}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!token) return;
+                        setDeletingId(u.id);
+                        try {
+                          await apiDelete(`/api/users/${u.id}/`, token);
+                          await queryClient.invalidateQueries({ queryKey: ["users"] });
+                        } finally {
+                          setDeletingId(null);
+                        }
+                      }}
+                      disabled={deletingId === u.id}
+                      className={ownerListActionDangerClass}
+                    >
+                      {deletingId === u.id ? "Deleting…" : "Delete"}
+                    </button>
+                  </>
+                }
+              />
+            );
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
