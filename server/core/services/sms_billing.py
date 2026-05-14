@@ -1,4 +1,4 @@
-"""Bill platform SMS usage (OTP): owner OTP uses the global rate; staff and order SMS use the venue effective rate."""
+"""Bill platform SMS usage: OTP flows and order-status texts to customers (Twilio success → due balance)."""
 
 from __future__ import annotations
 
@@ -94,7 +94,7 @@ def record_restaurant_order_status_sms_charge(
     order_id: str,
     old_status: str,
     new_status: str,
-    created_by=None,
+    created_by_id: int | None = None,
 ) -> None:
     """After a successful order-status SMS, add the effective SMS rate to the restaurant's due balance."""
     restaurant = Restaurant.objects.select_for_update().get(pk=restaurant_id)
@@ -106,9 +106,18 @@ def record_restaurant_order_status_sms_charge(
     remarks = f"SMS — order {order_id} {old_status}->{new_status} @ {rate_q} ea"
     if len(remarks) > 255:
         remarks = remarks[:255]
+    remarks_prefix = f"SMS — order {order_id} {old_status}->{new_status}"
+    if Transaction.objects.filter(
+        restaurant_id=restaurant_id,
+        category=TransactionCategory.SMS_USAGE,
+        is_system=True,
+        remarks__startswith=remarks_prefix[:255],
+    ).exists():
+        return
+
     Transaction.objects.create(
         restaurant=restaurant,
-        created_by=created_by,
+        created_by_id=created_by_id,
         amount=rate,
         payment_status=PaymentStatus.SUCCESS,
         remarks=remarks,

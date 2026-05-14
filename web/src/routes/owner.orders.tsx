@@ -84,7 +84,11 @@ function OrdersPage() {
 
   return (
     <>
-      <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Orders</h2>
+      <h2 className="mb-1 font-display text-lg font-semibold text-foreground">Orders</h2>
+      <p className="mb-4 text-xs text-text-muted max-w-2xl">
+        Status changes notify the customer by SMS when a phone is available; each successful SMS is billed to this
+        restaurant per platform settings.
+      </p>
       {errMsg && <p className="mb-2 text-sm text-error">{errMsg}</p>}
       {isLoading && <p className="mb-4 text-sm text-text-muted">Loading orders…</p>}
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">

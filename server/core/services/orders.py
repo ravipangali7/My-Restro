@@ -13,6 +13,7 @@ from core.models import (
     PaymentStatus,
     ProductItem,
     Staff,
+    User,
 )
 from core.services.exceptions import ValidationError
 from core.services.geo import haversine_distance_km
@@ -235,10 +236,15 @@ def transition_order_status(
     *,
     reject_reason: str = "",
     consume_inventory_when_ready: bool = True,
+    status_changed_by: User | None = None,
 ) -> Order:
     """
     Update order status. When moving to ``ready``, optionally consume raw materials.
     Rejection sets reject_reason and does not consume stock.
+
+    On any real status change, schedules customer SMS (Twilio) + in-app side effects after commit;
+    successful SMS is billed to the restaurant. ``status_changed_by`` is stored on the SMS ledger row
+    when present (owner, kitchen, or waiter who triggered the transition).
     """
     if new_status not in {c[0] for c in OrderStatus.choices}:
         raise ValidationError(f"Invalid order status: {new_status!r}.")
@@ -273,11 +279,17 @@ def transition_order_status(
 
     if old != new_status:
         oid, old_s, new_s = order.pk, old, new_status
+        actor_pk = getattr(status_changed_by, "pk", None)
 
         def _customer_side_effects() -> None:
             from core.services.order_status_customer_notify import run_order_status_change_customer_side_effects
 
-            run_order_status_change_customer_side_effects(order_id=oid, old_status=old_s, new_status=new_s)
+            run_order_status_change_customer_side_effects(
+                order_id=oid,
+                old_status=old_s,
+                new_status=new_s,
+                actor_user_id=actor_pk,
+            )
 
         transaction.on_commit(_customer_side_effects)
 

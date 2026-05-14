@@ -1,4 +1,9 @@
-"""SMS + in-app push when an order status changes (post-commit; Twilio success bills the restaurant)."""
+"""SMS + in-app push when an order status changes (post-commit).
+
+Owner and kitchen/waiter flows all use ``POST /api/orders/:id/transition-status/``, which calls
+``transition_order_status`` and schedules this module on commit. When Twilio successfully sends the
+status SMS, the venue is billed via ``record_restaurant_order_status_sms_charge`` (SMS_USAGE + due balance).
+"""
 
 from __future__ import annotations
 
@@ -28,12 +33,19 @@ def _order_customer_notify_receivers(order: Order) -> list[str]:
 
 
 def _order_customer_sms_phone(order: Order) -> str:
+    """
+    Prefer the linked customer's profile phone; if missing, fall back to the order's guest phone
+    (covers logged-in customers who supplied a contact number on the order).
+    """
+    guest = (order.guest_customer_phone or "").strip()
     if order.customer_id and order.customer is not None:
         raw = (order.customer.phone or "").strip()
         if raw:
             return normalize_phone(raw)
-    raw = (order.guest_customer_phone or "").strip()
-    return normalize_phone(raw) if raw else ""
+        if guest:
+            return normalize_phone(guest)
+        return ""
+    return normalize_phone(guest) if guest else ""
 
 
 def _sms_body(order: Order, new_status: str) -> str:
@@ -64,6 +76,7 @@ def run_order_status_change_customer_side_effects(
     order_id: int,
     old_status: str,
     new_status: str,
+    actor_user_id: int | None = None,
 ) -> None:
     """
     Called via ``transaction.on_commit`` after a successful status transition.
@@ -93,6 +106,7 @@ def run_order_status_change_customer_side_effects(
                     order_id=order.order_id,
                     old_status=old_status,
                     new_status=new_status,
+                    created_by_id=actor_user_id,
                 )
             except Exception:
                 logger.exception("order_status SMS billing failed order_id=%s", order_id)

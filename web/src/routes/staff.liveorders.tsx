@@ -442,12 +442,16 @@ function LiveOrders() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
         <h2 className="font-display font-semibold text-lg text-foreground">Live Orders</h2>
         {isFetching && !isLoading ? (
           <span className="text-xs font-medium text-text-muted">Refreshing…</span>
         ) : null}
       </div>
+      <p className="mb-4 text-xs text-text-muted max-w-2xl">
+        Moving a card notifies the customer by SMS when a phone is on the order; each successful SMS is billed to this
+        restaurant per platform settings.
+      </p>
       {errMsg && <p className="text-sm text-error mb-2">{errMsg}</p>}
       {isLoading && <p className="text-sm text-text-muted mb-4">Loading…</p>}
       {!isLoading && (

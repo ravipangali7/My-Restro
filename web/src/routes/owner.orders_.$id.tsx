@@ -206,6 +206,10 @@ function OrderViewPage() {
       <ViewSection title="Order Details">
         <div className="mb-4 p-3 rounded-xl border border-border bg-surface">
           <p className="text-xs text-text-secondary mb-2">Update Order Status</p>
+          <p className="text-xs text-text-muted mb-3 max-w-xl">
+            The customer receives an SMS on each successful status change when a phone is available; SMS usage is billed to
+            this restaurant.
+          </p>
           <div className="flex flex-wrap gap-2">
             {actions.map((action) => (
               <button

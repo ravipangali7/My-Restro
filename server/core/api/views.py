@@ -262,6 +262,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 st,
                 reject_reason=ser.validated_data.get("reject_reason") or "",
                 consume_inventory_when_ready=ser.validated_data.get("consume_inventory_when_ready", True),
+                status_changed_by=user,
             )
         except InsufficientStockError as exc:
             return Response(
