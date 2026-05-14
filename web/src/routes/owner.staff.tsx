@@ -1,11 +1,11 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useCreateOwnerStaffNotification, useOwnerStaffByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
-import { STAFF_PATH } from "@/lib/portal-routes";
+import { STAFF_NOTIFICATION_LINK_OPTIONS, STAFF_PATH } from "@/lib/portal-routes";
 import { Bell, MapPin, Plus, Users } from "lucide-react";
 
 type StaffRow = {
@@ -22,6 +22,10 @@ type StaffRow = {
   is_suspend: boolean;
 };
 
+type StaffRowResolved = StaffRow & { restaurant: number };
+
+const ALL_KEY = "all" as const;
+
 export const Route = createFileRoute("/owner/staff")({ component: StaffPage });
 
 function StaffPage() {
@@ -30,18 +34,41 @@ function StaffPage() {
   const isBaseRoute = pathname === "/owner/staff";
   const isFormRoute = pathname === "/owner/staff/new";
 
-  const { restaurantIds, restaurantId: scopeRestaurantId } = useRestaurantScope();
+  const { restaurantIds } = useRestaurantScope();
   const { data: restaurantsRaw = [] } = useRestaurants();
   const restaurants = restaurantsRaw as { id: number; name: string }[];
   const { sections, isPending } = useOwnerStaffByRestaurant();
   const createStaffNotif = useCreateOwnerStaffNotification();
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyRestaurantKey, setNotifyRestaurantKey] = useState<typeof ALL_KEY | number>(ALL_KEY);
+  const [notifyRecipientStaffId, setNotifyRecipientStaffId] = useState<typeof ALL_KEY | number>(ALL_KEY);
+  const [notifyChannel, setNotifyChannel] = useState<"app" | "sms">("app");
   const [notifyTitle, setNotifyTitle] = useState("");
   const [notifyMessage, setNotifyMessage] = useState("");
-  const [notifyLink, setNotifyLink] = useState<string>(STAFF_PATH.home);
+  const [notifyLinkPath, setNotifyLinkPath] = useState<string>(STAFF_PATH.home);
   const [notifyError, setNotifyError] = useState<string | null>(null);
 
   const restaurantLabel = (rid: number) => restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`;
+
+  const allStaffRows: StaffRowResolved[] = useMemo(
+    () =>
+      sections.flatMap((sec) =>
+        ((sec.staff as StaffRow[]) ?? []).map((s) => ({
+          ...s,
+          restaurant: s.restaurant ?? sec.restaurantId,
+        })),
+      ),
+    [sections],
+  );
+
+  const notifyFilteredStaff = useMemo(() => {
+    if (notifyRestaurantKey === ALL_KEY) return allStaffRows;
+    return allStaffRows.filter((s) => s.restaurant === notifyRestaurantKey);
+  }, [allStaffRows, notifyRestaurantKey]);
+
+  useEffect(() => {
+    setNotifyRecipientStaffId(ALL_KEY);
+  }, [notifyRestaurantKey]);
 
   const goToStaff = (s: StaffRow) => {
     void navigate({ to: "/owner/staff/$id", params: { id: String(s.id) } });
@@ -101,6 +128,41 @@ function StaffPage() {
     </OwnerEntityCardStack>
   );
 
+  const restaurantOptions = useMemo(
+    () =>
+      restaurantIds.map((id) => ({
+        id,
+        name: restaurants.find((r) => r.id === id)?.name ?? `Restaurant #${id}`,
+      })),
+    [restaurantIds, restaurants],
+  );
+
+  const sortedNotifyStaff = useMemo(() => {
+    return [...notifyFilteredStaff].sort((a, b) =>
+      (a.user_name || `User #${a.user}`).localeCompare(b.user_name || `User #${b.user}`, undefined, {
+        sensitivity: "base",
+      }),
+    );
+  }, [notifyFilteredStaff]);
+
+  const selectedRecipientRow =
+    notifyRecipientStaffId === ALL_KEY
+      ? null
+      : (notifyFilteredStaff.find((s) => s.id === notifyRecipientStaffId) ?? null);
+
+  const canSendNotify =
+    notifyMessage.trim().length > 0 &&
+    (notifyRecipientStaffId !== ALL_KEY ? selectedRecipientRow != null : notifyFilteredStaff.length > 0);
+
+  const resetNotifyForm = () => {
+    setNotifyRestaurantKey(ALL_KEY);
+    setNotifyRecipientStaffId(ALL_KEY);
+    setNotifyChannel("app");
+    setNotifyTitle("");
+    setNotifyMessage("");
+    setNotifyLinkPath(STAFF_PATH.home);
+  };
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -110,9 +172,10 @@ function StaffPage() {
             type="button"
             onClick={() => {
               setNotifyError(null);
+              resetNotifyForm();
               setNotifyOpen(true);
             }}
-            disabled={restaurantIds.length === 0 || scopeRestaurantId == null}
+            disabled={restaurantIds.length === 0}
             className="h-10 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-sm hover:bg-accent/60 flex items-center gap-1.5 disabled:opacity-50"
           >
             <Bell size={14} /> Notify team
@@ -134,15 +197,87 @@ function StaffPage() {
           onClick={() => setNotifyOpen(false)}
         >
           <div
-            className="relative w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-display font-semibold text-base text-foreground mb-1">Notify staff</h3>
             <p className="text-xs text-text-muted mb-4">
-              Sends an in-app notification to every team member at{" "}
-              {scopeRestaurantId != null ? restaurantLabel(scopeRestaurantId) : "this restaurant"}.
+              Choose a restaurant to narrow the list, then send an app notification or SMS to all listed team members
+              or to one person.
             </p>
             <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-restaurant">
+                  Restaurant
+                </label>
+                <select
+                  id="staff-notif-restaurant"
+                  value={notifyRestaurantKey === ALL_KEY ? ALL_KEY : String(notifyRestaurantKey)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNotifyRestaurantKey(v === ALL_KEY ? ALL_KEY : Number(v));
+                  }}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value={ALL_KEY}>All</option>
+                  {restaurantOptions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-recipient">
+                  Send to
+                </label>
+                <select
+                  id="staff-notif-recipient"
+                  value={notifyRecipientStaffId === ALL_KEY ? ALL_KEY : String(notifyRecipientStaffId)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNotifyRecipientStaffId(v === ALL_KEY ? ALL_KEY : Number(v));
+                  }}
+                  disabled={sortedNotifyStaff.length === 0}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
+                >
+                  <option value={ALL_KEY}>All</option>
+                  {sortedNotifyStaff.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.user_name || `User #${s.user}`}
+                      {notifyRestaurantKey === ALL_KEY ? ` — ${restaurantLabel(s.restaurant)}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {sortedNotifyStaff.length === 0 ? (
+                  <p className="mt-1 text-xs text-text-muted">No staff for this restaurant selection.</p>
+                ) : null}
+              </div>
+              <fieldset className="space-y-1.5">
+                <legend className="text-xs font-medium text-text-secondary">Notification type</legend>
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="staff-notif-type"
+                      checked={notifyChannel === "app"}
+                      onChange={() => setNotifyChannel("app")}
+                      className="rounded-full border-border text-primary"
+                    />
+                    App Notification
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="staff-notif-type"
+                      checked={notifyChannel === "sms"}
+                      onChange={() => setNotifyChannel("sms")}
+                      className="rounded-full border-border text-primary"
+                    />
+                    SMS
+                  </label>
+                </div>
+              </fieldset>
               <div>
                 <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-title">
                   Title (optional)
@@ -169,18 +304,25 @@ function StaffPage() {
                   required
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-link">
-                  Opens when tapped (path)
-                </label>
-                <input
-                  id="staff-notif-link"
-                  value={notifyLink}
-                  onChange={(e) => setNotifyLink(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-xs"
-                  placeholder={STAFF_PATH.home}
-                />
-              </div>
+              {notifyChannel === "app" ? (
+                <div>
+                  <label className="text-xs font-medium text-text-secondary" htmlFor="staff-notif-link">
+                    Opens when tapped
+                  </label>
+                  <select
+                    id="staff-notif-link"
+                    value={notifyLinkPath}
+                    onChange={(e) => setNotifyLinkPath(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    {STAFF_NOTIFICATION_LINK_OPTIONS.map((opt) => (
+                      <option key={opt.path} value={opt.path}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
             </div>
             {notifyError ? <p className="mt-2 text-xs text-error">{notifyError}</p> : null}
             <div className="mt-5 flex justify-end gap-2">
@@ -193,21 +335,36 @@ function StaffPage() {
               </button>
               <button
                 type="button"
-                disabled={createStaffNotif.isPending || scopeRestaurantId == null || !notifyMessage.trim()}
+                disabled={createStaffNotif.isPending || !canSendNotify}
                 onClick={async () => {
-                  if (scopeRestaurantId == null) return;
                   setNotifyError(null);
-                  try {
-                    await createStaffNotif.mutateAsync({
-                      restaurant_id: scopeRestaurantId,
-                      title: notifyTitle.trim() || undefined,
-                      message: notifyMessage.trim(),
-                      link: notifyLink.trim() || STAFF_PATH.home,
+                  const message = notifyMessage.trim();
+                  const title = notifyTitle.trim() || undefined;
+                  const link = notifyChannel === "app" ? notifyLinkPath.trim() || STAFF_PATH.home : "";
+                  const type = notifyChannel === "sms" ? ("sms" as const) : ("push" as const);
+                  const bodyBase = { message, title, link, type };
+
+                  const postOne = (restaurant_id: number, receiver_user_ids?: number[]) =>
+                    createStaffNotif.mutateAsync({
+                      restaurant_id,
+                      ...bodyBase,
+                      ...(receiver_user_ids?.length ? { receiver_user_ids } : {}),
                     });
+
+                  try {
+                    if (selectedRecipientRow) {
+                      await postOne(selectedRecipientRow.restaurant, [selectedRecipientRow.user]);
+                    } else if (notifyRestaurantKey === ALL_KEY) {
+                      for (const rid of restaurantIds) {
+                        const hasStaff = allStaffRows.some((s) => s.restaurant === rid);
+                        if (!hasStaff) continue;
+                        await postOne(rid);
+                      }
+                    } else {
+                      await postOne(notifyRestaurantKey);
+                    }
                     setNotifyOpen(false);
-                    setNotifyTitle("");
-                    setNotifyMessage("");
-                    setNotifyLink(STAFF_PATH.home);
+                    resetNotifyForm();
                   } catch (e) {
                     setNotifyError(e instanceof Error ? e.message : "Could not send.");
                   }

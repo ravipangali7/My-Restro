@@ -1018,7 +1018,7 @@ def restaurant_detail(request, pk: int):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_bulk_notification(request):
-    """Owner-only: in-app staff notification (BulkNotification with type push)."""
+    """Owner-only: staff notification by SMS or in-app push (BulkNotification)."""
     actor = request.user
     if getattr(actor, "role", None) != UserRole.OWNER:
         return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
@@ -1034,6 +1034,10 @@ def create_bulk_notification(request):
     message = (request.data.get("message") or "").strip()
     if not message:
         return Response({"detail": "message is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    raw_type = (request.data.get("type") or BulkNotificationType.PUSH).strip().lower()
+    if raw_type not in (BulkNotificationType.SMS, BulkNotificationType.PUSH):
+        return Response({"detail": "type must be sms or push."}, status=status.HTTP_400_BAD_REQUEST)
 
     title = (request.data.get("title") or "").strip()
     link = (request.data.get("link") or "").strip()
@@ -1077,9 +1081,40 @@ def create_bulk_notification(request):
         message=message,
         link=link,
         receivers=receivers,
-        type=BulkNotificationType.PUSH,
+        type=raw_type,
     )
-    return Response(BulkNotificationListSerializer(n, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+    sms_delivery = None
+    if raw_type == BulkNotificationType.SMS:
+        staff_user_ids = list(Staff.objects.filter(restaurant_id=restaurant_id).values_list("user_id", flat=True))
+        if receivers:
+            target_ids = [int(x) for x in receivers]
+            send_qs = User.objects.filter(id__in=target_ids, is_active=True)
+        else:
+            send_qs = User.objects.filter(id__in=staff_user_ids, is_active=True)
+        sms_delivery = {"sent": 0, "skipped_no_phone": 0, "failed": 0}
+        for u in send_qs.only("id", "phone"):
+            phone = (u.phone or "").strip()
+            if not phone:
+                sms_delivery["skipped_no_phone"] += 1
+                continue
+            if send_plain_sms(phone, message):
+                sms_delivery["sent"] += 1
+            else:
+                sms_delivery["failed"] += 1
+
+        sent_ok = sms_delivery["sent"]
+        if sent_ok > 0:
+            setting = get_super_setting()
+            rate = setting.sms_per_usage or Decimal("0.00")
+            if rate > 0:
+                total_charge = rate * Decimal(sent_ok)
+                SuperSetting.objects.filter(pk=setting.pk).update(balance=F("balance") - total_charge)
+
+    data = BulkNotificationListSerializer(n, context={"request": request}).data
+    if sms_delivery is not None:
+        data["sms_delivery"] = sms_delivery
+    return Response(data, status=status.HTTP_201_CREATED)
 
 
 def _parse_superadmin_receiver_ids(request) -> tuple[list[int] | None, Response | None]:

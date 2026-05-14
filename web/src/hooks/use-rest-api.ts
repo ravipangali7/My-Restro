@@ -980,6 +980,7 @@ export function useCreateOwnerStaffNotification() {
       title?: string;
       link?: string;
       receiver_user_ids?: number[];
+      type?: "sms" | "push";
     }) => apiPost<unknown>("/api/bulk-notifications/create/", body, token),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["bulk-notifications"] });

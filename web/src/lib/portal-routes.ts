@@ -18,6 +18,23 @@ export const STAFF_PATH = {
   profile: "/staff/profile",
 } as const;
 
+/** Human-readable labels for owner “notify staff” deep links (values are `STAFF_PATH` routes). */
+export const STAFF_NOTIFICATION_LINK_OPTIONS: readonly { path: string; label: string }[] = [
+  { path: STAFF_PATH.home, label: "Staff home" },
+  { path: STAFF_PATH.cashierDashboard, label: "Cashier dashboard" },
+  { path: STAFF_PATH.menuQr, label: "Menu QR" },
+  { path: STAFF_PATH.pos, label: "POS" },
+  { path: STAFF_PATH.paymentAlerts, label: "Payment alerts" },
+  { path: STAFF_PATH.liveorders, label: "Live orders" },
+  { path: STAFF_PATH.waitingPickup, label: "Waiting pickup" },
+  { path: STAFF_PATH.purchases, label: "Purchases" },
+  { path: STAFF_PATH.expenses, label: "Expenses" },
+  { path: STAFF_PATH.ledger, label: "Ledger" },
+  { path: STAFF_PATH.transactions, label: "Transactions" },
+  { path: STAFF_PATH.notifications, label: "Notifications" },
+  { path: STAFF_PATH.profile, label: "Profile" },
+] as const;
+
 export type StaffPortalRole = "waiter" | "cashier" | "kitchen";
 
 const STAFF_PORTAL_ROLES: StaffPortalRole[] = ["waiter", "cashier", "kitchen"];
