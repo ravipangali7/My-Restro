@@ -2,8 +2,15 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { PortalGate } from "@/components/auth/PortalGate";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
-  LayoutDashboard, Store, UsersRound, TrendingUp, Wallet,
-  ArrowLeftRight, Bell, Settings
+  LayoutDashboard,
+  Store,
+  UsersRound,
+  TrendingUp,
+  Wallet,
+  ArrowLeftRight,
+  Bell,
+  Settings,
+  User,
 } from "lucide-react";
 
 export const Route = createFileRoute("/superadmin")({
@@ -27,17 +34,25 @@ const sidebarItems = [
   { title: "Settings", to: "/superadmin/settings", icon: Settings },
 ];
 
+/** Mobile bottom bar: same five-tab center-hub pattern as owner (`BottomNav` + `featuredIcon="tab"`). */
 const bottomTabs = [
-  { title: "Dashboard", to: "/superadmin", icon: LayoutDashboard },
+  { title: "Home", to: "/superadmin", icon: LayoutDashboard },
   { title: "Restaurants", to: "/superadmin/restaurants", icon: Store },
   { title: "Users", to: "/superadmin/users", icon: UsersRound },
-  { title: "Settings", to: "/superadmin/settings", icon: Settings },
+  { title: "Shareholders", to: "/superadmin/shareholders", icon: TrendingUp },
+  { title: "Profile", to: "/superadmin/profile", icon: User },
 ];
 
 function SuperAdminLayout() {
   return (
     <PortalGate allow={["superadmin"]}>
-      <DashboardLayout title="Super Admin" sidebarItems={sidebarItems} bottomTabs={bottomTabs}>
+      <DashboardLayout
+        title="Super Admin"
+        sidebarItems={sidebarItems}
+        bottomTabs={bottomTabs}
+        bottomNavFeaturedTo="/superadmin/users"
+        bottomNavFeaturedIcon="tab"
+      >
         <Outlet />
       </DashboardLayout>
     </PortalGate>
