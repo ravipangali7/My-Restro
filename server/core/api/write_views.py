@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.api.list_serializers import BulkNotificationListSerializer, RestaurantListSerializer, UserListSerializer
-from core.auth.portal import USER_PHONE_MAX_LEN, normalize_phone, user_can_manage_restaurant
+from core.auth.portal import USER_PHONE_MAX_LEN, parse_local_phone, user_can_manage_restaurant
 from core.serializers.me import UserMeSerializer
 from core.models import (
     BulkNotification,
@@ -81,13 +81,15 @@ def _create_user_response(request):
     if actor_role not in (UserRole.SUPER_ADMIN, UserRole.OWNER):
         return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
 
-    phone = normalize_phone(request.data.get("phone", ""))
+    phone, phone_err = parse_local_phone(request.data.get("phone", ""), required=True)
     name = (request.data.get("name") or "").strip()
     target_role = _parse_target_role(str(request.data.get("role", "")))
 
-    if not phone or not name:
+    if phone_err:
+        return Response({"detail": phone_err}, status=status.HTTP_400_BAD_REQUEST)
+    if not name:
         return Response({"detail": "phone and name are required."}, status=status.HTTP_400_BAD_REQUEST)
-    if len(phone) > USER_PHONE_MAX_LEN:
+    if len(phone or "") > USER_PHONE_MAX_LEN:
         return Response(
             {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -202,10 +204,10 @@ def _patch_user_response(request, pk: int) -> Response:
             if nm:
                 u.name = nm
         if "phone" in data:
-            ph = normalize_phone(str(data.get("phone", "")))
-            if not ph:
-                return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
-            if len(ph) > USER_PHONE_MAX_LEN:
+            ph, ph_err = parse_local_phone(str(data.get("phone", "")), required=True)
+            if ph_err:
+                return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
+            if len(ph or "") > USER_PHONE_MAX_LEN:
                 return Response(
                     {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -230,10 +232,10 @@ def _patch_user_response(request, pk: int) -> Response:
             if nm:
                 u.name = nm
         if "phone" in data:
-            ph = normalize_phone(str(data.get("phone", "")))
-            if not ph:
-                return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
-            if len(ph) > USER_PHONE_MAX_LEN:
+            ph, ph_err = parse_local_phone(str(data.get("phone", "")), required=True)
+            if ph_err:
+                return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
+            if len(ph or "") > USER_PHONE_MAX_LEN:
                 return Response(
                     {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -259,10 +261,10 @@ def _patch_user_response(request, pk: int) -> Response:
             if nm:
                 u.name = nm
         if "phone" in data:
-            ph = normalize_phone(str(data.get("phone", "")))
-            if not ph:
-                return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
-            if len(ph) > USER_PHONE_MAX_LEN:
+            ph, ph_err = parse_local_phone(str(data.get("phone", "")), required=True)
+            if ph_err:
+                return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
+            if len(ph or "") > USER_PHONE_MAX_LEN:
                 return Response(
                     {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -578,6 +580,11 @@ def _create_restaurant_response(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+    phone_norm, phone_err = parse_local_phone(phone, required=True)
+    if phone_err:
+        return Response({"detail": phone_err}, status=status.HTTP_400_BAD_REQUEST)
+    phone = phone_norm
+
     r = Restaurant(
         user=owner,
         name=name,
@@ -760,7 +767,14 @@ def _patch_restaurant_response(request, pk: int):
             r.name = nm
 
     if "phone" in data:
-        r.phone = (data.get("phone") or "").strip()
+        raw_ph = (data.get("phone") or "").strip()
+        if raw_ph:
+            ph, ph_err = parse_local_phone(raw_ph, required=True)
+            if ph_err:
+                return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
+            r.phone = ph
+        else:
+            r.phone = ""
 
     if "slug" in data:
         sg = (data.get("slug") or "").strip()

@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from core.auth.portal import parse_local_phone
 from core.media_urls import absolute_media_url
 from core.models import (
     Order,
@@ -49,6 +50,15 @@ class OrderCreateSerializer(serializers.Serializer):
     order_discount = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=Decimal("0.00")
     )
+
+    def validate_guest_customer_phone(self, value):
+        raw = (value or "").strip()
+        if not raw:
+            return ""
+        digits, err = parse_local_phone(raw, required=True)
+        if err:
+            raise serializers.ValidationError(err)
+        return digits or ""
 
     def validate(self, attrs):
         restaurant = attrs.get("restaurant")

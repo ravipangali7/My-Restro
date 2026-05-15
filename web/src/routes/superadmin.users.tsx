@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { useAuth } from "@/lib/auth-context";
 import { Plus, UsersRound } from "lucide-react";
 
@@ -429,7 +430,16 @@ function UsersPage() {
                     const form = e.currentTarget;
                     const fd = new FormData(form);
                     const name = String(fd.get("name") || "").trim();
-                    const phone = String(fd.get("phone") || "").trim();
+                    const phoneParsed = parseLocalPhone(String(fd.get("phone") || ""));
+                    if (!name) {
+                      setAddError("Name is required.");
+                      return;
+                    }
+                    if (!phoneParsed.ok) {
+                      setAddError(phoneParsed.message);
+                      return;
+                    }
+                    const phone = phoneParsed.digits;
                     const isShare = addIsShareholder;
                     const role = isShare ? ("customer" as const) : addRole;
                     const share_percentage = Number(fd.get("share_percentage") || 0);
@@ -505,7 +515,7 @@ function UsersPage() {
                       name="phone"
                       type="text"
                       required
-                      placeholder="+91 XXXXX XXXXX"
+                      placeholder="9876543210"
                       className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                     />
                   </div>

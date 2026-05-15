@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from core.api.serializers import OrderCreateSerializer, OrderSerializer
+from core.auth.portal import parse_local_phone
 from core.models import OrderType
 from core.services import ValidationError as ServiceValidationError
 from core.services.orders import create_order_with_items
@@ -45,11 +46,14 @@ def public_menu_order_create(request):
         )
 
     name = (d.get("guest_customer_name") or "").strip()
-    phone = (d.get("guest_customer_phone") or "").strip()
+    phone_raw = (d.get("guest_customer_phone") or "").strip()
     if not name:
         return Response({"detail": "Name is required to place an order."}, status=status.HTTP_400_BAD_REQUEST)
-    if not phone:
+    if not phone_raw:
         return Response({"detail": "Phone is required to place an order."}, status=status.HTTP_400_BAD_REQUEST)
+    phone, phone_err = parse_local_phone(phone_raw, required=True)
+    if phone_err:
+        return Response({"detail": phone_err}, status=status.HTTP_400_BAD_REQUEST)
 
     if ot == OrderType.TABLE and d.get("table") is None:
         return Response({"detail": "Select a table for dine-in orders."}, status=status.HTTP_400_BAD_REQUEST)

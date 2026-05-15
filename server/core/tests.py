@@ -375,13 +375,13 @@ class OrderServiceTests(TestCase):
             restaurant=self.restaurant,
             lines=[{"product_item_id": self.item.pk, "quantity": "1"}],
             guest_customer_name="Walk-in Pat",
-            guest_customer_phone="911",
+            guest_customer_phone="9000000911",
         )
         data = OrderSerializer(order).data
         self.assertIsNone(data["customer_name"])
         self.assertIsNone(data["customer_phone"])
         self.assertEqual(data["guest_customer_name"], "Walk-in Pat")
-        self.assertEqual(data["guest_customer_phone"], "911")
+        self.assertEqual(data["guest_customer_phone"], "9000000911")
 
     def test_order_serializer_table_name_for_packing_with_table(self):
         from core.api.serializers import OrderSerializer
@@ -771,7 +771,11 @@ class RestaurantPayDueApiTests(APITestCase):
 
     def _attach_due_payment_qr(self):
         setting = get_super_setting()
-        f = SimpleUploadedFile("qr.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 64, content_type="image/png")
+        png_1px = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        f = SimpleUploadedFile("qr.png", png_1px, content_type="image/png")
         setting.due_payment_qr.save("qr.png", f, save=True)
 
     def _clear_due_payment_qr(self):
@@ -1632,7 +1636,9 @@ class RestaurantQrBrandImageApiTests(APITestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, 200)
         body = b"".join(res.streaming_content)
-        self.assertTrue(body.startswith(b"\x89PNG"))
+        self.assertGreaterEqual(len(body), 12)
+        self.assertEqual(body[:4], b"RIFF")
+        self.assertEqual(body[8:12], b"WEBP")
 
     def test_unauthenticated_returns_401(self):
         url = f"/api/restaurants/{self.restaurant.pk}/qr-brand-image/"
@@ -1889,9 +1895,13 @@ class OwnerProfileImagePatchTests(APITestCase):
         owner = User.objects.create(phone="9000000555", name="Photo Owner", role=UserRole.OWNER)
         self.assertFalse(bool(owner.image))
         self.client.force_authenticate(user=owner)
+        png_1px = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
         img = SimpleUploadedFile(
             "face.png",
-            b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            png_1px,
             content_type="image/png",
         )
         resp = self.client.patch(

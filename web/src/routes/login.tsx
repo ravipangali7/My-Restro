@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { resolvePostAuthDestination } from "@/lib/portal-routes";
 import { apiPost, formatRequestOtpSendError } from "@/lib/api";
 import type { AuthUser } from "@/lib/auth-context";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { Phone, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
@@ -48,15 +49,16 @@ function LoginPage() {
   }, [isHydrated, isAuthenticated, user, navigate, redirect]);
 
   const handleSendOtp = async () => {
-    if (!phone.trim()) {
-      setError("Enter a phone number.");
+    const parsed = parseLocalPhone(phone);
+    if (!parsed.ok) {
+      setError(parsed.message);
       return;
     }
     setError(null);
     setBusy(true);
     try {
       const res = await apiPost<RequestOtpResponse>("/api/auth/request-otp/", {
-        phone: phone.trim(),
+        phone: parsed.digits,
         purpose: "login",
         ...(loginRestaurantId != null ? { restaurant_id: loginRestaurantId } : {}),
       });
@@ -71,11 +73,16 @@ function LoginPage() {
 
   const handleVerify = async () => {
     if (otp.length < 6) return;
+    const parsed = parseLocalPhone(phone);
+    if (!parsed.ok) {
+      setError(parsed.message);
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
       const data = await apiPost<VerifyResponse>("/api/auth/verify-otp/", {
-        phone: phone.trim(),
+        phone: parsed.digits,
         otp,
         purpose: "login",
       });
@@ -111,7 +118,7 @@ function LoginPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+919876543210"
+                placeholder="9876543210"
                 className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm mb-5 focus:border-primary outline-none"
               />
               <button

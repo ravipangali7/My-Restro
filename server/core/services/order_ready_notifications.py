@@ -47,7 +47,7 @@ def notify_customer_order_ready_with_bill(order: Order, *, old_status: str) -> N
 
     if order.bill_image:
         with order.bill_image.open("rb") as src:
-            n.image.save(f"order-{order.pk}-ready-bill.png", ContentFile(src.read()), save=True)
+            n.image.save(f"order-{order.pk}-ready-bill.webp", ContentFile(src.read()), save=True)
 
     # Deep-link to this row on the notifications page (hash is preserved by the app router).
     n.link = f"/customer/notifications#n-{n.id}"

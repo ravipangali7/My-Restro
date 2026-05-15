@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPostForm, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { slugifyName } from "@/lib/slugify";
 import { useAuth } from "@/lib/auth-context";
 import { Plus, Store } from "lucide-react";
@@ -306,7 +307,7 @@ function RestaurantsPage() {
                   ownerId = String(editRestaurant.user);
                 }
                 const name = restaurantName.trim();
-                const phone = restaurantPhone.trim();
+                const phoneTrim = restaurantPhone.trim();
                 const slug = restaurantSlug.trim();
                 const address = String(fd.get("address") ?? "").trim();
                 const perTxRaw = String(fd.get("per_transaction_fee") ?? "").trim();
@@ -330,10 +331,16 @@ function RestaurantsPage() {
                   setSubmitError("Select an owner.");
                   return;
                 }
-                if (!name || !phone) {
+                if (!name || !phoneTrim) {
                   setSubmitError("Name and phone are required.");
                   return;
                 }
+                const phoneParsed = parseLocalPhone(phoneTrim);
+                if (!phoneParsed.ok) {
+                  setSubmitError(phoneParsed.message);
+                  return;
+                }
+                const phone = phoneParsed.digits;
                 if (formLat.trim() !== "" && Number.isNaN(Number(formLat))) {
                   setSubmitError("Invalid latitude.");
                   return;

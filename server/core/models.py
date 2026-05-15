@@ -8,6 +8,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
+from core.storages import webp_image_storage
+
 
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
@@ -171,7 +173,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
     due_balance = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
     fcm_token = models.CharField(max_length=255, blank=True)
-    image = models.ImageField(upload_to="users/", blank=True, null=True)
+    image = models.ImageField(upload_to="users/", blank=True, null=True, storage=webp_image_storage)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
@@ -210,7 +212,7 @@ class Restaurant(TimeStampedModel, ActiveModel):
     slug = models.SlugField(max_length=180, unique=True, blank=True)
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20, blank=True)
-    logo = models.ImageField(upload_to="restaurants/logos/", blank=True, null=True)
+    logo = models.ImageField(upload_to="restaurants/logos/", blank=True, null=True, storage=webp_image_storage)
     address = models.TextField(blank=True)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
@@ -232,14 +234,14 @@ class Restaurant(TimeStampedModel, ActiveModel):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="If set, overrides platform monthly subscription reference for this venue only.",
+        help_text="If set, this monthly subscription reference rate applies to this venue only; otherwise the platform default is used.",
     )
     sms_per_usage = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="If set, overrides platform SMS unit rate for this venue only.",
+        help_text="If set, this SMS unit rate applies to this venue only; otherwise the platform default is used.",
     )
     due_threshold = models.DecimalField(
         max_digits=12,
@@ -284,7 +286,7 @@ class Supplier(TimeStampedModel, ActiveModel):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="suppliers")
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20, blank=True)
-    image = models.ImageField(upload_to="suppliers/", blank=True, null=True)
+    image = models.ImageField(upload_to="suppliers/", blank=True, null=True, storage=webp_image_storage)
 
     class Meta:
         unique_together = ("restaurant", "name")
@@ -310,7 +312,7 @@ class Unit(TimeStampedModel):
 class Category(TimeStampedModel, ActiveModel):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="categories")
     name = models.CharField(max_length=120)
-    image = models.ImageField(upload_to="categories/", blank=True, null=True)
+    image = models.ImageField(upload_to="categories/", blank=True, null=True, storage=webp_image_storage)
     parent = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="children"
     )
@@ -327,7 +329,7 @@ class Product(TimeStampedModel, ActiveModel):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="products")
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name="products")
     name = models.CharField(max_length=150)
-    image = models.ImageField(upload_to="products/", blank=True, null=True)
+    image = models.ImageField(upload_to="products/", blank=True, null=True, storage=webp_image_storage)
     is_veg = models.BooleanField(default=False)
 
     class Meta:
@@ -400,7 +402,7 @@ class ProductRawMaterial(TimeStampedModel):
 class ComboSet(TimeStampedModel, ActiveModel):
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="combo_sets")
     name = models.CharField(max_length=180)
-    image = models.ImageField(upload_to="combos/", blank=True, null=True)
+    image = models.ImageField(upload_to="combos/", blank=True, null=True, storage=webp_image_storage)
     description = models.TextField(blank=True)
     products = models.ManyToManyField(Product, related_name="combo_sets", blank=True)
     discount_type = models.CharField(max_length=20, choices=DiscountType.choices, default=DiscountType.FLAT)
@@ -422,7 +424,7 @@ class Table(TimeStampedModel, ActiveModel):
     floor = models.CharField(max_length=80, blank=True)
     near_by = models.CharField(max_length=150, blank=True)
     notes = models.TextField(blank=True)
-    image = models.ImageField(upload_to="tables/", blank=True, null=True)
+    image = models.ImageField(upload_to="tables/", blank=True, null=True, storage=webp_image_storage)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
 
@@ -497,7 +499,7 @@ class Order(TimeStampedModel):
         help_text="Sum of staff-recorded counter payments toward this order (partial or full).",
     )
     reject_reason = models.CharField(max_length=255, blank=True)
-    bill_image = models.ImageField(upload_to="order_bills/", blank=True, null=True)
+    bill_image = models.ImageField(upload_to="order_bills/", blank=True, null=True, storage=webp_image_storage)
 
     class Meta:
         ordering = ("-created_at",)
@@ -671,7 +673,7 @@ class SuperSetting(TimeStampedModel):
     due_threshold = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     sms_per_usage = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
-    due_payment_qr = models.ImageField(upload_to="platform/due_qr/", blank=True, null=True)
+    due_payment_qr = models.ImageField(upload_to="platform/due_qr/", blank=True, null=True, storage=webp_image_storage)
 
     def __str__(self):
         return "System Setting"
@@ -701,7 +703,7 @@ class BulkNotification(TimeStampedModel):
     message = models.TextField()
     link = models.CharField(max_length=500, blank=True, default="")
     receivers = models.JSONField(default=list, blank=True)
-    image = models.ImageField(upload_to="notifications/", blank=True, null=True)
+    image = models.ImageField(upload_to="notifications/", blank=True, null=True, storage=webp_image_storage)
     type = models.CharField(
         max_length=20, choices=BulkNotificationType.choices, default=BulkNotificationType.PUSH
     )

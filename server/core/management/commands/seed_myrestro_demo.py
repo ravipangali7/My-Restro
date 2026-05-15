@@ -51,13 +51,13 @@ class Command(BaseCommand):
             u.save()
             return u
 
-        sa = upsert_user("+919999900001", "Admin User", UserRole.SUPER_ADMIN)
-        owner = upsert_user("+919999900002", "Rahul Sharma", UserRole.OWNER, is_shareholder=True, share_percentage=Decimal("25.00"))
-        waiter = upsert_user("+919999900003", "Priya Patel", UserRole.STAFF)
-        kitchen = upsert_user("+919999900005", "Ravi Kumar", UserRole.STAFF)
-        customer = upsert_user("+919999900006", "Amit Singh", UserRole.CUSTOMER)
+        sa = upsert_user("9999900001", "Admin User", UserRole.SUPER_ADMIN)
+        owner = upsert_user("9999900002", "Rahul Sharma", UserRole.OWNER, is_shareholder=True, share_percentage=Decimal("25.00"))
+        waiter = upsert_user("9999900003", "Priya Patel", UserRole.STAFF)
+        kitchen = upsert_user("9999900005", "Ravi Kumar", UserRole.STAFF)
+        customer = upsert_user("9999900006", "Amit Singh", UserRole.CUSTOMER)
         shareholder = upsert_user(
-            "+919999900007",
+            "9999900007",
             "Sita Devi",
             UserRole.CUSTOMER,
             is_shareholder=True,
@@ -69,7 +69,7 @@ class Command(BaseCommand):
             user=owner,
             name="Spice Garden",
             defaults={
-                "phone": "+911123456789",
+                "phone": "1123456789",
                 "address": "123 MG Road, Mumbai",
                 "latitude": Decimal("19.0760000"),
                 "longitude": Decimal("72.8777000"),
@@ -135,7 +135,7 @@ class Command(BaseCommand):
             defaults={"role": StaffRole.KITCHEN, "salary": Decimal("15000.00"), "is_suspend": False},
         )
 
-        sup, _ = Supplier.objects.get_or_create(restaurant=rest, name="Fresh Farms", defaults={"phone": "+919988776655"})
+        sup, _ = Supplier.objects.get_or_create(restaurant=rest, name="Fresh Farms", defaults={"phone": "9988776655"})
         rm_chicken, _ = RawMaterial.objects.get_or_create(
             restaurant=rest,
             name="Chicken",

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { useMe } from "@/hooks/use-rest-api";
 import { apiPatch, apiPatchForm, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 
 export const Route = createFileRoute("/customer/profile")({
   component: CustomerProfile,
@@ -86,13 +87,13 @@ function CustomerProfile() {
   const saveProfile = async () => {
     if (!user?.id || !token) return;
     const trimmedName = editName.trim();
-    const trimmedPhone = editPhone.trim();
     if (!trimmedName) {
       setSaveError("Name cannot be empty.");
       return;
     }
-    if (!trimmedPhone) {
-      setSaveError("Phone cannot be empty.");
+    const phoneParsed = parseLocalPhone(editPhone);
+    if (!phoneParsed.ok) {
+      setSaveError(phoneParsed.message);
       return;
     }
     setSaveError(null);
@@ -101,11 +102,11 @@ function CustomerProfile() {
       if (pendingImage) {
         const fd = new FormData();
         fd.append("name", trimmedName);
-        fd.append("phone", trimmedPhone);
+        fd.append("phone", phoneParsed.digits);
         fd.append("image", pendingImage);
         await apiPatchForm<AuthUser>(`/api/users/${user.id}/`, fd, token);
       } else {
-        await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: trimmedPhone }, token);
+        await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: phoneParsed.digits }, token);
       }
       await refreshUser();
       void qc.invalidateQueries({ queryKey: ["me"] });

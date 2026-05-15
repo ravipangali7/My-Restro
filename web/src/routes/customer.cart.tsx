@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { clearCustomerCart, readCustomerCart, writeCustomerCart, type CustomerCartLine } from "@/lib/customer-cart";
 import { apiGet, apiPost } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -132,6 +133,11 @@ function CustomerCart() {
       setError("Please fill customer details before placing order.");
       return;
     }
+    const phoneParsed = parseLocalPhone(customerPhone);
+    if (!phoneParsed.ok) {
+      setError(phoneParsed.message);
+      return;
+    }
     if (orderType === "table" && !selectedTable) {
       setError("Please select a table for dine-in order.");
       return;
@@ -150,7 +156,7 @@ function CustomerCart() {
           latitude: null,
           longitude: null,
           guest_customer_name: customerName.trim(),
-          guest_customer_phone: customerPhone.trim(),
+          guest_customer_phone: phoneParsed.digits,
           lines: cart.map((line) =>
             line.kind === "product"
               ? { product_item_id: line.productItemId, quantity: String(line.quantity) }

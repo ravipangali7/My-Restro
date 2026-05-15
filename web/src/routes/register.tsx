@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { resolvePostAuthDestination } from "@/lib/portal-routes";
 import { apiPost, formatRequestOtpSendError } from "@/lib/api";
 import type { AuthUser } from "@/lib/auth-context";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { Phone, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/register")({
@@ -49,15 +50,16 @@ function RegisterPage() {
       setError("Enter your name.");
       return;
     }
-    if (!phone.trim()) {
-      setError("Enter a phone number.");
+    const parsed = parseLocalPhone(phone);
+    if (!parsed.ok) {
+      setError(parsed.message);
       return;
     }
     setError(null);
     setBusy(true);
     try {
       const res = await apiPost<RequestOtpResponse>("/api/auth/request-otp/", {
-        phone: phone.trim(),
+        phone: parsed.digits,
         purpose: "register",
       });
       setDevOtpHint(res.debug_otp ?? null);
@@ -71,11 +73,16 @@ function RegisterPage() {
 
   const handleVerify = async () => {
     if (otp.length < 6) return;
+    const parsed = parseLocalPhone(phone);
+    if (!parsed.ok) {
+      setError(parsed.message);
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
       const data = await apiPost<VerifyResponse>("/api/auth/verify-otp/", {
-        phone: phone.trim(),
+        phone: parsed.digits,
         otp,
         purpose: "register",
         name: name.trim(),
@@ -121,7 +128,7 @@ function RegisterPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+919876543210"
+                placeholder="9876543210"
                 autoComplete="tel"
                 className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm mb-5 focus:border-primary outline-none"
               />

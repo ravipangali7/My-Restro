@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, type AuthUser } from "@/lib/auth-context";
 import { User, Phone, LogOut, Save } from "lucide-react";
 import { apiPatch, apiPatchForm, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
 export const Route = createFileRoute("/owner/profile")({ component: OwnerProfile });
@@ -37,13 +38,13 @@ function OwnerProfile() {
     e.target.value = "";
     if (!file || !user?.id || !token) return;
     const trimmedName = name.trim();
-    const trimmedPhone = phoneInput.trim();
+    const phoneParsed = parseLocalPhone(phoneInput);
     if (!trimmedName) {
       setSaveError("Name cannot be empty.");
       return;
     }
-    if (!trimmedPhone) {
-      setSaveError("Phone cannot be empty.");
+    if (!phoneParsed.ok) {
+      setSaveError(phoneParsed.message);
       return;
     }
     setSaveError(null);
@@ -51,7 +52,7 @@ function OwnerProfile() {
     try {
       const fd = new FormData();
       fd.append("name", trimmedName);
-      fd.append("phone", trimmedPhone);
+      fd.append("phone", phoneParsed.digits);
       fd.append("image", file);
       await apiPatchForm<AuthUser>(`/api/users/${user.id}/`, fd, token);
       await refreshUser();
@@ -67,19 +68,19 @@ function OwnerProfile() {
   const saveProfile = async () => {
     if (!user?.id || !token) return;
     const trimmedName = name.trim();
-    const trimmedPhone = phoneInput.trim();
+    const phoneParsed = parseLocalPhone(phoneInput);
     if (!trimmedName) {
       setSaveError("Name cannot be empty.");
       return;
     }
-    if (!trimmedPhone) {
-      setSaveError("Phone cannot be empty.");
+    if (!phoneParsed.ok) {
+      setSaveError(phoneParsed.message);
       return;
     }
     setSaveError(null);
     setSaving(true);
     try {
-      await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: trimmedPhone }, token);
+      await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: phoneParsed.digits }, token);
       await refreshUser();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");

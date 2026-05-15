@@ -4,7 +4,7 @@ export async function fetchOrderBillImage(orderId: number): Promise<Blob> {
   const token = getStoredToken();
   const res = await fetch(`${getApiBaseUrl()}/api/orders/${orderId}/bill-image/`, {
     headers: {
-      Accept: "image/png",
+      Accept: "image/webp",
       ...(token ? { Authorization: `Token ${token}` } : {}),
     },
   });
@@ -27,7 +27,7 @@ export function downloadOrderBillBlob(blob: Blob, orderIdLabel: string): void {
   try {
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${orderIdLabel.replace(/\//g, "-")}-bill.png`;
+    a.download = `${orderIdLabel.replace(/\//g, "-")}-bill.webp`;
     a.rel = "noopener";
     document.body.appendChild(a);
     a.click();

@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useCreateStaff, useOwnerStaffByRestaurant, useRestaurants, useSearchStaffByPhone, useUpdateStaff } from "@/hooks/use-rest-api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { useRestaurantScope } from "@/lib/restaurant-context";
 
 export function StaffFormPage({ staffId }: { staffId?: number }) {
@@ -96,7 +97,8 @@ export function StaffFormPage({ staffId }: { staffId?: number }) {
   const saving = createStaff.isPending || updateStaff.isPending;
 
   const onSubmit = async () => {
-    if (!phone.trim()) return setError("Phone is required.");
+    const phoneParsed = parseLocalPhone(phone);
+    if (!phoneParsed.ok) return setError(phoneParsed.message);
     if (!name.trim()) return setError("Name is required.");
     setError(null);
 
@@ -110,7 +112,7 @@ export function StaffFormPage({ staffId }: { staffId?: number }) {
       } else {
         await createStaff.mutateAsync({
           restaurantId,
-          body: { phone, name, role, joined_at: joinedAt, salary, salary_per_day: salaryPerDay, is_suspend: isSuspend },
+          body: { phone: phoneParsed.digits, name, role, joined_at: joinedAt, salary, salary_per_day: salaryPerDay, is_suspend: isSuspend },
         });
       }
       navigate({ to: "/owner/staff" });
@@ -154,7 +156,13 @@ export function StaffFormPage({ staffId }: { staffId?: number }) {
               <button
                 type="button"
                 onClick={() => {
-                  setSearchPhone(phone);
+                  const parsed = parseLocalPhone(phone);
+                  if (!parsed.ok) {
+                    setError(parsed.message);
+                    return;
+                  }
+                  setError(null);
+                  setSearchPhone(parsed.digits);
                   setDidSearch(true);
                 }}
                 className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"

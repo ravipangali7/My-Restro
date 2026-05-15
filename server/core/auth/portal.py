@@ -6,6 +6,9 @@ from core.models import Order, Restaurant, Staff, StaffRole, User, UserRole
 # before save (PostgreSQL raises on overflow; otherwise clients see an opaque 500).
 USER_PHONE_MAX_LEN = 32
 
+# Local mobile numbers are stored and validated as exactly this many digits, with no + prefix.
+LOCAL_PHONE_DIGITS = 10
+
 # Shareholders with many withdrawals: matching each id with two ``Q`` branches explodes SQL size;
 # use chunked ``remarks__regex`` instead (portable via Django's regex lookup).
 _SHARE_WITHDRAWAL_REMARK_RE_CHUNK = 150
@@ -30,17 +33,33 @@ def _share_withdrawal_transaction_q(withdrawal_ids: list[int]) -> Q:
 
 
 def normalize_phone(phone: str) -> str:
-    digits = "".join(c for c in phone.strip() if c.isdigit())
-    if not digits:
-        return phone.strip()
-    if phone.strip().startswith("+"):
-        return "+" + digits
-    return digits
+    """Digits only (for comparison and storage). Empty string when there are no digits."""
+    if phone is None:
+        return ""
+    return "".join(c for c in str(phone).strip() if c.isdigit())
 
 
-def phone_significant_digits_len(normalized_phone: str) -> int:
-    """Count digits in a normalized phone (E.164 or plain digit string)."""
-    return len("".join(c for c in normalized_phone if c.isdigit()))
+def parse_local_phone(raw: str | None, *, required: bool = True) -> tuple[str | None, str | None]:
+    """
+    Validate a local number: exactly LOCAL_PHONE_DIGITS digits, no leading + / country code in the input.
+
+    Returns (normalized_digits, None) on success, or (None, error_message) on failure.
+    When required is False, an empty/whitespace-only value succeeds as ("", None).
+    """
+    if raw is None:
+        s = ""
+    else:
+        s = str(raw).strip()
+    if not s:
+        if required:
+            return None, "Phone is required."
+        return "", None
+    if s.startswith("+"):
+        return None, "Do not include a country code. Enter exactly 10 digits (no + sign)."
+    digits = normalize_phone(s)
+    if len(digits) != LOCAL_PHONE_DIGITS:
+        return None, f"Phone must be exactly {LOCAL_PHONE_DIGITS} digits with no country code."
+    return digits, None
 
 
 def primary_staff_membership(user: User) -> Staff | None:

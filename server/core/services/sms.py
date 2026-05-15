@@ -10,6 +10,8 @@ import urllib.parse
 import urllib.request
 from django.conf import settings
 
+from core.auth.portal import LOCAL_PHONE_DIGITS
+
 logger = logging.getLogger(__name__)
 
 # Twilio SMS body length guard (well under segment limits).
@@ -17,10 +19,15 @@ _MAX_SMS_BODY_LEN = 1600
 
 
 def phone_to_e164(normalized_phone: str) -> str:
-    """Ensure E.164 (+ and digits) for SMS APIs."""
+    """Ensure E.164 (+ and digits) for SMS APIs. Ten-digit locals get SMS_DEFAULT_COUNTRY_CODE."""
     digits = "".join(c for c in normalized_phone if c.isdigit())
     if not digits:
-        return normalized_phone.strip()
+        return (normalized_phone or "").strip()
+    cc = (getattr(settings, "SMS_DEFAULT_COUNTRY_CODE", None) or "91").strip().lstrip("+")
+    if not cc.isdigit():
+        cc = "91"
+    if len(digits) == LOCAL_PHONE_DIGITS:
+        return f"+{cc}{digits}"
     return f"+{digits}"
 
 

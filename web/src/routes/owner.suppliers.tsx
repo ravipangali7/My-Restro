@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
 import { useOwnerSuppliersByRestaurant, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -98,7 +99,17 @@ function SuppliersPage() {
     setFormError(null);
     try {
       const n = name.trim();
-      const p = phone.trim();
+      const pRaw = phone.trim();
+      let p = pRaw;
+      if (pRaw) {
+        const parsed = parseLocalPhone(pRaw);
+        if (!parsed.ok) {
+          setFormError(parsed.message);
+          setSaving(false);
+          return;
+        }
+        p = parsed.digits;
+      }
       if (imageFile) {
         const fd = new FormData();
         fd.append("name", n);

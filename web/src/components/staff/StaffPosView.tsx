@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { discountedUnitPrice } from "@/lib/pricing";
 import { useClientHome } from "@/hooks/use-rest-api";
 import { apiGet, apiPost, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { useAuth } from "@/lib/auth-context";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
@@ -325,11 +326,18 @@ export function StaffPosView({
         return;
       }
     }
+    let guestPhoneDigits = "";
     if (linkedCustomerId == null) {
       if (!customerName.trim() || !customerPhone.trim()) {
         setOrderError("Enter customer name and phone, or select a registered customer.");
         return;
       }
+      const parsed = parseLocalPhone(customerPhone);
+      if (!parsed.ok) {
+        setOrderError(parsed.message);
+        return;
+      }
+      guestPhoneDigits = parsed.digits;
     }
 
     if (mode === "public") {
@@ -348,7 +356,7 @@ export function StaffPosView({
             table: (orderType === "table" || orderType === "packing") ? selectedTable : null,
             people_for: peopleFor,
             guest_customer_name: customerName.trim(),
-            guest_customer_phone: customerPhone.trim(),
+            guest_customer_phone: guestPhoneDigits,
           },
           null,
         );
@@ -386,7 +394,7 @@ export function StaffPosView({
           longitude: orderType === "delivery" ? Number.parseFloat(deliveryLongitude) : null,
           customer: linkedCustomerId,
           guest_customer_name: linkedCustomerId ? "" : customerName.trim(),
-          guest_customer_phone: linkedCustomerId ? "" : customerPhone.trim(),
+          guest_customer_phone: linkedCustomerId ? "" : guestPhoneDigits,
         },
         token,
       );

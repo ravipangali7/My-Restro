@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from core.auth.portal import USER_PHONE_MAX_LEN, normalize_phone, phone_significant_digits_len
+from core.auth.portal import USER_PHONE_MAX_LEN, parse_local_phone
 from core.models import Otp, User, UserRole
 from core.serializers.me import UserMeSerializer
 from core.services.sms import send_otp_sms
@@ -27,23 +27,15 @@ def _issue_token(user: User) -> str:
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def request_otp(request):
-    phone = normalize_phone(request.data.get("phone", ""))
+    phone, phone_err = parse_local_phone(request.data.get("phone", ""), required=True)
     purpose = (request.data.get("purpose") or "login").strip().lower()
     if purpose not in ("login", "register"):
         purpose = "login"
-    if not phone:
-        return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
-    if len(phone) > USER_PHONE_MAX_LEN:
+    if phone_err:
+        return Response({"detail": phone_err}, status=status.HTTP_400_BAD_REQUEST)
+    if len(phone or "") > USER_PHONE_MAX_LEN:
         return Response(
             {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if phone_significant_digits_len(phone) < 10:
-        return Response(
-            {
-                "detail": "Enter a full phone number with country code (at least 10 digits), e.g. +919876543210.",
-            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -125,26 +117,20 @@ def _validate_otp_code(phone: str, purpose: str, otp: str) -> bool:
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def verify_otp(request):
-    phone = normalize_phone(request.data.get("phone", ""))
+    phone, phone_err = parse_local_phone(request.data.get("phone", ""), required=True)
     otp = (request.data.get("otp") or "").strip()
     purpose = (request.data.get("purpose") or "login").strip().lower()
     if purpose not in ("login", "register"):
         purpose = "login"
     name = (request.data.get("name") or "").strip()
 
-    if not phone or not otp:
+    if phone_err:
+        return Response({"detail": phone_err}, status=status.HTTP_400_BAD_REQUEST)
+    if not otp:
         return Response({"detail": "phone and otp are required."}, status=status.HTTP_400_BAD_REQUEST)
-    if len(phone) > USER_PHONE_MAX_LEN:
+    if len(phone or "") > USER_PHONE_MAX_LEN:
         return Response(
             {"detail": f"Phone number is too long (max {USER_PHONE_MAX_LEN} characters)."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if phone_significant_digits_len(phone) < 10:
-        return Response(
-            {
-                "detail": "Enter a full phone number with country code (at least 10 digits), e.g. +919876543210.",
-            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 

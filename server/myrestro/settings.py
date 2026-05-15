@@ -189,6 +189,9 @@ TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
 TWILIO_FROM_NUMBER = os.environ.get("TWILIO_FROM_NUMBER", "").strip()
 TWILIO_MESSAGING_SERVICE_SID = os.environ.get("TWILIO_MESSAGING_SERVICE_SID", "").strip()
 
+# Prepended to 10-digit local numbers for Twilio E.164 (users enter no country code in the app).
+SMS_DEFAULT_COUNTRY_CODE = os.environ.get("SMS_DEFAULT_COUNTRY_CODE", "91").strip().lstrip("+")
+
 # Staging only: when Twilio is missing or send fails, behave like DEBUG and return debug_otp
 # in the JSON so login works without SMS. Never enable on a public production server.
 SMS_OTP_ALLOW_INSECURE_FALLBACK = os.environ.get(

@@ -10,8 +10,8 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.api.renderers import OrderBillPNGRenderer
-from core.auth.portal import portal_role_for_user, user_can_access_restaurant, user_can_manage_restaurant
+from core.api.renderers import OrderBillWebPRenderer
+from core.auth.portal import parse_local_phone, portal_role_for_user, user_can_access_restaurant, user_can_manage_restaurant
 from core.api.serializers import (
     AddBillLineSerializer,
     OrderCreateSerializer,
@@ -278,10 +278,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=["get"],
         url_path="bill-image",
-        renderer_classes=[OrderBillPNGRenderer],
+        renderer_classes=[OrderBillWebPRenderer],
     )
     def bill_image_download(self, request, pk=None):
-        """Authenticated download of the auto-generated bill PNG."""
+        """Authenticated download of the auto-generated bill image (WebP on disk)."""
         order = self.get_object()
         if not order.bill_image:
             return Response(
@@ -289,8 +289,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
         fh = order.bill_image.open("rb")
-        filename = f"{order.order_id}-bill.png".replace("/", "-")
-        return FileResponse(fh, as_attachment=True, filename=filename, content_type="image/png")
+        filename = f"{order.order_id}-bill.webp".replace("/", "-")
+        return FileResponse(fh, as_attachment=True, filename=filename, content_type="image/webp")
 
     @action(detail=True, methods=["post"], url_path="report-position")
     def report_position(self, request, pk=None):
@@ -639,10 +639,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                 return Response({"detail": "Invalid customer id."}, status=status.HTTP_400_BAD_REQUEST)
             base = Order.objects.filter(restaurant_id=restaurant_id, customer_id=cid)
         elif guest_phone:
+            gp, gerr = parse_local_phone(guest_phone, required=True)
+            if gerr:
+                return Response({"detail": gerr}, status=status.HTTP_400_BAD_REQUEST)
             base = Order.objects.filter(
                 restaurant_id=restaurant_id,
                 customer__isnull=True,
-                guest_customer_phone__iexact=guest_phone,
+                guest_customer_phone__iexact=gp,
             )
         else:
             return Response(

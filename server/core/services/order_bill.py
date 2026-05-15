@@ -585,4 +585,4 @@ def attach_order_bill_image(order: Order) -> None:
     """Render bill PNG and save to ``order.bill_image`` (overwrites if present)."""
     png = render_order_bill_png(order)
     safe_id = (order.order_id or f"order-{order.pk}").replace("/", "-")
-    order.bill_image.save(f"{safe_id}.png", ContentFile(png), save=True)
+    order.bill_image.save(f"{safe_id}.webp", ContentFile(png), save=True)

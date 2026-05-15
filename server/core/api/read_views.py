@@ -37,6 +37,7 @@ from core.api.list_serializers import (
 from core.api.write_views import _as_bool, _create_restaurant_response, _create_user_response
 from core.auth.portal import (
     normalize_phone,
+    parse_local_phone,
     portal_role_for_user,
     user_can_access_restaurant,
     user_can_manage_restaurant,
@@ -638,9 +639,12 @@ def list_suppliers(request):
         phone = (request.data.get("phone") or "").strip()
         is_active = _as_bool(request.data.get("is_active"), default=True)
         image_file = request.FILES.get("image")
+        ph, ph_err = parse_local_phone(phone, required=False)
+        if ph_err:
+            return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
         try:
             supplier = Supplier.objects.create(
-                restaurant_id=restaurant_id, name=name, phone=phone, is_active=is_active
+                restaurant_id=restaurant_id, name=name, phone=ph or "", is_active=is_active
             )
         except IntegrityError:
             return Response(
@@ -734,7 +738,11 @@ def supplier_detail(request, pk: int):
             return Response({"detail": "name is required."}, status=status.HTTP_400_BAD_REQUEST)
         supplier.name = name
     if "phone" in request.data:
-        supplier.phone = (request.data.get("phone") or "").strip()
+        raw = (request.data.get("phone") or "").strip()
+        ph, ph_err = parse_local_phone(raw, required=False)
+        if ph_err:
+            return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
+        supplier.phone = ph or ""
     if "is_active" in request.data:
         supplier.is_active = _as_bool(request.data.get("is_active"), default=supplier.is_active)
 
@@ -1257,11 +1265,11 @@ def search_staff_by_phone(request):
     if not user_can_manage_restaurant(request.user, restaurant_id):
         return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
 
-    phone = normalize_phone(request.query_params.get("phone", ""))
-    if not phone:
-        return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+    ph, ph_err = parse_local_phone(request.query_params.get("phone", ""), required=True)
+    if ph_err:
+        return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
 
-    user = User.objects.filter(phone=phone).first()
+    user = User.objects.filter(phone=ph).first()
     if not user:
         return Response({"found": False})
 
@@ -1285,9 +1293,9 @@ def create_staff(request):
     if not user_can_manage_restaurant(request.user, restaurant_id):
         return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
 
-    phone = normalize_phone(request.data.get("phone", ""))
-    if not phone:
-        return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+    phone, phone_err = parse_local_phone(request.data.get("phone", ""), required=True)
+    if phone_err:
+        return Response({"detail": phone_err}, status=status.HTTP_400_BAD_REQUEST)
 
     name = (request.data.get("name") or "").strip()
     role = (request.data.get("role") or "waiter").strip().lower()

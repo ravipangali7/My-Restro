@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useAuth, type AuthUser } from "@/lib/auth-context";
 import { User, Phone, LogOut, Save } from "lucide-react";
 import { apiPatch, apiPatchForm, resolveMediaUrl } from "@/lib/api";
+import { parseLocalPhone } from "@/lib/phone-validation";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 
 export const Route = createFileRoute("/superadmin/profile")({ component: SuperAdminProfile });
@@ -34,17 +35,17 @@ function SuperAdminProfile() {
     try {
       const fd = new FormData();
       const trimmedName = name.trim();
-      const trimmedPhone = phoneInput.trim();
+      const phoneParsed = parseLocalPhone(phoneInput);
       if (!trimmedName) {
         setSaveError("Name cannot be empty.");
         return;
       }
-      if (!trimmedPhone) {
-        setSaveError("Phone cannot be empty.");
+      if (!phoneParsed.ok) {
+        setSaveError(phoneParsed.message);
         return;
       }
       fd.append("name", trimmedName);
-      fd.append("phone", trimmedPhone);
+      fd.append("phone", phoneParsed.digits);
       fd.append("image", file);
       await apiPatchForm<AuthUser>(`/api/users/${user.id}/`, fd, token);
       await refreshUser();
@@ -58,19 +59,19 @@ function SuperAdminProfile() {
   const saveProfile = async () => {
     if (!user?.id || !token) return;
     const trimmedName = name.trim();
-    const trimmedPhone = phoneInput.trim();
+    const phoneParsed = parseLocalPhone(phoneInput);
     if (!trimmedName) {
       setSaveError("Name cannot be empty.");
       return;
     }
-    if (!trimmedPhone) {
-      setSaveError("Phone cannot be empty.");
+    if (!phoneParsed.ok) {
+      setSaveError(phoneParsed.message);
       return;
     }
     setSaveError(null);
     setSaving(true);
     try {
-      await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: trimmedPhone }, token);
+      await apiPatch<AuthUser>(`/api/users/${user.id}/`, { name: trimmedName, phone: phoneParsed.digits }, token);
       await refreshUser();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save.");
