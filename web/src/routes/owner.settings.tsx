@@ -187,6 +187,8 @@ function SettingsPage() {
                   setLat(nextLat);
                   setLng(nextLng);
                 }}
+                placeSearch={false}
+                reverseGeocode={false}
                 disabled
               />
             </div>

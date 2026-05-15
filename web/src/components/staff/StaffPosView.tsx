@@ -117,6 +117,7 @@ export function StaffPosView({
   const [orderError, setOrderError] = useState<string | null>(null);
   const [deliveryLatitude, setDeliveryLatitude] = useState("");
   const [deliveryLongitude, setDeliveryLongitude] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [portionItemByProduct, setPortionItemByProduct] = useState<Record<number, number | null>>({});
 
   const [linkedCustomerId, setLinkedCustomerId] = useState<number | null>(null);
@@ -389,7 +390,7 @@ export function StaffPosView({
           table: (orderType === "table" || orderType === "packing") ? selectedTable : null,
           people_for: peopleFor,
           waiter: user?.id ?? null,
-          address: orderType === "delivery" ? "Staff POS delivery" : "",
+          address: orderType === "delivery" ? deliveryAddress.trim() || "Delivery" : "",
           latitude: orderType === "delivery" ? Number.parseFloat(deliveryLatitude) : null,
           longitude: orderType === "delivery" ? Number.parseFloat(deliveryLongitude) : null,
           customer: linkedCustomerId,
@@ -692,8 +693,15 @@ export function StaffPosView({
             </div>
           )}
           {orderType === "delivery" && (
-            <div className="mb-3 space-y-1">
-              <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Delivery pin</p>
+            <div className="mb-3 space-y-2">
+              <p className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Delivery location</p>
+              <input
+                type="text"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                placeholder="Address from map or coordinates"
+                className="w-full h-9 rounded-lg border border-border bg-card px-3 text-xs outline-none focus:border-primary"
+              />
               <LocationMapPicker
                 latitude={deliveryLatitude}
                 longitude={deliveryLongitude}
@@ -703,6 +711,7 @@ export function StaffPosView({
                   setDeliveryLatitude(lat);
                   setDeliveryLongitude(lng);
                 }}
+                onPlaceSelected={setDeliveryAddress}
                 className="h-[160px]"
               />
             </div>

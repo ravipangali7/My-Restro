@@ -11,8 +11,9 @@ import {
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
-import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
+import { useRestaurants, useSuperSettings, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPostForm, resolveMediaUrl } from "@/lib/api";
+import type { SuperSettingsDTO } from "@/lib/super-settings-cache";
 import { parseLocalPhone } from "@/lib/phone-validation";
 import { slugifyName } from "@/lib/slugify";
 import { useAuth } from "@/lib/auth-context";
@@ -48,6 +49,12 @@ function toDateInputValue(v: string | null | undefined): string {
   return s;
 }
 
+function toNum(v: string | number | undefined): number {
+  if (v == null || v === "") return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function syncRestaurantsListAfterUpsert(queryClient: QueryClient, row: R) {
   queryClient.setQueriesData<R[]>({ queryKey: ["restaurants"] }, (old) => {
     const prev = Array.isArray(old) ? old : [];
@@ -70,6 +77,8 @@ function RestaurantsPage() {
   const queryClient = useQueryClient();
   const { data: restaurants, isLoading } = useRestaurants();
   const { data: users } = useUsers();
+  const { data: superSettings } = useSuperSettings();
+  const platformDefaults = superSettings as SuperSettingsDTO | undefined;
 
   const [showForm, setShowForm] = useState(false);
   const [editRestaurant, setEditRestaurant] = useState<R | null>(null);
@@ -282,7 +291,11 @@ function RestaurantsPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div
             className="bg-card rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto"
-            key={editRestaurant ? `edit-${editRestaurant.id}` : "add-restaurant"}
+            key={
+              editRestaurant
+                ? `edit-${editRestaurant.id}`
+                : `add-restaurant-${platformDefaults?.id ?? "new"}-${platformDefaults?.updated_at ?? ""}`
+            }
           >
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">
               {editRestaurant ? "Edit Restaurant" : "Add Restaurant"}
@@ -563,7 +576,11 @@ function RestaurantsPage() {
                   min={0}
                   step="0.01"
                   defaultValue={
-                    editRestaurant?.per_transaction_fee != null ? String(editRestaurant.per_transaction_fee) : "0"
+                    editRestaurant?.per_transaction_fee != null
+                      ? String(editRestaurant.per_transaction_fee)
+                      : platformDefaults
+                        ? String(toNum(platformDefaults.per_transaction_fee))
+                        : "0"
                   }
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
@@ -583,7 +600,9 @@ function RestaurantsPage() {
                     editRestaurant?.subscription_fee_per_month != null &&
                     String(editRestaurant.subscription_fee_per_month).trim() !== ""
                       ? String(editRestaurant.subscription_fee_per_month)
-                      : ""
+                      : !editRestaurant && platformDefaults
+                        ? String(toNum(platformDefaults.subscription_fee_per_month))
+                        : ""
                   }
                   placeholder="Leave blank for platform default"
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
@@ -602,7 +621,9 @@ function RestaurantsPage() {
                   defaultValue={
                     editRestaurant?.sms_per_usage != null && String(editRestaurant.sms_per_usage).trim() !== ""
                       ? String(editRestaurant.sms_per_usage)
-                      : ""
+                      : !editRestaurant && platformDefaults
+                        ? String(toNum(platformDefaults.sms_per_usage))
+                        : ""
                   }
                   placeholder="Leave blank for platform default"
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
@@ -624,7 +645,9 @@ function RestaurantsPage() {
                   defaultValue={
                     editRestaurant?.due_threshold != null && String(editRestaurant.due_threshold).trim() !== ""
                       ? String(editRestaurant.due_threshold)
-                      : ""
+                      : !editRestaurant && platformDefaults
+                        ? String(toNum(platformDefaults.due_threshold))
+                        : ""
                   }
                   placeholder="Leave blank for platform default"
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"

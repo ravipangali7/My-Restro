@@ -128,67 +128,19 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
             <label className="text-sm font-medium text-text-secondary block mb-1.5">Phone</label>
             <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
-          <div className="relative">
-            <label className="text-sm font-medium text-text-secondary block mb-1.5">Find on map (search)</label>
-            <input
-              className={inputClass}
-              value={geoQuery}
-              onChange={(e) => setGeoQuery(e.target.value)}
-              onFocus={() => {
-                if (geoHits.length) setGeoOpen(true);
-              }}
-              placeholder="Street, place, or business name…"
-              autoComplete="off"
-            />
-            {geoLoading ? <p className="mt-1 text-xs text-text-muted">Searching…</p> : null}
-            {geoError ? <p className="mt-1 text-xs text-error">{geoError}</p> : null}
-            <p className="mt-1 text-[11px] text-text-muted">
-              Search is limited to Nepal (OpenStreetMap / Nominatim). Pick a result or place the pin on the map
-              below.
-            </p>
-            {geoOpen && geoHits.length > 0 ? (
-              <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-border bg-card text-sm shadow-lg">
-                <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
-                  Best match
-                </p>
-                <button
-                  type="button"
-                  className="w-full border-b border-primary/30 bg-primary/5 px-3 py-2.5 text-left font-medium text-foreground hover:bg-primary/10"
-                  onClick={() => pickGeocode(geoHits[0])}
-                >
-                  {geoHits[0].display_name}
-                </button>
-                {geoHits.length > 1 ? (
-                  <>
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
-                      Other places
-                    </p>
-                    <ul className="pb-1">
-                      {geoHits.slice(1).map((h, i) => (
-                        <li key={h.place_id ? `${h.place_id}` : `${h.lat}-${h.lon}-${i + 1}`}>
-                          <button
-                            type="button"
-                            className="w-full px-3 py-2 text-left text-foreground/90 hover:bg-surface-alt"
-                            onClick={() => pickGeocode(h)}
-                          >
-                            {h.display_name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
           <div>
             <label className="text-sm font-medium text-text-secondary block mb-1.5">Address</label>
-            <input className={inputClass} value={address} onChange={(e) => setAddress(e.target.value)} />
+            <input
+              className={inputClass}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Filled from map search or coordinates"
+            />
           </div>
           <div>
             <p className="text-sm font-medium text-text-secondary mb-2">Restaurant location</p>
             <p className="text-xs text-text-muted mb-2">
-              Choose a search result or click / drag the pin on the map. Latitude and longitude fill in automatically.
+              Search for a place, click the map, or drag the pin. Latitude, longitude, and address update automatically.
             </p>
             <div className="mt-3 mb-3">
               <LocationMapPicker
@@ -198,6 +150,7 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
                   setLat(nextLat);
                   setLng(nextLng);
                 }}
+                onPlaceSelected={setAddress}
               />
             </div>
             <p className="text-sm font-medium text-text-secondary mb-2">Restaurant latitude / longitude</p>
