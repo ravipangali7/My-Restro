@@ -1889,6 +1889,55 @@ class OwnerRestaurantCreatePerTxApiTests(APITestCase):
         self.assertEqual(effective_per_transaction_fee(r), Decimal("11.00"))
 
 
+class SuperAdminRestaurantCreateApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.super_admin = User.objects.create(phone="9000001200", name="Super", role=UserRole.SUPER_ADMIN)
+        self.owner = User.objects.create(phone="9000001201", name="Venue Owner", role=UserRole.OWNER)
+        self.client.force_authenticate(user=self.super_admin)
+
+    def test_duplicate_slug_returns_400_not_500(self):
+        Restaurant.objects.create(
+            user=self.owner,
+            name="Existing",
+            phone="9800000001",
+            slug="eniepel",
+        )
+        res = self.client.post(
+            "/api/restaurants/",
+            {
+                "user": str(self.owner.pk),
+                "name": "New Venue",
+                "phone": "9800000002",
+                "slug": "Eniepel",
+                "address": "Addr",
+            },
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 400, res.content)
+        self.assertIn("slug", res.json()["detail"].lower())
+
+    def test_super_admin_create_with_logo(self):
+        png_1px = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        res = self.client.post(
+            "/api/restaurants/",
+            {
+                "user": str(self.owner.pk),
+                "name": "Logo Cafe",
+                "phone": "9800000003",
+                "slug": "logo-cafe-unique",
+                "address": "Addr",
+                "logo": SimpleUploadedFile("logo.png", png_1px, content_type="image/png"),
+            },
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertTrue(res.json().get("logo"))
+
+
 class OwnerProfileImagePatchTests(APITestCase):
     def test_owner_multipart_patch_saves_profile_image(self):
         User = get_user_model()

@@ -84,9 +84,18 @@ class WebPImageStorage(FileSystemStorage):
         save_kw: dict = {"format": "WEBP", "quality": self._webp_quality}
         if im.mode == "RGBA":
             save_kw["method"] = 6
-        im.save(buf, **save_kw)
         webp_name = self._webp_relative_name(str(name))
-        return super().save(webp_name, ContentFile(buf.getvalue()), max_length=max_length)
+        try:
+            im.save(buf, **save_kw)
+            return super().save(webp_name, ContentFile(buf.getvalue()), max_length=max_length)
+        except (OSError, KeyError, ValueError):
+            # Pillow builds without libwebp cannot encode WEBP; store JPEG instead.
+            buf = BytesIO()
+            if im.mode == "RGBA":
+                im = im.convert("RGB")
+            im.save(buf, format="JPEG", quality=min(self._webp_quality + 8, 95))
+            jpeg_name = str(Path(webp_name).with_suffix(".jpg"))
+            return super().save(jpeg_name, ContentFile(buf.getvalue()), max_length=max_length)
 
 
 webp_image_storage = WebPImageStorage()

@@ -76,6 +76,7 @@ function RestaurantsPage() {
   const [suspendId, setSuspendId] = useState<string | null>(null);
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
+  const [formAddress, setFormAddress] = useState("");
   const [formIsOpen, setFormIsOpen] = useState(true);
   const [formCanDelivery, setFormCanDelivery] = useState(false);
   const [formDeliveryRadiusKm, setFormDeliveryRadiusKm] = useState("50");
@@ -95,6 +96,7 @@ function RestaurantsPage() {
     if (!showForm) return;
     setFormLat(editRestaurant?.latitude != null ? String(editRestaurant.latitude) : "");
     setFormLng(editRestaurant?.longitude != null ? String(editRestaurant.longitude) : "");
+    setFormAddress(editRestaurant?.address ?? "");
     setFormIsOpen(editRestaurant?.is_open !== false);
     setFormCanDelivery(Boolean(editRestaurant?.can_delivery));
     setFormDeliveryRadiusKm(
@@ -309,7 +311,7 @@ function RestaurantsPage() {
                 const name = restaurantName.trim();
                 const phoneTrim = restaurantPhone.trim();
                 const slug = restaurantSlug.trim();
-                const address = String(fd.get("address") ?? "").trim();
+                const address = formAddress.trim();
                 const perTxRaw = String(fd.get("per_transaction_fee") ?? "").trim();
                 const perTx = perTxRaw === "" ? 0 : Number(perTxRaw);
                 if (!Number.isFinite(perTx) || perTx < 0) {
@@ -508,8 +510,9 @@ function RestaurantsPage() {
                   id="rest-address"
                   name="address"
                   type="text"
-                  defaultValue={editRestaurant?.address || ""}
-                  placeholder="Full address"
+                  value={formAddress}
+                  onChange={(e) => setFormAddress(e.target.value)}
+                  placeholder="Filled automatically from map or coordinates"
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
               </div>
@@ -545,6 +548,7 @@ function RestaurantsPage() {
                       setFormLat(nextLat);
                       setFormLng(nextLng);
                     }}
+                    onPlaceSelected={setFormAddress}
                   />
                 </div>
               </div>

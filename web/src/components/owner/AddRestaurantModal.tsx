@@ -1,18 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiPost } from "@/lib/api";
 import { slugifyName } from "@/lib/slugify";
 import { useAuth } from "@/lib/auth-context";
 import { X } from "lucide-react";
-
-export type GeocodeHit = {
-  lat: string;
-  lon: string;
-  display_name: string;
-  /** Nominatim place id when present — stable key for list items */
-  place_id?: string;
-};
 
 interface AddRestaurantModalProps {
   open: boolean;
@@ -35,12 +27,6 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [geoQuery, setGeoQuery] = useState("");
-  const [geoHits, setGeoHits] = useState<GeocodeHit[]>([]);
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
-  const [geoOpen, setGeoOpen] = useState(false);
-
   const resetForm = useCallback(() => {
     const ownerPhone = user?.phone?.trim() ?? "";
     setName("");
@@ -51,57 +37,11 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
     setRadiusM("150");
     setDeliveryRadiusKm("50");
     setMessage(null);
-    setGeoQuery("");
-    setGeoHits([]);
-    setGeoError(null);
-    setGeoOpen(false);
   }, [user?.phone]);
 
   useEffect(() => {
     if (open) resetForm();
   }, [open, resetForm]);
-
-  useEffect(() => {
-    if (!open) return;
-    const q = geoQuery.trim();
-    if (q.length < 2) {
-      setGeoHits([]);
-      setGeoLoading(false);
-      setGeoError(null);
-      return;
-    }
-    setGeoLoading(true);
-    setGeoError(null);
-    const t = window.setTimeout(() => {
-      void (async () => {
-        if (!token) return;
-        try {
-          const enc = encodeURIComponent(q);
-          const rows = await apiGet<GeocodeHit[]>(`/api/geocode/?q=${enc}`, token);
-          setGeoHits(Array.isArray(rows) ? rows : []);
-          setGeoOpen(true);
-        } catch (e) {
-          setGeoHits([]);
-          setGeoError(e instanceof Error ? e.message : "Search failed.");
-        } finally {
-          setGeoLoading(false);
-        }
-      })();
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [geoQuery, open, token]);
-
-  const pickGeocode = (hit: GeocodeHit) => {
-    const la = Number.parseFloat(hit.lat);
-    const lo = Number.parseFloat(hit.lon);
-    if (Number.isFinite(la) && Number.isFinite(lo)) {
-      setLat(la.toFixed(7));
-      setLng(lo.toFixed(7));
-    }
-    setAddress(hit.display_name);
-    setGeoOpen(false);
-    setGeoQuery("");
-  };
 
   const submit = async () => {
     if (!token) return;

@@ -90,10 +90,20 @@ export interface LocationMapPickerProps {
   /**
    * OpenStreetMap Nominatim search above the map (debounced).
    * Results are biased to `countryCodes` (defaults to Nepal).
+   * Pass `false` to hide search. Defaults to enabled when not `false`.
    */
-  placeSearch?: LocationMapPlaceSearchOptions;
-  /** Called with Nominatim `display_name` when the user picks a search result. */
+  placeSearch?: LocationMapPlaceSearchOptions | false;
+  /**
+   * Reverse-geocode coordinates into a human-readable address (debounced).
+   * Defaults to enabled when `onPlaceSelected` is provided.
+   */
+  reverseGeocode?: boolean;
+  /** Called with Nominatim `display_name` from search, reverse geocode, or map pin moves. */
   onPlaceSelected?: (displayName: string) => void;
+}
+
+function coordKey(lat: number, lng: number): string {
+  return `${lat.toFixed(7)},${lng.toFixed(7)}`;
 }
 
 export function LocationMapPicker({
@@ -105,6 +115,7 @@ export function LocationMapPicker({
   disabled = false,
   className = "",
   placeSearch,
+  reverseGeocode,
   onPlaceSelected,
 }: LocationMapPickerProps) {
   const [mounted, setMounted] = useState(false);
@@ -115,6 +126,12 @@ export function LocationMapPicker({
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
+  const reverseAbortRef = useRef<AbortController | null>(null);
+  /** Skip the next reverse lookup when address already came from forward search. */
+  const skipReverseForKeyRef = useRef<string | null>(null);
+
+  const shouldReverseGeocode = reverseGeocode ?? Boolean(onPlaceSelected);
+  const placeSearchOptions = placeSearch === false ? undefined : (placeSearch ?? {});
 
   const latNum = parseCoord(latitude);
   const lngNum = parseCoord(longitude);
@@ -150,12 +167,60 @@ export function LocationMapPicker({
     [handlePick],
   );
 
-  const countryCodes = placeSearch?.countryCodes?.trim() || "np";
+  const countryCodes = placeSearchOptions?.countryCodes?.trim() || "np";
   const searchPlaceholder =
-    placeSearch?.placeholder ?? "Search street, ward, or place in Nepal…";
+    placeSearchOptions?.placeholder ?? "Search street, ward, or place in Nepal…";
 
   useEffect(() => {
-    if (!placeSearch || disabled) {
+    if (!shouldReverseGeocode || disabled || !onPlaceSelected || !hasPoint) return;
+
+    const key = coordKey(latNum, lngNum);
+    if (skipReverseForKeyRef.current === key) {
+      skipReverseForKeyRef.current = null;
+      return;
+    }
+
+    const handle = window.setTimeout(() => {
+      reverseAbortRef.current?.abort();
+      const ac = new AbortController();
+      reverseAbortRef.current = ac;
+
+      const url = new URL("https://nominatim.openstreetmap.org/reverse");
+      url.searchParams.set("lat", String(latNum));
+      url.searchParams.set("lon", String(lngNum));
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("addressdetails", "1");
+
+      void fetch(url.toString(), {
+        signal: ac.signal,
+        headers: {
+          Accept: "application/json",
+          "Accept-Language": "en,ne",
+        },
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`Reverse geocode failed (${res.status})`);
+          return (await res.json()) as { display_name?: string };
+        })
+        .then((row) => {
+          if (ac.signal.aborted) return;
+          const name = typeof row.display_name === "string" ? row.display_name.trim() : "";
+          if (name) onPlaceSelected(name);
+        })
+        .catch((err: unknown) => {
+          if (ac.signal.aborted) return;
+          if (err instanceof DOMException && err.name === "AbortError") return;
+        });
+    }, 550);
+
+    return () => {
+      window.clearTimeout(handle);
+      reverseAbortRef.current?.abort();
+    };
+  }, [shouldReverseGeocode, disabled, onPlaceSelected, hasPoint, latNum, lngNum]);
+
+  useEffect(() => {
+    if (!placeSearchOptions || disabled) {
       setSearchResults([]);
       setSearchLoading(false);
       setSearchError(null);
@@ -225,13 +290,14 @@ export function LocationMapPicker({
       window.clearTimeout(handle);
       searchAbortRef.current?.abort();
     };
-  }, [placeSearch, disabled, searchQuery, countryCodes]);
+  }, [placeSearchOptions, disabled, searchQuery, countryCodes]);
 
   const pickSearchResult = useCallback(
     (row: NominatimResult) => {
       const lat = Number.parseFloat(row.lat);
       const lng = Number.parseFloat(row.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      skipReverseForKeyRef.current = coordKey(lat, lng);
       handlePick(lat, lng);
       onPlaceSelected?.(row.display_name);
       setSearchQuery("");
@@ -241,7 +307,7 @@ export function LocationMapPicker({
     [handlePick, onPlaceSelected],
   );
 
-  const showSearch = Boolean(placeSearch) && !disabled;
+  const showSearch = Boolean(placeSearchOptions) && !disabled;
 
   const mapBlock = !mounted ? (
     <div

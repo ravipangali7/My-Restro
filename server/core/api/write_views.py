@@ -2,8 +2,10 @@ import json
 from datetime import date
 from decimal import Decimal
 
-from django.db import transaction
+from django.core.exceptions import SuspiciousFileOperation
+from django.db import IntegrityError, transaction
 from django.db.models import F
+from django.utils.text import slugify
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -388,6 +390,54 @@ def _parse_iso_date(val) -> date | None:
         return None
 
 
+def _normalize_restaurant_slug(raw: str | None) -> str:
+    """Slugify manual slugs; empty string lets Restaurant.save() auto-generate from name."""
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    return slugify(s)[:180]
+
+
+def _restaurant_slug_conflict(slug: str, *, exclude_pk: int | None = None) -> Response | None:
+    if not slug:
+        return None
+    qs = Restaurant.objects.filter(slug=slug)
+    if exclude_pk is not None:
+        qs = qs.exclude(pk=exclude_pk)
+    if qs.exists():
+        return Response(
+            {"detail": "This slug is already in use. Choose another."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
+
+def _save_restaurant_with_logo(restaurant: Restaurant, logo) -> Response | None:
+    """Persist restaurant (+ optional logo). Returns an error Response or None on success."""
+    try:
+        with transaction.atomic():
+            if logo:
+                restaurant.logo = logo
+            restaurant.save()
+    except SuspiciousFileOperation as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except OSError:
+        if logo:
+            return Response(
+                {"detail": "Could not process logo image. Use PNG or JPEG."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        raise
+    except IntegrityError as exc:
+        if "slug" in str(exc).lower():
+            return Response(
+                {"detail": "This slug is already in use. Choose another."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        raise
+    return None
+
+
 def _parse_coord_pair(lat_raw, lng_raw, *, both_required: bool):
     latitude = None
     longitude = None
@@ -420,13 +470,16 @@ def _create_restaurant_response(request):
         if not name:
             return Response({"detail": "name is required."}, status=status.HTTP_400_BAD_REQUEST)
         phone = (request.data.get("phone") or "").strip() or (getattr(owner, "phone", None) or "").strip()
-        slug_raw = (request.data.get("slug") or "").strip()
+        slug = _normalize_restaurant_slug(request.data.get("slug"))
         address = (request.data.get("address") or "").strip()
         lat_raw = request.data.get("latitude")
         lng_raw = request.data.get("longitude")
         latitude, longitude, err = _parse_coord_pair(lat_raw, lng_raw, both_required=True)
         if err:
             return err
+        slug_err = _restaurant_slug_conflict(slug)
+        if slug_err:
+            return slug_err
         ptf = Decimal("0.00")
         if request.data.get("per_transaction_fee") not in (None, ""):
             try:
@@ -476,13 +529,16 @@ def _create_restaurant_response(request):
         if owner.role != UserRole.OWNER:
             return Response({"detail": "Selected user must have the owner role."}, status=status.HTTP_400_BAD_REQUEST)
 
-        slug_raw = (request.data.get("slug") or "").strip()
+        slug = _normalize_restaurant_slug(request.data.get("slug"))
         address = (request.data.get("address") or "").strip()
         lat_raw = request.data.get("latitude")
         lng_raw = request.data.get("longitude")
         latitude, longitude, err = _parse_coord_pair(lat_raw, lng_raw, both_required=False)
         if err:
             return err
+        slug_err = _restaurant_slug_conflict(slug)
+        if slug_err:
+            return slug_err
 
         ptf = Decimal("0.00")
         if request.data.get("per_transaction_fee") not in (None, ""):
@@ -589,7 +645,7 @@ def _create_restaurant_response(request):
         user=owner,
         name=name,
         phone=phone,
-        slug=slug_raw,
+        slug=slug,
         address=address,
         latitude=latitude,
         longitude=longitude,
@@ -610,12 +666,9 @@ def _create_restaurant_response(request):
         is_active=False if actor_role == UserRole.OWNER else True,
     )
     apply_due_balance_deactivation(r)
-    r.save()
-
-    logo = request.FILES.get("logo")
-    if logo:
-        r.logo = logo
-        r.save(update_fields=["logo"])
+    save_err = _save_restaurant_with_logo(r, request.FILES.get("logo"))
+    if save_err:
+        return save_err
 
     return Response(
         RestaurantListSerializer(r, context={"request": request}).data,
@@ -777,8 +830,11 @@ def _patch_restaurant_response(request, pk: int):
             r.phone = ""
 
     if "slug" in data:
-        sg = (data.get("slug") or "").strip()
+        sg = _normalize_restaurant_slug(data.get("slug"))
         if sg:
+            slug_err = _restaurant_slug_conflict(sg, exclude_pk=r.pk)
+            if slug_err:
+                return slug_err
             r.slug = sg
 
     if "address" in data:
@@ -937,12 +993,10 @@ def _patch_restaurant_response(request, pk: int):
                 )
             r.delivery_radius_km = dr
 
-    logo = request.FILES.get("logo")
-    if logo:
-        r.logo = logo
-
     apply_due_balance_deactivation(r)
-    r.save()
+    save_err = _save_restaurant_with_logo(r, request.FILES.get("logo"))
+    if save_err:
+        return save_err
 
     return Response(RestaurantListSerializer(r, context={"request": request}).data)
 
