@@ -91,7 +91,7 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
       <div
-        className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-lg max-h-[min(92dvh,calc(100vh-2rem))] overflow-y-auto overscroll-contain"
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-restaurant-title"

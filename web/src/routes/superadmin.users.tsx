@@ -14,6 +14,7 @@ import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { parseLocalPhone } from "@/lib/phone-validation";
 import { useAuth } from "@/lib/auth-context";
+import { AppModal } from "@/components/shared/AppModal";
 import { Plus, UsersRound } from "lucide-react";
 
 type StaffPlacement = {

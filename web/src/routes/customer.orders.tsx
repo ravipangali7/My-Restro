@@ -92,7 +92,7 @@ function CustomerOrders() {
 
       {selectedOrder && selectedId != null && (
         <div className="fixed inset-0 bg-black/40 flex items-end lg:items-center justify-center z-50">
-          <div className="bg-card rounded-t-2xl lg:rounded-2xl border border-border p-6 w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-card rounded-t-2xl lg:rounded-2xl border border-border p-6 w-full max-w-md max-h-[min(92dvh,calc(100vh-2rem))] overflow-y-auto overscroll-contain shadow-xl">
             <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4 lg:hidden" />
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display font-semibold text-lg text-foreground">{selectedOrder.order_id}</h3>

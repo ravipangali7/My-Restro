@@ -9,8 +9,17 @@ interface RouteFormModalProps {
 
 export function RouteFormModal({ title, onClose, children }: RouteFormModalProps) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+    >
+      <div
+        className="relative w-full max-w-5xl max-h-[min(92dvh,calc(100vh-2rem))] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           type="button"
           onClick={onClose}

@@ -37,7 +37,7 @@ export function ConfirmModal({
   const styles = variantStyles[variant];
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
-      <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-sm shadow-xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-sm max-h-[min(92dvh,calc(100vh-2rem))] overflow-y-auto overscroll-contain shadow-xl animate-in fade-in zoom-in-95 duration-200">
         <div className="flex flex-col items-center text-center">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${styles.icon}`}>
             <AlertTriangle size={24} />

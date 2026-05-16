@@ -256,7 +256,7 @@ function SuppliersPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md shadow-xl">
+          <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md max-h-[min(92dvh,calc(100vh-2rem))] overflow-y-auto overscroll-contain shadow-xl">
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">
               {editId == null ? "Add Supplier" : "Edit Supplier"}
             </h3>
