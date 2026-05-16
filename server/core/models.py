@@ -216,8 +216,6 @@ class Restaurant(TimeStampedModel, ActiveModel):
     address = models.TextField(blank=True)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
-    reference_latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
-    reference_longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
     proximity_alert_radius_m = models.DecimalField(
         max_digits=10,
         decimal_places=2,

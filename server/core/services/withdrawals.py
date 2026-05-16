@@ -145,6 +145,55 @@ def record_shareholder_balance_adjustment_transaction(
     )
 
 
+def _pending_withdrawal_total_excluding(withdrawal_id: int, user_id: int) -> Decimal:
+    total = (
+        ShareholderWithdrawal.objects.filter(user_id=user_id, status=WithdrawalStatus.PENDING)
+        .exclude(pk=withdrawal_id)
+        .aggregate(s=Sum("amount"))["s"]
+        or Decimal("0.00")
+    )
+    return total
+
+
+@transaction.atomic
+def update_pending_shareholder_withdrawal(
+    w: ShareholderWithdrawal,
+    *,
+    user: User | None = None,
+    amount: Decimal | None = None,
+    remarks: str | None = None,
+) -> ShareholderWithdrawal:
+    locked_w = ShareholderWithdrawal.objects.select_for_update().select_related("user").get(pk=w.pk)
+    if locked_w.status != WithdrawalStatus.PENDING:
+        raise ValidationError("Only pending withdrawals can be updated.")
+
+    shareholder = locked_w.user
+    if user is not None and user.pk != locked_w.user_id:
+        shareholder = User.objects.select_for_update().get(pk=user.pk)
+        if not shareholder.is_shareholder:
+            raise ValidationError("User is not a shareholder.")
+        locked_w.user = shareholder
+
+    new_amount = locked_w.amount if amount is None else amount
+    if new_amount <= 0:
+        raise ValidationError("Withdrawal amount must be positive.")
+
+    if remarks is not None:
+        remarks_clean = (remarks or "").strip()
+        if not remarks_clean:
+            raise ValidationError("Remarks are required.")
+        locked_w.remarks = remarks_clean
+
+    pending_other = _pending_withdrawal_total_excluding(locked_w.pk, shareholder.pk)
+    available = shareholder.balance - pending_other
+    if new_amount > available:
+        raise ValidationError("Withdrawal amount cannot exceed available balance.")
+
+    locked_w.amount = new_amount
+    locked_w.save(update_fields=["user", "amount", "remarks", "updated_at"])
+    return locked_w
+
+
 @transaction.atomic
 def reject_shareholder_withdrawal(w: ShareholderWithdrawal, reason: str) -> ShareholderWithdrawal:
     locked_w = ShareholderWithdrawal.objects.select_for_update().get(pk=w.pk)

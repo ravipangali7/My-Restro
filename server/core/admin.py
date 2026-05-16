@@ -214,8 +214,6 @@ class RestaurantAdmin(BaseAdmin):
                 "fields": (
                     "latitude",
                     "longitude",
-                    "reference_latitude",
-                    "reference_longitude",
                     "proximity_alert_radius_m",
                 )
             },

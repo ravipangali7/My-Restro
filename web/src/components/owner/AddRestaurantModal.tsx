@@ -70,8 +70,6 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
         address: address.trim(),
         latitude: la,
         longitude: lo,
-        reference_latitude: la,
-        reference_longitude: lo,
         proximity_alert_radius_m: radius,
         delivery_radius_km: deliveryRadius,
       };
@@ -166,31 +164,6 @@ export function AddRestaurantModal({ open, onClose }: AddRestaurantModalProps) {
               <input
                 className={`${inputClass} bg-surface-alt text-text-muted cursor-not-allowed`}
                 placeholder="Set via map or search"
-                value={lng}
-                readOnly
-                tabIndex={-1}
-                aria-readonly="true"
-              />
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-text-secondary mb-2">Reference latitude / longitude</p>
-            <p className="text-xs text-text-muted mb-2">
-              Matches the restaurant pin above (same values stored on the server for proximity alerts). This cannot be
-              edited separately.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                className={`${inputClass} bg-surface-alt text-text-muted cursor-not-allowed`}
-                placeholder="Same as restaurant latitude"
-                value={lat}
-                readOnly
-                tabIndex={-1}
-                aria-readonly="true"
-              />
-              <input
-                className={`${inputClass} bg-surface-alt text-text-muted cursor-not-allowed`}
-                placeholder="Same as restaurant longitude"
                 value={lng}
                 readOnly
                 tabIndex={-1}

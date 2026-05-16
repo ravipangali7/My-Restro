@@ -5,6 +5,7 @@ import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/c
 import { SuperAdminEmptyState, SuperAdminPageHeader, SuperAdminPanel } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useBulkNotifications, useCreateSuperadminBulkNotification, useUsers } from "@/hooks/use-rest-api";
+import { resolveMediaUrl } from "@/lib/api";
 
 type BulkRow = {
   id: number;
@@ -13,6 +14,7 @@ type BulkRow = {
   message: string;
   receivers: unknown[];
   type: string;
+  image?: string | null;
 };
 
 type UserRow = { id: number; name: string; phone: string; role: string; is_shareholder?: boolean; is_active?: boolean };
@@ -274,13 +276,25 @@ function NotificationsPage() {
                   : count === 0
                     ? "All staff"
                     : `${count} selected`;
+              const thumb = n.type === "push" ? resolveMediaUrl(n.image ?? null) : null;
               return (
                 <OwnerEntityCard
                   key={n.id}
                   leading={
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-700">
-                      <Bell strokeWidth={2} aria-hidden />
-                    </div>
+                    thumb ? (
+                      <div className="h-12 w-12 shrink-0 rounded-xl border border-border bg-surface-alt overflow-hidden">
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="size-full object-cover object-center"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-700">
+                        <Bell strokeWidth={2} aria-hidden />
+                      </div>
+                    )
                   }
                   title={n.restaurant_name ?? "Platform-wide"}
                   subtitle={<span className="line-clamp-3 text-text-secondary">{n.message}</span>}

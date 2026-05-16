@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { AppModal } from "@/components/shared/AppModal";
 import { Plus, Wallet } from "lucide-react";
 import {
@@ -13,6 +13,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import {
+  useAdminCreateShareholderWithdrawal,
+  useAdminUpdateShareholderWithdrawal,
   useApproveShareholderWithdrawal,
   useRejectShareholderWithdrawal,
   useUsers,
@@ -31,6 +33,8 @@ function WithdrawalsPage() {
   const { data: users } = useUsers();
   const approveMut = useApproveShareholderWithdrawal();
   const rejectMut = useRejectShareholderWithdrawal();
+  const createMut = useAdminCreateShareholderWithdrawal();
+  const updateMut = useAdminUpdateShareholderWithdrawal();
 
   const [tab, setTab] = useState<FilterTab>("all");
   const [rejectModal, setRejectModal] = useState<string | null>(null);
@@ -39,6 +43,8 @@ function WithdrawalsPage() {
   const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [showForm, setShowForm] = useState(false);
   const [editWithdrawal, setEditWithdrawal] = useState<W | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
 
   const list = (withdrawals as W[] | undefined) ?? [];
   const filtered = tab === "all" ? list : list.filter((w) => w.status === tab);
@@ -56,11 +62,98 @@ function WithdrawalsPage() {
 
   const openAdd = () => {
     setEditWithdrawal(null);
+    setFormError(null);
     setShowForm(true);
   };
   const openEdit = (w: W) => {
     setEditWithdrawal(w);
+    setFormError(null);
     setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditWithdrawal(null);
+    setFormError(null);
+  };
+
+  const onFormSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setFormError(null);
+
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const userId = Number(fd.get("user"));
+    const amountRaw = String(fd.get("amount") ?? "").trim();
+    const nextStatus = String(fd.get("status") || "pending");
+    const remarks = String(fd.get("remarks") ?? "").trim();
+    const rejectReason = String(fd.get("reject_reason") ?? "").trim();
+
+    if (!userId) {
+      setFormError("Select a shareholder.");
+      return;
+    }
+    if (!remarks) {
+      setFormError("Remarks are required.");
+      return;
+    }
+    const amountNum = Number(amountRaw);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      setFormError("Enter a valid amount greater than zero.");
+      return;
+    }
+    if (nextStatus === "rejected" && !rejectReason) {
+      setFormError("Reject reason is required when status is rejected.");
+      return;
+    }
+
+    const amount = amountNum.toFixed(2);
+    setFormSubmitting(true);
+
+    try {
+      if (!editWithdrawal) {
+        const created = (await createMut.mutateAsync({
+          user: userId,
+          amount,
+          remarks,
+        })) as { id: number };
+        if (nextStatus === "approved") {
+          await approveMut.mutateAsync(created.id);
+        } else if (nextStatus === "rejected") {
+          await rejectMut.mutateAsync({ id: created.id, reason: rejectReason });
+        }
+        closeForm();
+        return;
+      }
+
+      if (editWithdrawal.status !== "pending") {
+        setFormError("Only pending withdrawals can be edited.");
+        return;
+      }
+
+      const patchBody: { user?: number; amount?: string; remarks?: string } = {};
+      if (userId !== editWithdrawal.user) patchBody.user = userId;
+      if (amount !== Number(editWithdrawal.amount).toFixed(2)) patchBody.amount = amount;
+      if (remarks !== (editWithdrawal.remarks ?? "").trim()) patchBody.remarks = remarks;
+
+      if (Object.keys(patchBody).length > 0) {
+        await updateMut.mutateAsync({ id: editWithdrawal.id, body: patchBody });
+      }
+
+      if (nextStatus !== editWithdrawal.status) {
+        if (nextStatus === "approved") {
+          await approveMut.mutateAsync(editWithdrawal.id);
+        } else if (nextStatus === "rejected") {
+          await rejectMut.mutateAsync({ id: editWithdrawal.id, reason: rejectReason });
+        }
+      }
+
+      closeForm();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setFormSubmitting(false);
+    }
   };
 
   const openReject = (w: W) => {
@@ -204,16 +297,31 @@ function WithdrawalsPage() {
       )}
 
       {showForm && (
-        <AppModal panelClassName="max-w-md p-6">
+        <AppModal
+          key={editWithdrawal ? `edit-${editWithdrawal.id}` : "add-withdrawal"}
+          panelClassName="max-w-md p-6"
+        >
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">
               {editWithdrawal ? "Edit Withdrawal" : "Add Withdrawal"}
             </h3>
-            <div className="space-y-4">
+            {formError ? <p className="mb-3 text-sm text-error">{formError}</p> : null}
+            {editWithdrawal && editWithdrawal.status !== "pending" ? (
+              <p className="mb-3 text-sm text-text-muted">
+                This withdrawal is {editWithdrawal.status}. Only pending requests can be changed.
+              </p>
+            ) : null}
+            <form className="space-y-4" onSubmit={onFormSubmit}>
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-1.5 block">User *</label>
+                <label htmlFor="wd-user" className="text-sm font-medium text-text-secondary mb-1.5 block">
+                  User *
+                </label>
                 <select
+                  id="wd-user"
+                  name="user"
+                  required
+                  disabled={Boolean(editWithdrawal && editWithdrawal.status !== "pending")}
                   defaultValue={editWithdrawal?.user != null ? String(editWithdrawal.user) : ""}
-                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none disabled:opacity-60"
                 >
                   <option value="">Select shareholder</option>
                   {(users as { id: number; name: string; is_shareholder: boolean }[] | undefined)
@@ -226,19 +334,32 @@ function WithdrawalsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-1.5 block">Amount *</label>
+                <label htmlFor="wd-amount" className="text-sm font-medium text-text-secondary mb-1.5 block">
+                  Amount *
+                </label>
                 <input
+                  id="wd-amount"
+                  name="amount"
                   type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  disabled={Boolean(editWithdrawal && editWithdrawal.status !== "pending")}
                   defaultValue={editWithdrawal?.amount != null ? String(editWithdrawal.amount) : ""}
                   placeholder="₹ 0"
-                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none disabled:opacity-60"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-1.5 block">Status</label>
+                <label htmlFor="wd-status" className="text-sm font-medium text-text-secondary mb-1.5 block">
+                  Status
+                </label>
                 <select
+                  id="wd-status"
+                  name="status"
                   defaultValue={editWithdrawal?.status || "pending"}
-                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  disabled={Boolean(editWithdrawal && editWithdrawal.status !== "pending")}
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none disabled:opacity-60"
                 >
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
@@ -246,40 +367,55 @@ function WithdrawalsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-1.5 block">Remarks</label>
+                <label htmlFor="wd-remarks" className="text-sm font-medium text-text-secondary mb-1.5 block">
+                  Remarks *
+                </label>
                 <input
+                  id="wd-remarks"
+                  name="remarks"
                   type="text"
+                  required
+                  disabled={Boolean(editWithdrawal && editWithdrawal.status !== "pending")}
                   defaultValue={editWithdrawal?.remarks || ""}
-                  placeholder="Remarks"
-                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  placeholder="Payout method or reference"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none disabled:opacity-60"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-1.5 block">Reject Reason</label>
+                <label htmlFor="wd-reject-reason" className="text-sm font-medium text-text-secondary mb-1.5 block">
+                  Reject reason
+                </label>
                 <input
+                  id="wd-reject-reason"
+                  name="reject_reason"
                   type="text"
+                  disabled={Boolean(editWithdrawal && editWithdrawal.status !== "pending")}
                   defaultValue={editWithdrawal?.reject_reason || ""}
-                  placeholder="If rejected"
-                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  placeholder="Required if status is rejected"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none disabled:opacity-60"
                 />
               </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-text-secondary hover:bg-surface"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-600"
-              >
-                Save
-              </button>
-            </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={formSubmitting}
+                  className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-text-secondary hover:bg-surface disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    formSubmitting ||
+                    Boolean(editWithdrawal && editWithdrawal.status !== "pending")
+                  }
+                  className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-600 disabled:opacity-50"
+                >
+                  {formSubmitting ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </form>
         </AppModal>
       )}
 

@@ -27,9 +27,6 @@ interface RestaurantRow {
   address: string;
   latitude: string | number | null;
   longitude: string | number | null;
-  reference_latitude: string | number | null;
-  reference_longitude: string | number | null;
-  reference_distance_m: number | null;
   proximity_alert_radius_m: string | number;
   delivery_radius_km?: string | number;
   is_active?: boolean;

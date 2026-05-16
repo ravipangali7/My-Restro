@@ -579,16 +579,6 @@ def _create_restaurant_response(request):
             except Exception:
                 return Response({"detail": "Invalid due_balance."}, status=status.HTTP_400_BAD_REQUEST)
 
-    ref_lat_raw = request.data.get("reference_latitude")
-    ref_lng_raw = request.data.get("reference_longitude")
-    ref_lat = None
-    ref_lng = None
-    ref_partial = (ref_lat_raw not in (None, "")) or (ref_lng_raw not in (None, ""))
-    if ref_partial:
-        ref_lat, ref_lng, err = _parse_coord_pair(ref_lat_raw, ref_lng_raw, both_required=True)
-        if err:
-            return err
-
     proximity_r = Decimal("2.00")
     if request.data.get("proximity_alert_radius_m") not in (None, ""):
         try:
@@ -649,8 +639,6 @@ def _create_restaurant_response(request):
         address=address,
         latitude=latitude,
         longitude=longitude,
-        reference_latitude=ref_lat,
-        reference_longitude=ref_lng,
         proximity_alert_radius_m=proximity_r,
         due_balance=due_bal if actor_role == UserRole.SUPER_ADMIN else Decimal("0.00"),
         per_transaction_fee=ptf,
@@ -701,8 +689,6 @@ def _patch_restaurant_response(request, pk: int):
             "delivery_radius_km",
             "latitude",
             "longitude",
-            "reference_latitude",
-            "reference_longitude",
             "proximity_alert_radius_m",
         }
         attempted = {key for key in data.keys() if key not in allowed}
@@ -715,7 +701,7 @@ def _patch_restaurant_response(request, pk: int):
             return Response(
                 {
                     "detail": "Provide at least one of: can_delivery, delivery_fee_per_km, delivery_radius_km, "
-                    "latitude, longitude, reference_latitude, reference_longitude, proximity_alert_radius_m."
+                    "latitude, longitude, proximity_alert_radius_m."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -769,25 +755,6 @@ def _patch_restaurant_response(request, pk: int):
                 except Exception:
                     return Response({"detail": "Invalid longitude."}, status=status.HTTP_400_BAD_REQUEST)
             update_fields.append("longitude")
-        if "reference_latitude" in data or "reference_longitude" in data:
-            if "reference_latitude" not in data or "reference_longitude" not in data:
-                return Response(
-                    {"detail": "reference_latitude and reference_longitude must be updated together."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            ref_lat_raw = data.get("reference_latitude")
-            ref_lng_raw = data.get("reference_longitude")
-            if ref_lat_raw in (None, "") and ref_lng_raw in (None, ""):
-                r.reference_latitude = None
-                r.reference_longitude = None
-            else:
-                ref_lat, ref_lng, err = _parse_coord_pair(ref_lat_raw, ref_lng_raw, both_required=True)
-                if err:
-                    return err
-                r.reference_latitude = ref_lat
-                r.reference_longitude = ref_lng
-            update_fields.append("reference_latitude")
-            update_fields.append("reference_longitude")
         if "proximity_alert_radius_m" in data:
             raw_pr = data.get("proximity_alert_radius_m")
             try:
@@ -859,24 +826,6 @@ def _patch_restaurant_response(request, pk: int):
                 r.longitude = Decimal(str(lng_raw))
             except Exception:
                 return Response({"detail": "Invalid longitude."}, status=status.HTTP_400_BAD_REQUEST)
-
-    if "reference_latitude" in data or "reference_longitude" in data:
-        if "reference_latitude" not in data or "reference_longitude" not in data:
-            return Response(
-                {"detail": "reference_latitude and reference_longitude must be updated together."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        ref_lat_raw = data.get("reference_latitude")
-        ref_lng_raw = data.get("reference_longitude")
-        if ref_lat_raw in (None, "") and ref_lng_raw in (None, ""):
-            r.reference_latitude = None
-            r.reference_longitude = None
-        else:
-            ref_lat, ref_lng, err = _parse_coord_pair(ref_lat_raw, ref_lng_raw, both_required=True)
-            if err:
-                return err
-            r.reference_latitude = ref_lat
-            r.reference_longitude = ref_lng
 
     if "proximity_alert_radius_m" in data and data.get("proximity_alert_radius_m") not in (None, ""):
         try:

@@ -29,7 +29,6 @@ from core.models import (
 
 
 class RestaurantListSerializer(serializers.ModelSerializer):
-    reference_distance_m = serializers.SerializerMethodField()
     effective_per_transaction_fee = serializers.SerializerMethodField()
     effective_subscription_fee_per_month = serializers.SerializerMethodField()
     effective_sms_per_usage = serializers.SerializerMethodField()
@@ -49,9 +48,6 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             "address",
             "latitude",
             "longitude",
-            "reference_latitude",
-            "reference_longitude",
-            "reference_distance_m",
             "proximity_alert_radius_m",
             "due_balance",
             "due_sms_usage",
@@ -94,18 +90,6 @@ class RestaurantListSerializer(serializers.ModelSerializer):
         from core.services.platform_pricing import effective_due_threshold
 
         return effective_due_threshold(obj)
-
-    def get_reference_distance_m(self, obj: Restaurant):
-        if obj.latitude is None or obj.longitude is None:
-            return None
-        if obj.reference_latitude is None or obj.reference_longitude is None:
-            return None
-        from core.services.geo import haversine_distance_m
-
-        return round(
-            haversine_distance_m(obj.latitude, obj.longitude, obj.reference_latitude, obj.reference_longitude),
-            2,
-        )
 
     def _sum_due_category(self, obj: Restaurant, category: str) -> Decimal:
         ctx = self.context or {}

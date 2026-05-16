@@ -31,10 +31,6 @@ type RestaurantDetail = {
   logo?: string | null;
   latitude: string | number | null;
   longitude: string | number | null;
-  reference_latitude: string | number | null;
-  reference_longitude: string | number | null;
-  /** Haversine distance in metres between main and reference coordinates; null if either pair is missing. */
-  reference_distance_m?: number | null;
   proximity_alert_radius_m: string | number;
   due_balance: string | number;
   /** Sum of platform-billed SMS rows (OTP + order status texts, etc.). */
@@ -379,26 +375,10 @@ function OwnerRestaurantDetailPage() {
           <ViewField label="Subscription start" value={formatIsoDate(r.subscription_start)} />
           <ViewField label="Subscription end" value={formatIsoDate(r.subscription_end)} />
           <ViewField
-            label="Main coordinates (latitude, longitude)"
+            label="Coordinates (latitude, longitude)"
             value={
               r.latitude != null && r.longitude != null
                 ? `${Number(r.latitude).toFixed(5)}, ${Number(r.longitude).toFixed(5)}`
-                : "—"
-            }
-          />
-          <ViewField
-            label="Reference coordinates (latitude, longitude)"
-            value={
-              r.reference_latitude != null && r.reference_longitude != null
-                ? `${Number(r.reference_latitude).toFixed(5)}, ${Number(r.reference_longitude).toFixed(5)}`
-                : "—"
-            }
-          />
-          <ViewField
-            label="Distance main → reference"
-            value={
-              r.reference_distance_m != null && Number.isFinite(Number(r.reference_distance_m))
-                ? `${Number(r.reference_distance_m).toLocaleString()} m`
                 : "—"
             }
           />

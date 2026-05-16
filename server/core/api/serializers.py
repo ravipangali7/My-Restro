@@ -336,5 +336,15 @@ class ShareholderWithdrawalCreateSerializer(serializers.Serializer):
     remarks = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True, min_length=1)
 
 
+class ShareholderWithdrawalUpdateSerializer(serializers.Serializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_shareholder=True), required=False
+    )
+    amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal("0.01"), required=False
+    )
+    remarks = serializers.CharField(required=False, allow_blank=False, trim_whitespace=True, min_length=1)
+
+
 class RejectWithdrawalSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=255)

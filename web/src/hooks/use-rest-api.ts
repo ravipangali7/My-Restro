@@ -914,6 +914,38 @@ export function useCreateWithdrawalRequest() {
   });
 }
 
+export function useAdminCreateShareholderWithdrawal() {
+  const qc = useQueryClient();
+  const { token, refreshUser } = useAuth();
+  return useMutation({
+    mutationFn: (body: { user: number; amount: string; remarks: string }) =>
+      apiPost<unknown>("/api/shareholder-withdrawals/", body, token),
+    onSuccess: async () => {
+      void qc.invalidateQueries({ queryKey: ["withdrawals"] });
+      void qc.invalidateQueries({ queryKey: ["users"] });
+      void qc.invalidateQueries({ queryKey: ["me"] });
+      await refreshUser();
+    },
+  });
+}
+
+export function useAdminUpdateShareholderWithdrawal() {
+  const qc = useQueryClient();
+  const { token, refreshUser } = useAuth();
+  return useMutation({
+    mutationFn: (args: {
+      id: number;
+      body: { user?: number; amount?: string; remarks?: string };
+    }) => apiPatch<unknown>(`/api/shareholder-withdrawals/${args.id}/`, args.body, token),
+    onSuccess: async () => {
+      void qc.invalidateQueries({ queryKey: ["withdrawals"] });
+      void qc.invalidateQueries({ queryKey: ["users"] });
+      void qc.invalidateQueries({ queryKey: ["me"] });
+      await refreshUser();
+    },
+  });
+}
+
 export function useApproveShareholderWithdrawal() {
   const qc = useQueryClient();
   const { token, refreshUser } = useAuth();

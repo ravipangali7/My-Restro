@@ -21,6 +21,7 @@ from core.api.serializers import (
     RejectWithdrawalSerializer,
     ShareholderWithdrawalCreateSerializer,
     ShareholderWithdrawalSerializer,
+    ShareholderWithdrawalUpdateSerializer,
 )
 from core.models import (
     Order,
@@ -50,6 +51,7 @@ from core.services import (
     finalize_purchase,
     reject_shareholder_withdrawal,
     request_shareholder_withdrawal,
+    update_pending_shareholder_withdrawal,
     transition_order_status,
 )
 from core.services.orders import add_cashier_line_to_order
@@ -74,8 +76,6 @@ _ORDER_STAFF_PAYMENTS_PREFETCH = Prefetch(
 
 
 def _restaurant_proximity_anchor(restaurant: Restaurant) -> tuple[float, float] | None:
-    if restaurant.reference_latitude is not None and restaurant.reference_longitude is not None:
-        return (float(restaurant.reference_latitude), float(restaurant.reference_longitude))
     if restaurant.latitude is not None and restaurant.longitude is not None:
         return (float(restaurant.latitude), float(restaurant.longitude))
     return None
@@ -907,7 +907,7 @@ class PurchaseViewSet(viewsets.ModelViewSet):
 class ShareholderWithdrawalViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = ShareholderWithdrawal.objects.all().select_related("user")
-    http_method_names = ["get", "post", "head", "options"]
+    http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
         qs = ShareholderWithdrawal.objects.all().select_related("user")
@@ -927,9 +927,12 @@ class ShareholderWithdrawalViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         ser = ShareholderWithdrawalCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        user = ser.validated_data.get("user")
-        if user is None and getattr(request.user, "is_authenticated", False):
-            user = request.user
+        target_user = ser.validated_data.get("user")
+        role = getattr(request.user, "role", None)
+        if target_user is not None and target_user.pk != request.user.pk:
+            if role != UserRole.SUPER_ADMIN:
+                return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
+        user = target_user if target_user is not None else request.user
         if user is None:
             return Response(
                 {"detail": "Provide `user` or authenticate as the requesting shareholder."},
@@ -943,6 +946,23 @@ class ShareholderWithdrawalViewSet(viewsets.ModelViewSet):
             ShareholderWithdrawalSerializer(w, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+    def partial_update(self, request, *args, **kwargs):
+        if getattr(request.user, "role", None) != UserRole.SUPER_ADMIN:
+            return Response({"detail": "Forbidden."}, status=status.HTTP_403_FORBIDDEN)
+        w = self.get_object()
+        ser = ShareholderWithdrawalUpdateSerializer(data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        if not ser.validated_data:
+            return Response(
+                ShareholderWithdrawalSerializer(w, context={"request": request}).data,
+            )
+        try:
+            w = update_pending_shareholder_withdrawal(w, **ser.validated_data)
+        except ServiceValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        w.refresh_from_db()
+        return Response(ShareholderWithdrawalSerializer(w, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):

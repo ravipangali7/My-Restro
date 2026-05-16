@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useBulkNotifications, useRestaurants, useUsers } from "@/hooks/use-rest-api";
+import { resolveMediaUrl } from "@/lib/api";
 import { ArrowLeft, Bell } from "lucide-react";
 
 export const Route = createFileRoute("/superadmin/notifications_/$id")({ component: NotificationViewPage });
@@ -37,10 +38,18 @@ function NotificationViewPage() {
     return <p className="text-sm text-text-muted">Notification not found.</p>;
   }
 
-  const n = notif as { message: string; type: string; receivers: unknown[]; restaurant?: number | null; restaurant_name?: string };
+  const n = notif as {
+    message: string;
+    type: string;
+    receivers: unknown[];
+    restaurant?: number | null;
+    restaurant_name?: string;
+    image?: string | null;
+  };
 
   const receivers = Array.isArray(n.receivers) ? n.receivers : [];
   const isPlatform = n.restaurant == null;
+  const imageUrl = n.type === "push" ? resolveMediaUrl(n.image ?? null) : null;
 
   return (
     <>
@@ -66,8 +75,20 @@ function NotificationViewPage() {
       </ViewSection>
 
       <ViewSection title="Message">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-sm text-foreground">{n.message}</p>
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+          <p className="text-sm text-foreground whitespace-pre-wrap">{n.message}</p>
+          {imageUrl ? (
+            <div className="rounded-xl border border-border bg-surface-alt p-2 sm:p-3">
+              <div className="w-full flex justify-center items-start min-w-0">
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="max-w-full w-auto h-auto max-h-[min(78vh,960px)] object-contain object-top rounded-md"
+                  loading="eager"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       </ViewSection>
 

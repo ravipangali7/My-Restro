@@ -13,6 +13,7 @@ from core.services.withdrawals import (
     approve_shareholder_withdrawal,
     reject_shareholder_withdrawal,
     request_shareholder_withdrawal,
+    update_pending_shareholder_withdrawal,
 )
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "approve_shareholder_withdrawal",
     "reject_shareholder_withdrawal",
     "request_shareholder_withdrawal",
+    "update_pending_shareholder_withdrawal",
 ]
