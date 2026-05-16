@@ -4,6 +4,7 @@ import { OrderTableVisual } from "@/components/shared/OrderTableVisual";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CheckCircle2, Phone, UserRound, Users, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { orderStatusConfirmMessage, useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
 import { Button } from "@/components/ui/button";
@@ -182,8 +183,19 @@ interface LiveOrderCardProps {
 }
 
 function LiveOrderCard({ order, busy, onTransition }: LiveOrderCardProps) {
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const confirmStatus = (status: string, confirmLabel: string) => {
+    requestConfirm({
+      title: "Change order status",
+      message: orderStatusConfirmMessage(order.order_id, status),
+      confirmLabel,
+      variant: "warning",
+      onConfirm: () => onTransition(status),
+    });
+  };
   const items = order.items ?? [];
   const borderClass =
     order.status === "pending"
@@ -301,7 +313,7 @@ function LiveOrderCard({ order, busy, onTransition }: LiveOrderCardProps) {
             <Button
               type="button"
               disabled={busy}
-              onClick={() => onTransition("accepted")}
+              onClick={() => confirmStatus("accepted", "Accept order")}
               className="h-11 gap-2 rounded-xl bg-info text-primary-foreground text-sm font-semibold shadow-sm hover:bg-info/90"
             >
               <CheckCircle2 className="size-4 shrink-0" aria-hidden />
@@ -326,7 +338,7 @@ function LiveOrderCard({ order, busy, onTransition }: LiveOrderCardProps) {
           <Button
             type="button"
             disabled={busy}
-            onClick={() => onTransition("running")}
+            onClick={() => confirmStatus("running", "Start cooking")}
             className="h-10 w-full rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
           >
             {busy ? "…" : "Start cooking"}
@@ -336,7 +348,7 @@ function LiveOrderCard({ order, busy, onTransition }: LiveOrderCardProps) {
           <Button
             type="button"
             disabled={busy}
-            onClick={() => onTransition("ready")}
+            onClick={() => confirmStatus("ready", "Mark ready")}
             className="h-10 w-full rounded-lg bg-success text-primary-foreground text-xs font-semibold disabled:opacity-50"
           >
             {busy ? "…" : "Mark ready"}
@@ -346,7 +358,7 @@ function LiveOrderCard({ order, busy, onTransition }: LiveOrderCardProps) {
           <Button
             type="button"
             disabled={busy}
-            onClick={() => onTransition("waiting_pickup")}
+            onClick={() => confirmStatus("waiting_pickup", "Complete")}
             className="h-10 w-full rounded-lg bg-success text-primary-foreground text-xs font-semibold disabled:opacity-50"
           >
             {busy ? "…" : "Complete"}
@@ -406,6 +418,7 @@ function LiveOrderCard({ order, busy, onTransition }: LiveOrderCardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

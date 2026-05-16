@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { intervalToDuration } from "date-fns";
 import { Phone, Timer, UserRound, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { orderStatusConfirmMessage, useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -304,6 +305,7 @@ function WaitingPickupOrders() {
     forWaiterPickupQueue: role === "waiter",
   });
   const transitionOrder = useTransitionOrderStatus();
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const orders = useMemo(() => {
     const rows = (data ?? []) as OrderRow[];
@@ -344,12 +346,23 @@ function WaitingPickupOrders() {
                 showDelivered={role === "waiter"}
                 deliverEnabled={order.id === nextDeliverableId}
                 busy={busy}
-                onDelivered={() => transitionOrder.mutate({ orderId: order.id, status: "delivered" })}
+                onDelivered={() =>
+                  requestConfirm({
+                    title: "Mark delivered",
+                    message: orderStatusConfirmMessage(order.order_id, "delivered"),
+                    confirmLabel: "Delivered",
+                    variant: "warning",
+                    onConfirm: () => {
+                      transitionOrder.mutate({ orderId: order.id, status: "delivered" });
+                    },
+                  })
+                }
               />
             );
           })}
         </div>
       ) : null}
+      {ConfirmDialog}
     </>
   );
 }

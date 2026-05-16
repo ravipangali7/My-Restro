@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useExpense } from "@/hooks/use-rest-api";
 import { apiDelete } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -17,6 +18,7 @@ function ExpenseDetail() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const { data: e, isLoading, error } = useExpense(id);
   const expenseIdNum = Number(id);
 
@@ -59,16 +61,24 @@ function ExpenseDetail() {
           <button
             type="button"
             disabled={deleting || !token}
-            onClick={async () => {
-              if (!token || !window.confirm("Delete this expense?")) return;
-              setDeleting(true);
-              try {
-                await apiDelete(`/api/expenses/${id}/`, token);
-                void queryClient.invalidateQueries({ queryKey: ["expenses"] });
-                void navigate({ to: "/owner/expenses" });
-              } finally {
-                setDeleting(false);
-              }
+            onClick={() => {
+              if (!token) return;
+              requestConfirm({
+                title: "Delete expense",
+                message: "Delete this expense? This cannot be undone.",
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  setDeleting(true);
+                  try {
+                    await apiDelete(`/api/expenses/${id}/`, token);
+                    void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+                    void navigate({ to: "/owner/expenses" });
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              });
             }}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
           >
@@ -83,6 +93,7 @@ function ExpenseDetail() {
         <ViewField label="Particular" value={e.particular} />
         <ViewField label="Amount" value={money(e.amount)} />
       </ViewSection>
+      {ConfirmDialog}
     </>
   );
 }

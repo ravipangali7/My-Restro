@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerSuppliersByRestaurant, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { parseLocalPhone } from "@/lib/phone-validation";
@@ -51,6 +52,7 @@ function SuppliersPage() {
   }, [restaurantIds, restaurantId]);
 
   const [showForm, setShowForm] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [editId, setEditId] = useState<number | null>(null);
   const [addRestaurantId, setAddRestaurantId] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -134,15 +136,22 @@ function SuppliersPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!token) return;
-    if (!window.confirm("Delete this supplier?")) return;
-    try {
-      await apiDelete(`/api/suppliers/${id}/`, token);
-      refresh();
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Failed to delete supplier.");
-    }
+    requestConfirm({
+      title: "Delete supplier",
+      message: "Delete this supplier? This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          await apiDelete(`/api/suppliers/${id}/`, token);
+          refresh();
+        } catch (e) {
+          setFormError(e instanceof Error ? e.message : "Failed to delete supplier.");
+        }
+      },
+    });
   };
 
   const renderSupplierCards = (list: SupplierRow[], showVenue: boolean) => (
@@ -324,6 +333,7 @@ function SuppliersPage() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </>
   );
 }

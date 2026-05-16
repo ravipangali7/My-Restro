@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Search, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePendingPaymentAlerts, useRecordOrderPaymentSuccess } from "@/hooks/use-rest-api";
 import { dueRemaining } from "@/lib/payment-alert-helpers";
 import {
@@ -85,6 +86,7 @@ export function PaymentAlertsBoard({ restaurantId }: PaymentAlertsBoardProps) {
   const recordPaid = useRecordOrderPaymentSuccess();
   const [search, setSearch] = useState("");
   const [markingId, setMarkingId] = useState<number | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const deferredSearch = useDeferredValue(search);
 
   const orders = allOrders as PaymentAlertOrder[];
@@ -94,22 +96,30 @@ export function PaymentAlertsBoard({ restaurantId }: PaymentAlertsBoardProps) {
     [orders, deferredSearch],
   );
 
-  const markPaid = async (o: PaymentAlertOrder) => {
+  const markPaid = (o: PaymentAlertOrder) => {
     if (paymentCounterLabel(o) === "Success") return;
     const due = dueRemaining(o);
     if (due <= 0 && (o.payment_status ?? "").toLowerCase() !== "success") {
       toast.error("Nothing left to collect on this order.");
       return;
     }
-    setMarkingId(o.id);
-    try {
-      await recordPaid.mutateAsync({ orderId: o.id, body: { channel: "cash" } });
-      toast.success(`Payment marked success · ${o.order_id}`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setMarkingId(null);
-    }
+    requestConfirm({
+      title: "Mark payment received",
+      message: `Mark order ${o.order_id} as paid (cash) for ${formatMoney(o.total)}?`,
+      confirmLabel: "Mark paid",
+      variant: "info",
+      onConfirm: async () => {
+        setMarkingId(o.id);
+        try {
+          await recordPaid.mutateAsync({ orderId: o.id, body: { channel: "cash" } });
+          toast.success(`Payment marked success · ${o.order_id}`);
+        } catch (e) {
+          toast.error((e as Error).message);
+        } finally {
+          setMarkingId(null);
+        }
+      },
+    });
   };
 
   if (error) {
@@ -273,6 +283,7 @@ export function PaymentAlertsBoard({ restaurantId }: PaymentAlertsBoardProps) {
           </ul>
         </div>
       ) : null}
+      {ConfirmDialog}
     </div>
   );
 }

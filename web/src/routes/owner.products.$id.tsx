@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import {
   useCategories,
   useProductItems,
@@ -29,6 +30,7 @@ function ProductViewPage() {
   const isEditRoute = pathname.endsWith("/edit");
   const { restaurantId, restaurantIds } = useRestaurantScope();
   const [deleting, setDeleting] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const { data: products } = useProducts(restaurantId);
   const { data: categories } = useCategories(restaurantId);
   const { data: productItems } = useProductItems(restaurantId);
@@ -128,19 +130,26 @@ function ProductViewPage() {
           <button
             type="button"
             disabled={deleting || !token || scopeRid == null}
-            onClick={async () => {
+            onClick={() => {
               const pid = productId;
               if (!token || !Number.isFinite(pid)) return;
-              if (!window.confirm(`Delete product “${pr.name}”? This cannot be undone.`)) return;
-              setDeleting(true);
-              try {
-                await apiDelete(`/api/products/${pid}/`, token);
-                void queryClient.invalidateQueries({ queryKey: ["products", scopeRid] });
-                void queryClient.invalidateQueries({ queryKey: ["product-items", scopeRid] });
-                void navigate({ to: "/owner/products" });
-              } finally {
-                setDeleting(false);
-              }
+              requestConfirm({
+                title: "Delete product",
+                message: `Delete product “${pr.name}”? This cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  setDeleting(true);
+                  try {
+                    await apiDelete(`/api/products/${pid}/`, token);
+                    void queryClient.invalidateQueries({ queryKey: ["products", scopeRid] });
+                    void queryClient.invalidateQueries({ queryKey: ["product-items", scopeRid] });
+                    void navigate({ to: "/owner/products" });
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              });
             }}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
           >
@@ -224,6 +233,7 @@ function ProductViewPage() {
           />
         </ViewSection>
       )}
+      {ConfirmDialog}
     </>
   );
 }

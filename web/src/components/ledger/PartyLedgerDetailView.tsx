@@ -6,6 +6,7 @@ import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useCreateLedger, useDeleteLedger, useLedgers, useUpdateLedger } from "@/hooks/use-rest-api";
 import { money } from "@/lib/money";
 import type { LedgerListRow } from "@/components/ledger/ledger-types";
@@ -44,6 +45,7 @@ export function PartyLedgerDetailView({
   const createLedger = useCreateLedger();
   const updateLedger = useUpdateLedger();
   const deleteLedger = useDeleteLedger();
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const [particular, setParticular] = useState("");
   const [amount, setAmount] = useState("");
@@ -126,8 +128,15 @@ export function PartyLedgerDetailView({
 
   const onDelete = (r: LedgerListRow) => {
     if (!canMutate) return;
-    if (!window.confirm("Delete this ledger line?")) return;
-    deleteLedger.mutate({ ledgerId: r.id, restaurantId });
+    requestConfirm({
+      title: "Delete ledger entry",
+      message: "Delete this ledger line? This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: () => {
+        deleteLedger.mutate({ ledgerId: r.id, restaurantId });
+      },
+    });
   };
 
   if (error) return <p className="text-sm text-error">Failed to load ledger.</p>;
@@ -321,6 +330,7 @@ export function PartyLedgerDetailView({
           </form>
         </RouteFormModal>
       )}
+      {ConfirmDialog}
     </>
   );
 }

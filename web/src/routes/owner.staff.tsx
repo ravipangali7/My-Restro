@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { AppModal } from "@/components/shared/AppModal";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useCreateOwnerStaffNotification, useOwnerStaffByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
@@ -189,17 +190,12 @@ function StaffPage() {
         </div>
       </div>
       {notifyOpen ? (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
+        <AppModal
+          overlayClassName="z-[70] bg-black/50"
+          panelClassName="relative max-w-md p-5 shadow-2xl"
           aria-label="Notify staff"
-          onClick={() => setNotifyOpen(false)}
+          onBackdropClick={() => setNotifyOpen(false)}
         >
-          <div
-            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <h3 className="font-display font-semibold text-base text-foreground mb-1">Notify staff</h3>
             <p className="text-xs text-text-muted mb-4">
               Choose a restaurant to narrow the list, then send an app notification or SMS to all listed team members
@@ -374,8 +370,7 @@ function StaffPage() {
                 {createStaffNotif.isPending ? "Sending…" : "Send"}
               </button>
             </div>
-          </div>
-        </div>
+        </AppModal>
       ) : null}
       {isPending ? (
         <p className="text-sm text-text-muted">Loading staff…</p>

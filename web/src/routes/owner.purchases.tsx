@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePurchases, useRawMaterials, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -61,6 +62,7 @@ function PurchasesPage() {
   );
 
   const [showForm, setShowForm] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [formRestaurantId, setFormRestaurantId] = useState<number | null>(null);
   const formDataRestaurantId = useMemo(() => {
     if (!showForm) return restaurantId;
@@ -187,11 +189,18 @@ function PurchasesPage() {
       setSaving(false);
     }
   };
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!token) return;
-    if (!window.confirm("Delete this purchase?")) return;
-    await apiDelete(`/api/purchases/${id}/`, token);
-    refresh();
+    requestConfirm({
+      title: "Delete purchase",
+      message: "Delete this purchase? This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: async () => {
+        await apiDelete(`/api/purchases/${id}/`, token);
+        refresh();
+      },
+    });
   };
 
   const supplierName = (id: number) =>
@@ -432,6 +441,7 @@ function PurchasesPage() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </>
   );
 }

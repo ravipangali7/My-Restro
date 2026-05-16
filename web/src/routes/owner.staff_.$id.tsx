@@ -5,6 +5,7 @@ import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useDeleteStaff, useLedgers, useOrders, useOwnerStaffByRestaurant } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
 import { ArrowLeft, Users, DollarSign, ShoppingBag, Calendar, Pencil, Trash2 } from "lucide-react";
@@ -22,6 +23,7 @@ function StaffViewPage() {
   const { allStaff, isPending } = useOwnerStaffByRestaurant();
   const deleteStaff = useDeleteStaff();
   const [deleting, setDeleting] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const staff = useMemo(() => {
     const list = (allStaff as StaffListRow[]) ?? [];
@@ -97,16 +99,23 @@ function StaffViewPage() {
           <button
             type="button"
             disabled={deleting || s.restaurant == null}
-            onClick={async () => {
+            onClick={() => {
               if (s.restaurant == null) return;
-              if (!window.confirm("Remove this staff member from the restaurant?")) return;
-              setDeleting(true);
-              try {
-                await deleteStaff.mutateAsync({ staffId: s.id, restaurantId: s.restaurant });
-                void navigate({ to: "/owner/staff" });
-              } finally {
-                setDeleting(false);
-              }
+              requestConfirm({
+                title: "Remove staff",
+                message: "Remove this staff member from the restaurant?",
+                confirmLabel: "Remove",
+                variant: "danger",
+                onConfirm: async () => {
+                  setDeleting(true);
+                  try {
+                    await deleteStaff.mutateAsync({ staffId: s.id, restaurantId: s.restaurant! });
+                    void navigate({ to: "/owner/staff" });
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              });
             }}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
           >
@@ -150,6 +159,7 @@ function StaffViewPage() {
           <Outlet />
         </RouteFormModal>
       ) : null}
+      {ConfirmDialog}
     </>
   );
 }

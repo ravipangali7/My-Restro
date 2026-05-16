@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { AppModal } from "@/components/shared/AppModal";
 import { Plus, Wallet } from "lucide-react";
 import {
   OwnerEntityCard,
@@ -10,6 +11,7 @@ import {
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import {
   useApproveShareholderWithdrawal,
   useRejectShareholderWithdrawal,
@@ -34,6 +36,7 @@ function WithdrawalsPage() {
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [showForm, setShowForm] = useState(false);
   const [editWithdrawal, setEditWithdrawal] = useState<W | null>(null);
 
@@ -68,8 +71,17 @@ function WithdrawalsPage() {
 
   const onApprove = (w: W) => {
     setActionError(null);
-    approveMut.mutate(w.id, {
-      onError: (e) => setActionError(e instanceof Error ? e.message : "Approve failed."),
+    const name = userName(w.user);
+    requestConfirm({
+      title: "Approve withdrawal",
+      message: `Approve withdrawal of ₹${Number(w.amount).toLocaleString()} for ${name}?`,
+      confirmLabel: "Approve",
+      variant: "info",
+      onConfirm: () => {
+        approveMut.mutate(w.id, {
+          onError: (e) => setActionError(e instanceof Error ? e.message : "Approve failed."),
+        });
+      },
     });
   };
 
@@ -192,8 +204,7 @@ function WithdrawalsPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md shadow-xl">
+        <AppModal panelClassName="max-w-md p-6">
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">
               {editWithdrawal ? "Edit Withdrawal" : "Add Withdrawal"}
             </h3>
@@ -269,13 +280,11 @@ function WithdrawalsPage() {
                 Save
               </button>
             </div>
-          </div>
-        </div>
+        </AppModal>
       )}
 
       {rejectModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-sm shadow-xl">
+        <AppModal panelClassName="max-w-sm p-6">
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">Reject Withdrawal</h3>
             {actionError && <p className="text-sm text-error mb-3">{actionError}</p>}
             <div>
@@ -326,9 +335,9 @@ function WithdrawalsPage() {
                 Reject
               </button>
             </div>
-          </div>
-        </div>
+        </AppModal>
       )}
+      {ConfirmDialog}
     </>
   );
 }

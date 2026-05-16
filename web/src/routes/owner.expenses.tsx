@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerExpensesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -66,6 +67,7 @@ function ExpensesPage() {
   const rows = mergedExpenses as ExpRow[];
   const total = useMemo(() => rows.reduce((s, e) => s + Number(e.amount), 0), [rows]);
   const [showForm, setShowForm] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [edit, setEdit] = useState<ExpRow | null>(null);
   const [category, setCategory] = useState("other");
   const [particular, setParticular] = useState("");
@@ -132,11 +134,18 @@ function ExpensesPage() {
       setSaving(false);
     }
   };
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!token) return;
-    if (!window.confirm("Delete this expense?")) return;
-    await apiDelete(`/api/expenses/${id}/`, token);
-    refresh();
+    requestConfirm({
+      title: "Delete expense",
+      message: "Delete this expense? This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: async () => {
+        await apiDelete(`/api/expenses/${id}/`, token);
+        refresh();
+      },
+    });
   };
 
   if (restaurantIds.length === 0) return <p className="text-sm text-text-muted">No restaurants assigned.</p>;
@@ -288,6 +297,7 @@ function ExpensesPage() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </>
   );
 }

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerUnitsByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -38,6 +39,7 @@ function UnitsPage() {
   const [editUnit, setEditUnit] = useState<UnitRow | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [listActionError, setListActionError] = useState<string | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const invalidateUnitQueries = useCallback(async () => {
     const ridSet = new Set<number>(restaurantIds);
@@ -79,21 +81,28 @@ function UnitsPage() {
   }, [restaurantId, restaurantIds]);
 
   const handleDelete = useCallback(
-    async (u: UnitRow) => {
+    (u: UnitRow) => {
       if (!token) return;
-      if (!window.confirm(`Delete unit "${u.name}" (${u.symbol})? This cannot be undone.`)) return;
-      setListActionError(null);
-      setDeletingId(u.id);
-      try {
-        await apiDelete(`/api/units/${u.id}/`, token);
-        await invalidateUnitQueries();
-      } catch (e) {
-        setListActionError(e instanceof Error ? e.message : "Delete failed.");
-      } finally {
-        setDeletingId(null);
-      }
+      requestConfirm({
+        title: "Delete unit",
+        message: `Delete unit "${u.name}" (${u.symbol})? This cannot be undone.`,
+        confirmLabel: "Delete",
+        variant: "danger",
+        onConfirm: async () => {
+          setListActionError(null);
+          setDeletingId(u.id);
+          try {
+            await apiDelete(`/api/units/${u.id}/`, token);
+            await invalidateUnitQueries();
+          } catch (e) {
+            setListActionError(e instanceof Error ? e.message : "Delete failed.");
+          } finally {
+            setDeletingId(null);
+          }
+        },
+      });
     },
-    [token, invalidateUnitQueries],
+    [token, invalidateUnitQueries, requestConfirm],
   );
 
   const handleSave = async () => {
@@ -289,6 +298,7 @@ function UnitsPage() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </>
   );
 }

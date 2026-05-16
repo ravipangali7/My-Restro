@@ -9,7 +9,7 @@ import {
 } from "@/components/owner/OwnerEntityCard";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { parseLocalPhone } from "@/lib/phone-validation";
@@ -65,6 +65,7 @@ function UsersPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [editIsShareholder, setEditIsShareholder] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const restaurantRows = (restaurants as { id: number; name: string }[] | undefined) ?? [];
 
@@ -183,16 +184,24 @@ function UsersPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
                         if (!token) return;
-                        setDeletingId(u.id);
-                        try {
-                          await apiDelete(`/api/users/${u.id}/`, token);
-                          await queryClient.invalidateQueries({ queryKey: ["users"] });
-                        } finally {
-                          setDeletingId(null);
-                        }
+                        requestConfirm({
+                          title: "Delete user",
+                          message: `Delete user “${u.name}”? This cannot be undone.`,
+                          confirmLabel: "Delete",
+                          variant: "danger",
+                          onConfirm: async () => {
+                            setDeletingId(u.id);
+                            try {
+                              await apiDelete(`/api/users/${u.id}/`, token);
+                              await queryClient.invalidateQueries({ queryKey: ["users"] });
+                            } finally {
+                              setDeletingId(null);
+                            }
+                          },
+                        });
                       }}
                       disabled={deletingId === u.id}
                       className={ownerListActionDangerClass}
@@ -208,11 +217,10 @@ function UsersPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-card rounded-2xl border border-border p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto"
-            key={editUser ? `edit-${editUser.id}` : "add-user"}
-          >
+        <AppModal
+          key={editUser ? `edit-${editUser.id}` : "add-user"}
+          panelClassName="max-w-md p-6"
+        >
             {editUser ? (
               <>
                 <h3 className="font-display font-semibold text-lg text-foreground mb-4">Edit User</h3>
@@ -644,9 +652,9 @@ function UsersPage() {
                 </form>
               </>
             )}
-          </div>
-        </div>
+        </AppModal>
       )}
+      {ConfirmDialog}
     </>
   );
 }

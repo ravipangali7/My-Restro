@@ -9,8 +9,9 @@ import {
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
+import { AppModal } from "@/components/shared/AppModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useRestaurants, useSuperSettings, useUsers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import type { SuperSettingsDTO } from "@/lib/super-settings-cache";
@@ -82,7 +83,7 @@ function RestaurantsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editRestaurant, setEditRestaurant] = useState<R | null>(null);
-  const [suspendId, setSuspendId] = useState<string | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
   const [formAddress, setFormAddress] = useState("");
@@ -224,45 +225,78 @@ function RestaurantsPage() {
                     {isSuperAdmin && r.is_active === false ? (
                       <button
                         type="button"
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
                           if (!token) return;
-                          try {
-                            const updated = await apiPatch<R>(`/api/restaurants/${r.id}/`, { is_active: true }, token);
-                            await syncRestaurantsListAfterUpsert(queryClient, updated);
-                            void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
-                          } catch {
-                            /* toast optional */
-                          }
+                          requestConfirm({
+                            title: "Approve restaurant",
+                            message: `Approve “${r.name}”? It will become visible to customers.`,
+                            confirmLabel: "Approve",
+                            variant: "info",
+                            onConfirm: async () => {
+                              try {
+                                const updated = await apiPatch<R>(`/api/restaurants/${r.id}/`, { is_active: true }, token);
+                                await syncRestaurantsListAfterUpsert(queryClient, updated);
+                                void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
+                              } catch {
+                                /* toast optional */
+                              }
+                            },
+                          });
                         }}
                         className={ownerListActionClass}
                       >
                         Approve
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSuspendId(String(r.id));
-                      }}
-                      className={ownerListActionDangerClass}
-                    >
-                      Suspend
-                    </button>
+                    {r.is_active !== false ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!token) return;
+                          requestConfirm({
+                            title: "Suspend restaurant",
+                            message: `Suspend “${r.name}”? It will be hidden from customers.`,
+                            confirmLabel: "Suspend",
+                            variant: "warning",
+                            onConfirm: async () => {
+                              try {
+                                const updated = await apiPatch<R>(`/api/restaurants/${r.id}/`, { is_active: false }, token);
+                                await syncRestaurantsListAfterUpsert(queryClient, updated);
+                                void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
+                              } catch {
+                                /* toast optional */
+                              }
+                            },
+                          });
+                        }}
+                        className={ownerListActionDangerClass}
+                      >
+                        Suspend
+                      </button>
+                    ) : null}
                     {isSuperAdmin ? (
                       <button
                         type="button"
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
                           if (!token) return;
-                          setDeletingId(r.id);
-                          try {
-                            await apiDelete(`/api/restaurants/${r.id}/`, token);
-                            await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
-                          } finally {
-                            setDeletingId(null);
-                          }
+                          requestConfirm({
+                            title: "Delete restaurant",
+                            message: `Delete “${r.name}”? This cannot be undone.`,
+                            confirmLabel: "Delete",
+                            variant: "danger",
+                            onConfirm: async () => {
+                              setDeletingId(r.id);
+                              try {
+                                await apiDelete(`/api/restaurants/${r.id}/`, token);
+                                await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
+                              } finally {
+                                setDeletingId(null);
+                              }
+                            },
+                          });
                         }}
                         disabled={deletingId === r.id}
                         className={ownerListActionDangerClass}
@@ -278,25 +312,17 @@ function RestaurantsPage() {
         </OwnerEntityCardStack>
       )}
 
-      <ConfirmModal
-        open={!!suspendId}
-        title="Suspend Restaurant"
-        message="Are you sure you want to suspend this restaurant? It will be hidden from customers."
-        confirmLabel="Suspend"
-        onConfirm={() => setSuspendId(null)}
-        onCancel={() => setSuspendId(null)}
-      />
+      {ConfirmDialog}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-card rounded-2xl border border-border p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto"
-            key={
-              editRestaurant
-                ? `edit-${editRestaurant.id}`
-                : `add-restaurant-${platformDefaults?.id ?? "new"}-${platformDefaults?.updated_at ?? ""}`
-            }
-          >
+        <AppModal
+          key={
+            editRestaurant
+              ? `edit-${editRestaurant.id}`
+              : `add-restaurant-${platformDefaults?.id ?? "new"}-${platformDefaults?.updated_at ?? ""}`
+          }
+          panelClassName="max-w-lg p-6"
+        >
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">
               {editRestaurant ? "Edit Restaurant" : "Add Restaurant"}
             </h3>
@@ -740,25 +766,34 @@ function RestaurantsPage() {
                   <button
                     type="button"
                     disabled={approveBusy || submitBusy}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!token || !editRestaurant) return;
-                      setApproveBusy(true);
-                      setSubmitError(null);
-                      try {
-                        const updated = await apiPatch<R>(
-                          `/api/restaurants/${editRestaurant.id}/`,
-                          { is_active: true },
-                          token,
-                        );
-                        await syncRestaurantsListAfterUpsert(queryClient, updated);
-                        void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
-                        setShowForm(false);
-                        setEditRestaurant(null);
-                      } catch (err) {
-                        setSubmitError(err instanceof Error ? err.message : "Could not approve restaurant.");
-                      } finally {
-                        setApproveBusy(false);
-                      }
+                      const restaurant = editRestaurant;
+                      requestConfirm({
+                        title: "Approve restaurant",
+                        message: `Approve “${restaurant.name}”? It will become visible to customers.`,
+                        confirmLabel: "Approve",
+                        variant: "info",
+                        onConfirm: async () => {
+                          setApproveBusy(true);
+                          setSubmitError(null);
+                          try {
+                            const updated = await apiPatch<R>(
+                              `/api/restaurants/${restaurant.id}/`,
+                              { is_active: true },
+                              token,
+                            );
+                            await syncRestaurantsListAfterUpsert(queryClient, updated);
+                            void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
+                            setShowForm(false);
+                            setEditRestaurant(null);
+                          } catch (err) {
+                            setSubmitError(err instanceof Error ? err.message : "Could not approve restaurant.");
+                          } finally {
+                            setApproveBusy(false);
+                          }
+                        },
+                      });
                     }}
                     className="h-11 min-w-[7.5rem] px-4 rounded-xl bg-success/15 text-success text-sm font-semibold hover:bg-success/25 disabled:opacity-60 border border-success/30"
                   >
@@ -785,8 +820,7 @@ function RestaurantsPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </AppModal>
       )}
     </>
   );

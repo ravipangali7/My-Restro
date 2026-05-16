@@ -3,6 +3,7 @@ import { useQueryClient, useQueries } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useCategories, useRestaurants } from "@/hooks/use-rest-api";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { apiDelete, apiGet, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -349,6 +350,7 @@ function CategoriesPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const formCategoriesRestaurantId =
     dialog?.kind === "add" ? addRestaurantId : dialog?.kind === "edit" ? dialog.cat.restaurant : null;
@@ -483,15 +485,23 @@ function CategoriesPage() {
       </button>
       <button
         type="button"
-        onClick={async () => {
+        onClick={() => {
           if (!token || deletingId != null) return;
-          setDeletingId(c.id);
-          try {
-            await apiDelete(`/api/categories/${c.id}/`, token);
-            invalidateAllCategoryQueries();
-          } finally {
-            setDeletingId(null);
-          }
+          requestConfirm({
+            title: "Delete category",
+            message: `Delete category "${c.name}"? Products in this category may be affected.`,
+            confirmLabel: "Delete",
+            variant: "danger",
+            onConfirm: async () => {
+              setDeletingId(c.id);
+              try {
+                await apiDelete(`/api/categories/${c.id}/`, token);
+                invalidateAllCategoryQueries();
+              } finally {
+                setDeletingId(null);
+              }
+            },
+          });
         }}
         disabled={deletingId === c.id}
         className="rounded-lg bg-error/10 px-2 py-1 text-xs font-medium text-error disabled:opacity-50"
@@ -702,7 +712,7 @@ function CategoriesPage() {
           </div>
         </div>
       )}
-
+      {ConfirmDialog}
     </>
   );
 }

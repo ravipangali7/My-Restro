@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useComboSets, useProductItems, useProducts, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -49,6 +50,7 @@ function ComboDetail() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   useEffect(() => {
     if (isCreate) {
@@ -411,18 +413,26 @@ function ComboDetail() {
           <button
             type="button"
             disabled={deleting || !token}
-            onClick={async () => {
-              if (!token || !window.confirm("Delete this combo set? This cannot be undone.")) return;
+            onClick={() => {
+              if (!token) return;
               const scopeRid = c.restaurant ?? restaurantId ?? restaurantIds[0];
               if (scopeRid == null) return;
-              setDeleting(true);
-              try {
-                await apiDelete(`/api/combo-sets/${c.id}/`, token);
-                void queryClient.invalidateQueries({ queryKey: ["combo-sets", scopeRid] });
-                void navigate({ to: "/owner/combos" });
-              } finally {
-                setDeleting(false);
-              }
+              requestConfirm({
+                title: "Delete combo set",
+                message: "Delete this combo set? This cannot be undone.",
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  setDeleting(true);
+                  try {
+                    await apiDelete(`/api/combo-sets/${c.id}/`, token);
+                    void queryClient.invalidateQueries({ queryKey: ["combo-sets", scopeRid] });
+                    void navigate({ to: "/owner/combos" });
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              });
             }}
             className="text-sm font-semibold text-error hover:underline disabled:opacity-50"
           >
@@ -447,6 +457,7 @@ function ComboDetail() {
           {saving ? "Saving..." : isCreate ? "Create Combo" : "Save Changes"}
         </button>
       </div>
+      {ConfirmDialog}
     </div>
   );
 }

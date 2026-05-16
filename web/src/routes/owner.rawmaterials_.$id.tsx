@@ -4,6 +4,7 @@ import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useProductItems, useProductRawMaterials, useProducts, useRawMaterials, useStockLogs, useSuppliers, useUnits } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -20,6 +21,7 @@ function RawMaterialViewPage() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const { restaurantId } = useRestaurantScope();
   const { data: rawMaterials } = useRawMaterials(restaurantId);
   const { data: suppliers } = useSuppliers(restaurantId);
@@ -110,18 +112,26 @@ function RawMaterialViewPage() {
           <button
             type="button"
             disabled={deleting || !token}
-            onClick={async () => {
-              if (!token || !window.confirm(`Delete raw material “${m.name}”? This cannot be undone.`)) return;
+            onClick={() => {
+              if (!token) return;
               const rid = m.restaurant ?? restaurantId;
               if (rid == null) return;
-              setDeleting(true);
-              try {
-                await apiDelete(`/api/raw-materials/${id}/`, token);
-                void queryClient.invalidateQueries({ queryKey: ["raw-materials", rid] });
-                void navigate({ to: "/owner/rawmaterials" });
-              } finally {
-                setDeleting(false);
-              }
+              requestConfirm({
+                title: "Delete raw material",
+                message: `Delete raw material “${m.name}”? This cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  setDeleting(true);
+                  try {
+                    await apiDelete(`/api/raw-materials/${id}/`, token);
+                    void queryClient.invalidateQueries({ queryKey: ["raw-materials", rid] });
+                    void navigate({ to: "/owner/rawmaterials" });
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              });
             }}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
           >
@@ -182,6 +192,7 @@ function RawMaterialViewPage() {
           data={stockLogsForMat}
         />
       </ViewSection>
+      {ConfirmDialog}
     </>
   );
 }

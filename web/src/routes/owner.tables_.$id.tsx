@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useMemo, useState } from "react";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
+import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useDeleteTable, useOrders, useOwnerTablesByRestaurant } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -13,6 +14,7 @@ function TableViewPage() {
   const navigate = useNavigate();
   const deleteTable = useDeleteTable();
   const [deleting, setDeleting] = useState(false);
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isEditRoute = pathname.endsWith("/edit");
   const { restaurantIds } = useRestaurantScope();
@@ -97,17 +99,24 @@ function TableViewPage() {
           <button
             type="button"
             disabled={deleting}
-            onClick={async () => {
+            onClick={() => {
               const rid = (table as { restaurant?: number }).restaurant;
               if (rid == null) return;
-              if (!window.confirm(`Delete table "${t.name}"? This cannot be undone.`)) return;
-              setDeleting(true);
-              try {
-                await deleteTable.mutateAsync({ tableId: Number(id), restaurantId: rid });
-                void navigate({ to: "/owner/tables" });
-              } finally {
-                setDeleting(false);
-              }
+              requestConfirm({
+                title: "Delete table",
+                message: `Delete table "${t.name}"? This cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  setDeleting(true);
+                  try {
+                    await deleteTable.mutateAsync({ tableId: Number(id), restaurantId: rid });
+                    void navigate({ to: "/owner/tables" });
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              });
             }}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-error/10 px-4 text-sm font-semibold text-error hover:bg-error/15 disabled:opacity-50"
           >
@@ -159,6 +168,7 @@ function TableViewPage() {
           <p className="text-sm text-text-muted">No orders at this table yet.</p>
         )}
       </ViewSection>
+      {ConfirmDialog}
     </>
   );
 }

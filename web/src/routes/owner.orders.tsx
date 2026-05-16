@@ -7,6 +7,7 @@ import {
   ownerListActionSecondaryClass,
 } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { orderStatusConfirmMessage, useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn } from "@/lib/restaurant-table-column";
@@ -57,6 +58,7 @@ function OrdersPage() {
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user);
   const rows = (data ?? []) as OrderRow[];
   const [filter, setFilter] = useState("all");
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
 
   const filtered = useMemo(() => {
     if (filter === "all") return rows;
@@ -158,7 +160,16 @@ function OrdersPage() {
                         const v = e.target.value;
                         e.currentTarget.value = "";
                         if (!v) return;
-                        transitionOrder.mutate({ orderId: o.id, status: v });
+                        const opt = next.find((x) => x.value === v);
+                        requestConfirm({
+                          title: "Change order status",
+                          message: orderStatusConfirmMessage(o.order_id, v),
+                          confirmLabel: opt?.label ?? "Confirm",
+                          variant: "warning",
+                          onConfirm: () => {
+                            transitionOrder.mutate({ orderId: o.id, status: v });
+                          },
+                        });
                       }}
                       className={`${ownerListActionSecondaryClass} h-9 max-w-[12rem] cursor-pointer py-0 pl-2 pr-6 text-left`}
                     >
@@ -185,6 +196,7 @@ function OrdersPage() {
           })}
         </OwnerEntityCardStack>
       ) : null}
+      {ConfirmDialog}
     </>
   );
 }

@@ -10,6 +10,7 @@ import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superad
 import { useUsers } from "@/hooks/use-rest-api";
 import { apiPatch, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { AppModal } from "@/components/shared/AppModal";
 import { Plus, TrendingUp } from "lucide-react";
 
 type UserRow = {
@@ -174,11 +175,10 @@ function ShareholdersPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-card rounded-2xl border border-border p-6 w-full max-w-md shadow-xl"
-            key={editUser ? `edit-${editUser.id}` : "add-sh"}
-          >
+        <AppModal
+          key={editUser ? `edit-${editUser.id}` : "add-sh"}
+          panelClassName="max-w-md p-6"
+        >
             <h3 className="font-display font-semibold text-lg text-foreground mb-4">
               {editUser ? "Edit Shareholder" : "Add Shareholder"}
             </h3>
@@ -344,8 +344,7 @@ function ShareholdersPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </AppModal>
       )}
     </>
   );

@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { ViewField, ViewSection } from "@/components/shared/ViewField";
 import { DataTable } from "@/components/shared/DataTable";
+import { orderStatusConfirmMessage, useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOrderDetail, useTransitionOrderStatus } from "@/hooks/use-rest-api";
 import { orderCustomerDisplay } from "@/lib/order-customer-display";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
@@ -74,6 +75,7 @@ function OrderViewPage() {
   const transitionOrder = useTransitionOrderStatus();
   const order = data as OrderDetail | undefined;
   const [rejectReason, setRejectReason] = useState("");
+  const { requestConfirm, ConfirmDialog } = useConfirmAction();
   const [billDownloading, setBillDownloading] = useState(false);
   const [billPreview, setBillPreview] = useState<BillPreviewState>(null);
   const billPreviewSessionRef = useRef(0);
@@ -216,7 +218,17 @@ function OrderViewPage() {
                 key={action.value}
                 type="button"
                 disabled={isSaving}
-                onClick={() => transitionOrder.mutate({ orderId: order.id, status: action.value })}
+                onClick={() =>
+                  requestConfirm({
+                    title: "Change order status",
+                    message: orderStatusConfirmMessage(order.order_id, action.value),
+                    confirmLabel: action.label,
+                    variant: "warning",
+                    onConfirm: () => {
+                      transitionOrder.mutate({ orderId: order.id, status: action.value });
+                    },
+                  })
+                }
                 className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
               >
                 {action.label}
@@ -235,13 +247,22 @@ function OrderViewPage() {
               <button
                 type="button"
                 disabled={isSaving || !rejectReason.trim()}
-                onClick={() =>
-                  transitionOrder.mutate({
-                    orderId: order.id,
-                    status: "rejected",
-                    rejectReason: rejectReason.trim(),
-                  })
-                }
+                onClick={() => {
+                  const reason = rejectReason.trim();
+                  requestConfirm({
+                    title: "Reject order",
+                    message: `Reject order ${order.order_id} with reason “${reason}”? The customer will be notified.`,
+                    confirmLabel: "Reject",
+                    variant: "danger",
+                    onConfirm: () => {
+                      transitionOrder.mutate({
+                        orderId: order.id,
+                        status: "rejected",
+                        rejectReason: reason,
+                      });
+                    },
+                  });
+                }}
                 className="h-9 px-3 rounded-lg bg-error text-primary-foreground text-xs font-semibold disabled:opacity-50"
               >
                 Reject
@@ -387,6 +408,7 @@ function OrderViewPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </>
   );
 }
