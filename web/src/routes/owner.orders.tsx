@@ -119,6 +119,7 @@ function OrdersPage() {
         {!isLoading ? (
         <PaginatedList
           items={filtered}
+          enablePagination
           resetDeps={[filter]}
           empty={<p className="text-sm text-text-muted">No orders match this filter.</p>}
           renderItem={(o, sel) => {

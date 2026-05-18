@@ -232,6 +232,7 @@ function PurchasesPage() {
         ) : (
           <PaginatedList
           items={rows}
+          enablePagination
           empty={<p className="text-sm text-text-muted">No purchases yet.</p>}
           renderItem={(p, sel) => (
             <OwnerEntityCard

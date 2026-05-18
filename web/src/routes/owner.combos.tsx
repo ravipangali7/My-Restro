@@ -87,6 +87,7 @@ function CombosPage() {
   const renderComboCards = (rows: ComboRow[], resetDeps: DependencyList) => (
     <PaginatedList
       items={rows}
+      enablePagination
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>}

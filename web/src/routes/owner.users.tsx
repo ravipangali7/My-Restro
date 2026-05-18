@@ -74,6 +74,7 @@ function OwnerUsersPage() {
         }
       >
         <PaginatedDataTable
+        enablePagination
         columns={[
           { header: "Name", accessor: "name" },
           { header: "Phone", accessor: "phone" },

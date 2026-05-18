@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerBulkToolbarButton } from "@/components/owner/owner-list-bulk";
 import {
   GroupedListSections,
   ListPageShell,
@@ -154,9 +155,41 @@ function UnitsPage() {
   const renderUnitCards = (list: UnitRow[], resetDeps: DependencyList) => (
     <PaginatedList
       items={list}
+      enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No units for this restaurant yet.</p>}
+      selectionActions={({ selectedIds, clearSelection }) =>
+        selectedIds.length > 0 ? (
+          <OwnerBulkToolbarButton
+            variant="danger"
+            onClick={() => {
+              if (!token) return;
+              requestConfirm({
+                title: "Delete selected units",
+                message: `Delete ${selectedIds.length} unit(s)? This cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  setListActionError(null);
+                  try {
+                    for (const id of selectedIds) {
+                      await apiDelete(`/api/units/${id}/`, token);
+                    }
+                    await invalidateUnitQueries();
+                    clearSelection();
+                  } catch (e) {
+                    setListActionError(e instanceof Error ? e.message : "Delete failed.");
+                  }
+                },
+              });
+            }}
+          >
+            Delete selected ({selectedIds.length})
+          </OwnerBulkToolbarButton>
+        ) : null
+      }
       renderItem={(u, sel) => (
         <OwnerEntityCard
           {...(sel.selectable ? sel : {})}

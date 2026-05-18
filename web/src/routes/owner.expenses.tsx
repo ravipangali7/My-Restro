@@ -165,6 +165,7 @@ function ExpensesPage() {
   const renderExpenseCards = (list: ExpRow[], resetDeps: DependencyList) => (
     <PaginatedList
       items={list}
+      enablePagination
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No expenses for this restaurant.</p>}

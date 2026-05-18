@@ -104,6 +104,7 @@ function StaffPage() {
   const renderStaffCards = (list: StaffRow[], resetDeps: DependencyList) => (
     <PaginatedList
       items={list}
+      enablePagination
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No staff at this restaurant.</p>}

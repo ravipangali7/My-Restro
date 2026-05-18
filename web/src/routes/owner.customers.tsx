@@ -38,6 +38,7 @@ function CustomersPage() {
       >
       <PaginatedList
         items={rows}
+        enablePagination
         resetDeps={[restaurantId]}
         empty={<p className="text-sm text-text-muted">No customers yet.</p>}
         renderItem={(u, sel) => (

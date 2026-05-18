@@ -165,7 +165,7 @@ export function LedgerPartiesHub({
     >
       <PaginatedList
         items={filtered}
-        enablePagination={portal !== "owner"}
+        enablePagination
         enableSelection={portal !== "owner"}
         resetDeps={[tab]}
         empty={<p className="text-sm text-text-muted">No parties match this filter.</p>}

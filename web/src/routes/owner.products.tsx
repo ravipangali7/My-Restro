@@ -107,6 +107,7 @@ function ProductsPage() {
   const renderProductCards = (sectionRows: ProductRow[], catName: Map<number, string>, resetDeps: DependencyList) => (
     <PaginatedList
       items={sectionRows}
+      enablePagination
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No products in this restaurant yet.</p>}

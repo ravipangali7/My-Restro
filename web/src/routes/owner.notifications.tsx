@@ -15,14 +15,18 @@ import {
   subscribeStaffBulkNotificationReads,
 } from "@/lib/staff-bulk-notification-reads";
 import type { ApiBulkNotificationRow } from "@/lib/bulk-notification-types";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { BulkNotificationCard } from "@/components/notifications/BulkNotificationCard";
 import { resolveMediaUrl } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/owner/notifications")({
   component: OwnerNotificationsPage,
 });
 
 type Row = { kind: "api"; row: ApiBulkNotificationRow } | { kind: "legacy"; row: OwnerNotification };
+
+type NotifListItem = { id: string | number; entry: Row };
 
 function OwnerNotificationsPage() {
   const navigate = useNavigate();
@@ -31,7 +35,6 @@ function OwnerNotificationsPage() {
   const userId = user?.id;
   const { data: bulkRaw, isPending } = useBulkNotifications(restaurantId);
   const [legacy, setLegacy] = useState<OwnerNotification[]>([]);
-  /** Forces re-render when bulk read state changes elsewhere (e.g. header bell). */
   const [bulkReadEpoch, bumpBulkReadEpoch] = useReducer((x: number) => x + 1, 0);
 
   useEffect(() => {
@@ -62,6 +65,16 @@ function OwnerNotificationsPage() {
     });
   }, [apiRows, legacy]);
 
+  const listItems: NotifListItem[] = useMemo(
+    () =>
+      rows.map((entry) =>
+        entry.kind === "legacy"
+          ? { id: `legacy-${entry.row.id}`, entry }
+          : { id: entry.row.id, entry },
+      ),
+    [rows],
+  );
+
   const unreadCount = useMemo(() => {
     void bulkReadEpoch;
     if (userId == null) return 0;
@@ -71,37 +84,43 @@ function OwnerNotificationsPage() {
   }, [apiRows, userId, legacy, bulkReadEpoch]);
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Notifications</h2>
-        <span className="text-xs text-text-muted">{unreadCount} unread</span>
-      </div>
-
+    <ListPageShell
+      header={
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display font-semibold text-lg text-foreground">Notifications</h2>
+          <span className="text-xs text-text-muted">{unreadCount} unread</span>
+        </div>
+      }
+    >
       {restaurantId == null ? (
         <p className="text-sm text-text-muted">No restaurant selected.</p>
-      ) : isPending && rows.length === 0 ? (
+      ) : isPending && listItems.length === 0 ? (
         <p className="text-sm text-text-muted">Loading…</p>
-      ) : rows.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-6 text-center">
-          <Bell className="mx-auto text-text-muted mb-2" size={20} />
-          <p className="text-sm text-text-muted">No notifications yet.</p>
-        </div>
       ) : (
-        <div className="space-y-2">
-          {rows.map((item) => {
-            if (item.kind === "legacy") {
-              const notif = item.row;
+        <PaginatedList
+          items={listItems}
+          enablePagination
+          stackClassName="gap-2"
+          empty={
+            <div className="rounded-xl border border-border bg-card p-6 text-center">
+              <Bell className="mx-auto mb-2 text-text-muted" size={20} />
+              <p className="text-sm text-text-muted">No notifications yet.</p>
+            </div>
+          }
+          renderItem={({ entry }, _sel) => {
+            if (entry.kind === "legacy") {
+              const notif = entry.row;
               return (
                 <button
-                  key={`legacy-${notif.id}`}
                   type="button"
                   onClick={() => {
                     markOwnerNotificationRead(notif.id);
                     void navigate({ to: notif.to });
                   }}
-                  className={`w-full text-left rounded-xl border p-3 transition-colors ${
-                    notif.read ? "bg-card border-border" : "bg-primary-50 border-primary/30"
-                  }`}
+                  className={cn(
+                    "w-full text-left rounded-xl border p-3 transition-colors",
+                    notif.read ? "bg-card border-border" : "bg-primary-50 border-primary/30",
+                  )}
                 >
                   <p className="text-sm font-semibold text-foreground">{notif.title}</p>
                   <p className="text-xs text-text-secondary mt-1">{notif.message}</p>
@@ -109,20 +128,20 @@ function OwnerNotificationsPage() {
                 </button>
               );
             }
-            const notif = item.row;
+            const notif = entry.row;
             const read = userId != null && isStaffBulkNotificationRead(userId, notif.id);
             const thumb = resolveMediaUrl(notif.image ?? null);
             return (
               <button
-                key={`api-${notif.id}`}
                 type="button"
                 onClick={() => {
                   if (userId != null) markStaffBulkNotificationRead(userId, notif.id);
                   void navigate({ to: "/owner/notifications/$id", params: { id: String(notif.id) } });
                 }}
-                className={`w-full text-left rounded-xl border p-3 transition-colors ${
-                  read ? "bg-card border-border" : "bg-primary-50 border-primary/30"
-                }`}
+                className={cn(
+                  "w-full text-left rounded-xl border p-3 transition-colors",
+                  read ? "bg-card border-border" : "bg-primary-50 border-primary/30",
+                )}
               >
                 <BulkNotificationCard
                   row={notif}
@@ -133,9 +152,9 @@ function OwnerNotificationsPage() {
                 />
               </button>
             );
-          })}
-        </div>
+          }}
+        />
       )}
-    </>
+    </ListPageShell>
   );
 }

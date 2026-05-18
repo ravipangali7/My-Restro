@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerBulkToolbarButton } from "@/components/owner/owner-list-bulk";
 import {
   GroupedListSections,
   ListPageShell,
@@ -163,9 +164,40 @@ function SuppliersPage() {
   const renderSupplierCards = (list: SupplierRow[], showVenue: boolean, resetDeps: DependencyList) => (
     <PaginatedList
       items={list}
+      enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>}
+      selectionActions={({ selectedIds, clearSelection }) =>
+        selectedIds.length > 0 ? (
+          <OwnerBulkToolbarButton
+            variant="danger"
+            onClick={() => {
+              if (!token) return;
+              requestConfirm({
+                title: "Delete selected suppliers",
+                message: `Delete ${selectedIds.length} supplier(s)? This cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  try {
+                    for (const id of selectedIds) {
+                      await apiDelete(`/api/suppliers/${id}/`, token);
+                    }
+                    refresh();
+                    clearSelection();
+                  } catch (e) {
+                    setFormError(e instanceof Error ? e.message : "Failed to delete suppliers.");
+                  }
+                },
+              });
+            }}
+          >
+            Delete selected ({selectedIds.length})
+          </OwnerBulkToolbarButton>
+        ) : null
+      }
       renderItem={(row, sel) => {
         const url = resolveMediaUrl(row.image);
         const venue = showVenue && row.restaurant != null ? restaurantLabel(row.restaurant) : null;
