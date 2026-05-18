@@ -14,9 +14,9 @@ function StaffMenuQrRoute() {
   const { role } = useAuth();
   const { restaurantId } = useRestaurantScope();
   const { data: restaurants = [] } = useRestaurants();
-  const selectedRestaurant = (restaurants as { id: number; name?: string; logo?: string | null }[]).find(
-    (r) => r.id === restaurantId,
-  );
+  const selectedRestaurant = (
+    restaurants as { id: number; name?: string; slug?: string; logo?: string | null }[]
+  ).find((r) => r.id === restaurantId);
 
   return (
     <MenuQrPage
@@ -25,6 +25,7 @@ function StaffMenuQrRoute() {
       backTo={role === "cashier" ? STAFF_PATH.cashierDashboard : STAFF_PATH.home}
       backLabel="Back to Dashboard"
       restaurantId={restaurantId ?? null}
+      restaurantSlug={selectedRestaurant?.slug}
       restaurantName={selectedRestaurant?.name}
       restaurantLogoUrl={resolveMediaUrl(selectedRestaurant?.logo)}
     />

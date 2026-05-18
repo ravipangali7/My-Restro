@@ -1088,6 +1088,16 @@ export function useClientHome(restaurantId: number | null) {
   });
 }
 
+export function useClientHomeBySlug(restaurantSlug: string | null) {
+  const { token } = useAuth();
+  const slug = restaurantSlug?.trim() ?? "";
+  return useQuery({
+    queryKey: ["client-home", "slug", slug, token],
+    queryFn: () => apiGet<unknown>(`/api/client/home/?restaurant_slug=${encodeURIComponent(slug)}`, token),
+    enabled: slug.length > 0,
+  });
+}
+
 /** Parallel client home fetches; shares React Query cache with {@link useClientHome}. */
 export function useClientHomes(restaurantIds: number[]) {
   const { token } = useAuth();

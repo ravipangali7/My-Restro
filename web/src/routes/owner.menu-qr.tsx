@@ -22,9 +22,9 @@ function OwnerMenuQrRoute() {
   const { data: restaurants = [] } = useRestaurants();
 
   const selectedRestaurantId = searchRestaurantId ?? scopeRestaurantId ?? null;
-  const selectedRestaurant = (restaurants as { id: number; name?: string; logo?: string | null }[]).find(
-    (r) => r.id === selectedRestaurantId,
-  );
+  const selectedRestaurant = (
+    restaurants as { id: number; name?: string; slug?: string; logo?: string | null }[]
+  ).find((r) => r.id === selectedRestaurantId);
 
   return (
     <MenuQrPage
@@ -33,6 +33,7 @@ function OwnerMenuQrRoute() {
       backTo="/owner/restaurants"
       backLabel="Back to Restaurants"
       restaurantId={selectedRestaurantId}
+      restaurantSlug={selectedRestaurant?.slug}
       restaurantName={selectedRestaurant?.name}
       restaurantLogoUrl={resolveMediaUrl(selectedRestaurant?.logo)}
     />

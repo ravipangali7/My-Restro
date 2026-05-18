@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AddRestaurantModal } from "@/components/owner/AddRestaurantModal";
+import { EditRestaurantModal, type EditRestaurantTarget } from "@/components/owner/EditRestaurantModal";
 import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
@@ -18,18 +19,9 @@ export const Route = createFileRoute("/owner/restaurants")({
   component: OwnerRestaurantsPage,
 });
 
-interface RestaurantRow {
-  id: number;
-  name: string;
-  phone: string;
+interface RestaurantRow extends EditRestaurantTarget {
   logo?: string | null;
   slug?: string;
-  address: string;
-  latitude: string | number | null;
-  longitude: string | number | null;
-  proximity_alert_radius_m: string | number;
-  delivery_radius_km?: string | number;
-  is_active?: boolean;
   due_balance?: string | number;
 }
 
@@ -57,6 +49,7 @@ function OwnerRestaurantsPage() {
   const { add } = Route.useSearch();
   const { data = [], isLoading, error } = useRestaurants();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<RestaurantRow | null>(null);
 
   useEffect(() => {
     if (add) {
@@ -128,14 +121,26 @@ function OwnerRestaurantsPage() {
                   </>
                 }
                 actions={
-                  <Link
-                    to="/owner/restaurants/$restaurantId"
-                    params={{ restaurantId: String(r.id) }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={ownerListActionClass}
-                  >
-                    View details
-                  </Link>
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditTarget(r);
+                      }}
+                      className={ownerListActionClass}
+                    >
+                      Edit
+                    </button>
+                    <Link
+                      to="/owner/restaurants/$restaurantId"
+                      params={{ restaurantId: String(r.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={ownerListActionClass}
+                    >
+                      View details
+                    </Link>
+                  </>
                 }
               />
             );
@@ -143,6 +148,11 @@ function OwnerRestaurantsPage() {
         </OwnerEntityCardStack>
       )}
       <AddRestaurantModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <EditRestaurantModal
+        open={editTarget != null}
+        restaurant={editTarget}
+        onClose={() => setEditTarget(null)}
+      />
     </>
   );
 }

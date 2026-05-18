@@ -7,8 +7,11 @@ import { parseLocalPhone } from "@/lib/phone-validation";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { useAuth } from "@/lib/auth-context";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
-import { Search, ShoppingCart, Minus, Plus, Users, Leaf, Circle, Package } from "lucide-react";
+import { Search, ShoppingCart, ShoppingBasket, Minus, Plus, Users, Leaf, Circle, Package } from "lucide-react";
+import { toast } from "sonner";
 import type { DiscountType, OrderType } from "@/constants/enums";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 export type StaffPosViewMode = "staff" | "public";
 
@@ -50,7 +53,7 @@ interface ComboSetDTO {
 }
 
 interface HomePayload {
-  restaurant?: { id: number; name: string; slug: string };
+  restaurant?: { id: number; name: string; slug: string; logo?: string | null };
   categories: CategoryDTO[];
   products: ProductDTO[];
   product_items: ProductItemDTO[];
@@ -95,6 +98,52 @@ function portionLayout(items: ProductItemDTO[]): PortionLayout | null {
   return { kind: "choice", items };
 }
 
+function MenuAddOrQuantity({
+  quantity,
+  disabled,
+  onAdd,
+  onDelta,
+}: {
+  quantity: number;
+  disabled?: boolean;
+  onAdd: () => void;
+  onDelta: (delta: number) => void;
+}) {
+  if (quantity > 0) {
+    return (
+      <div className="mt-auto flex items-center justify-between gap-1 rounded-xl border border-primary/20 bg-primary-50 p-1">
+        <button
+          type="button"
+          onClick={() => onDelta(-1)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-foreground shadow-sm"
+          aria-label="Decrease quantity"
+        >
+          <Minus size={14} />
+        </button>
+        <span className="min-w-[1.5rem] text-center text-sm font-bold tabular-nums text-foreground">{quantity}</span>
+        <button
+          type="button"
+          onClick={() => onDelta(1)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
+          aria-label="Increase quantity"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onAdd}
+      className="mt-auto w-full rounded-xl bg-primary py-2 text-xs font-semibold text-primary-foreground hover:bg-primary-600 disabled:pointer-events-none disabled:opacity-45"
+    >
+      Add
+    </button>
+  );
+}
+
 export function StaffPosView({
   restaurantId,
   mode,
@@ -119,12 +168,14 @@ export function StaffPosView({
   const [deliveryLongitude, setDeliveryLongitude] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [portionItemByProduct, setPortionItemByProduct] = useState<Record<number, number | null>>({});
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
 
   const [linkedCustomerId, setLinkedCustomerId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
-  const isWaiter = mode === "public" ? true : role === "waiter";
+  const isPublic = mode === "public";
+  const isWaiter = isPublic ? true : role === "waiter";
   const orderTypeOptions = useMemo((): readonly OrderType[] => (isWaiter ? (["table", "packing"] as const) : (["table", "packing", "delivery"] as const)), [isWaiter]);
 
   const { data: restaurantRows = [] } = useQuery({
@@ -198,6 +249,7 @@ export function StaffPosView({
   ) => {
     const price = discountedUnitPrice(unitPrice, discountType, discount);
     const imageUrl = resolveMediaUrl(productImagePath ?? null);
+    let addedNew = false;
     setCart((prev) => {
       const e = prev.find((x) => x.kind === "product" && x.productItemId === productItemId);
       if (e && e.kind === "product") {
@@ -205,6 +257,7 @@ export function StaffPosView({
           x.kind === "product" && x.productItemId === productItemId ? { ...x, quantity: x.quantity + 1 } : x,
         );
       }
+      addedNew = true;
       return [
         ...prev,
         {
@@ -219,12 +272,14 @@ export function StaffPosView({
         },
       ];
     });
+    if (isPublic && addedNew) toast.success(`${name} added to cart`);
   };
 
   const addComboToCart = (combo: ComboSetDTO) => {
     const unitPrice = typeof combo.price === "string" ? Number.parseFloat(combo.price) : combo.price;
     const price = Number.isFinite(unitPrice) ? unitPrice : 0;
     const imageUrl = resolveMediaUrl(combo.image ?? null);
+    let addedNew = false;
     setCart((prev) => {
       const e = prev.find((x) => x.kind === "combo" && x.comboSetId === combo.id);
       if (e && e.kind === "combo") {
@@ -232,6 +287,7 @@ export function StaffPosView({
           x.kind === "combo" && x.comboSetId === combo.id ? { ...x, quantity: x.quantity + 1 } : x,
         );
       }
+      addedNew = true;
       return [
         ...prev,
         {
@@ -244,6 +300,7 @@ export function StaffPosView({
         },
       ];
     });
+    if (isPublic && addedNew) toast.success(`${combo.name} added to cart`);
   };
 
   const updateQty = (line: CartLine, d: number) => {
@@ -263,6 +320,17 @@ export function StaffPosView({
     );
   };
   const subTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const cartItemCount = cart.reduce((s, c) => s + c.quantity, 0);
+
+  const getProductCartQty = (productItemId: number) => {
+    const line = cart.find((x) => x.kind === "product" && x.productItemId === productItemId);
+    return line?.kind === "product" ? line.quantity : 0;
+  };
+
+  const getComboCartQty = (comboSetId: number) => {
+    const line = cart.find((x) => x.kind === "combo" && x.comboSetId === comboSetId);
+    return line?.kind === "combo" ? line.quantity : 0;
+  };
 
   const serviceCharge = useMemo(() => {
     const raw = posRestaurant?.effective_per_transaction_fee;
@@ -365,6 +433,7 @@ export function StaffPosView({
         setLinkedCustomerId(null);
         setCustomerName("");
         setCustomerPhone("");
+        setCartDrawerOpen(false);
         void queryClient.invalidateQueries({ queryKey: ["client-home", restaurantId] });
       } catch (e) {
         setOrderError(e instanceof Error ? e.message : "Could not place order.");
@@ -434,8 +503,8 @@ export function StaffPosView({
   const inner = (
     <div className={`${rootClass} ${mode === "staff" ? "-m-4 lg:-m-6" : ""}`}>
       <div className="flex min-w-0 flex-1 flex-col">
-        {payload?.restaurant?.name ? (
-          <div className="px-4 py-2 text-xs text-text-muted border-b border-border bg-surface-alt/50">
+        {!isPublic && payload?.restaurant?.name ? (
+          <div className="border-b border-border bg-surface-alt/50 px-4 py-2 text-xs text-text-muted">
             Menu for <span className="font-semibold text-foreground">{payload.restaurant.name}</span>
           </div>
         ) : null}
@@ -520,6 +589,7 @@ export function StaffPosView({
 
             const selectedItemId = resolveSelectedItemId(product.id, layout);
             const addDisabled = selectedItemId == null;
+            const selectedQty = selectedItemId != null ? getProductCartQty(selectedItemId) : 0;
 
             return (
               <div
@@ -602,19 +672,37 @@ export function StaffPosView({
                     </p>
                   ) : null}
 
-                  <button
-                    type="button"
-                    disabled={addDisabled}
-                    onClick={() => handleAddProduct(product, layout)}
-                    className="mt-auto w-full py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary-600 disabled:opacity-45 disabled:pointer-events-none"
-                  >
-                    Add
-                  </button>
+                  {isPublic ? (
+                    <MenuAddOrQuantity
+                      quantity={selectedQty}
+                      disabled={addDisabled}
+                      onAdd={() => handleAddProduct(product, layout)}
+                      onDelta={(d) => {
+                        if (selectedItemId == null) return;
+                        const line = cart.find(
+                          (x) => x.kind === "product" && x.productItemId === selectedItemId,
+                        );
+                        if (d > 0 && !line) handleAddProduct(product, layout);
+                        else if (line) updateQty(line, d);
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={addDisabled}
+                      onClick={() => handleAddProduct(product, layout)}
+                      className="mt-auto w-full rounded-xl bg-primary py-2 text-xs font-semibold text-primary-foreground hover:bg-primary-600 disabled:pointer-events-none disabled:opacity-45"
+                    >
+                      Add
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
-          {filteredCombos.map((combo) => (
+          {filteredCombos.map((combo) => {
+            const comboQty = getComboCartQty(combo.id);
+            return (
             <div
               key={`combo-${combo.id}`}
               className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow flex flex-col ring-1 ring-primary/10"
@@ -641,25 +729,52 @@ export function StaffPosView({
                   ₹
                   {(typeof combo.price === "string" ? Number.parseFloat(combo.price) : Number(combo.price)).toLocaleString()}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => addComboToCart(combo)}
-                  className="mt-auto w-full py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary-600"
-                >
-                  Add
-                </button>
+                {isPublic ? (
+                  <MenuAddOrQuantity
+                    quantity={comboQty}
+                    onAdd={() => addComboToCart(combo)}
+                    onDelta={(d) => {
+                      const line = cart.find((x) => x.kind === "combo" && x.comboSetId === combo.id);
+                      if (d > 0 && !line) addComboToCart(combo);
+                      else if (line) updateQty(line, d);
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => addComboToCart(combo)}
+                    className="mt-auto w-full rounded-xl bg-primary py-2 text-xs font-semibold text-primary-foreground hover:bg-primary-600"
+                  >
+                    Add
+                  </button>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
-      <div className="w-full shrink-0 border-t border-border bg-card lg:w-96 lg:max-w-[24rem] lg:border-l lg:border-t-0">
+      <div
+        className={cn(
+          "w-full shrink-0 border-t border-border bg-card lg:w-96 lg:max-w-[24rem] lg:border-l lg:border-t-0",
+          isPublic &&
+            cn(
+              "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[92dvh] max-lg:overflow-y-auto max-lg:rounded-t-2xl max-lg:shadow-[0_-8px_30px_rgba(0,0,0,0.15)]",
+              !cartDrawerOpen && "max-lg:hidden",
+            ),
+        )}
+      >
+        {isPublic ? (
+          <div className="flex items-center justify-center border-b border-border px-4 py-2 lg:hidden">
+            <div className="h-1 w-10 rounded-full bg-border" aria-hidden />
+          </div>
+        ) : null}
         <div className="border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-semibold text-md flex items-center gap-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 font-display text-md font-semibold">
               <ShoppingCart size={18} /> Order
             </h2>
-            <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded-full">{cart.length} items</span>
+            <span className="rounded-full bg-surface px-2 py-1 text-xs text-text-muted">{cart.length} items</span>
           </div>
           <div className="flex gap-1 mb-3 p-1 rounded-xl bg-surface">
             {orderTypeOptions.map((t) => (
@@ -859,12 +974,59 @@ export function StaffPosView({
   );
 
   if (mode === "public") {
+    const restaurantName = payload?.restaurant?.name?.trim() || "Menu";
+    const restaurantLogo = resolveMediaUrl(payload?.restaurant?.logo ?? null);
+
     return (
       <div className="flex min-h-screen flex-col bg-surface">
-        <div className="w-full shrink-0 border-b border-border bg-primary-50/80 px-4 py-2 text-center text-xs text-text-secondary">
-          Scan-to-order menu — add items, enter your name and phone, then place your order. No account required.
-        </div>
+        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 shadow-sm">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="size-10 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-alt">
+              {restaurantLogo ? (
+                <img src={restaurantLogo} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary-50 text-sm font-bold text-primary">
+                  {restaurantName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <h1 className="truncate font-display text-base font-bold text-foreground">{restaurantName}</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCartDrawerOpen(true)}
+            className="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-alt text-foreground lg:hidden"
+            aria-label="Open cart"
+          >
+            <ShoppingBasket size={20} />
+            {cartItemCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {cartItemCount > 99 ? "99+" : cartItemCount}
+              </span>
+            ) : null}
+          </button>
+        </header>
+        {cartDrawerOpen ? (
+          <button
+            type="button"
+            aria-label="Close cart"
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setCartDrawerOpen(false)}
+          />
+        ) : null}
         {inner}
+        {cartItemCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setCartDrawerOpen(true)}
+            className="fixed bottom-6 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg lg:hidden"
+            aria-label="Open cart"
+          >
+            <ShoppingBasket size={20} />
+            <span>{cartItemCount > 99 ? "99+" : cartItemCount}</span>
+          </button>
+        ) : null}
+        <Toaster position="top-center" richColors closeButton />
       </div>
     );
   }

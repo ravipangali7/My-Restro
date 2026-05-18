@@ -684,6 +684,9 @@ def _patch_restaurant_response(request, pk: int):
 
     if actor_role == UserRole.OWNER:
         allowed = {
+            "name",
+            "phone",
+            "address",
             "can_delivery",
             "delivery_fee_per_km",
             "delivery_radius_km",
@@ -700,12 +703,30 @@ def _patch_restaurant_response(request, pk: int):
         if not any(k in data for k in allowed):
             return Response(
                 {
-                    "detail": "Provide at least one of: can_delivery, delivery_fee_per_km, delivery_radius_km, "
-                    "latitude, longitude, proximity_alert_radius_m."
+                    "detail": "Provide at least one editable field (name, phone, address, delivery options, "
+                    "location, or proximity_alert_radius_m)."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         update_fields: list[str] = ["updated_at"]
+        if "name" in data:
+            nm = (data.get("name") or "").strip()
+            if not nm:
+                return Response({"detail": "Name is required."}, status=status.HTTP_400_BAD_REQUEST)
+            r.name = nm
+            update_fields.append("name")
+        if "phone" in data:
+            raw_ph = (data.get("phone") or "").strip()
+            if not raw_ph:
+                return Response({"detail": "Phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+            ph, ph_err = parse_local_phone(raw_ph, required=True)
+            if ph_err:
+                return Response({"detail": ph_err}, status=status.HTTP_400_BAD_REQUEST)
+            r.phone = ph
+            update_fields.append("phone")
+        if "address" in data:
+            r.address = (data.get("address") or "").strip()
+            update_fields.append("address")
         if "can_delivery" in data:
             r.can_delivery = _as_bool(data.get("can_delivery"), r.can_delivery)
             update_fields.append("can_delivery")

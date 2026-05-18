@@ -9,14 +9,24 @@ from core.models import Category, ComboSet, Product, ProductItem, Restaurant, St
 
 
 def _resolve_restaurant(request):
+    restaurant_slug = (request.query_params.get("restaurant_slug") or "").strip()
     restaurant_id = request.query_params.get("restaurant_id")
-    if not restaurant_id:
-        return None, Response({"detail": "Query param `restaurant_id` is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        restaurant = Restaurant.objects.get(id=restaurant_id)
-    except Restaurant.DoesNotExist:
-        return None, Response({"detail": "Restaurant not found."}, status=status.HTTP_404_NOT_FOUND)
+    if restaurant_slug:
+        try:
+            restaurant = Restaurant.objects.get(slug=restaurant_slug)
+        except Restaurant.DoesNotExist:
+            return None, Response({"detail": "Restaurant not found."}, status=status.HTTP_404_NOT_FOUND)
+    elif restaurant_id:
+        try:
+            restaurant = Restaurant.objects.get(id=restaurant_id)
+        except Restaurant.DoesNotExist:
+            return None, Response({"detail": "Restaurant not found."}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        return None, Response(
+            {"detail": "Query param `restaurant_id` or `restaurant_slug` is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if not restaurant.is_active:
         return None, Response(
@@ -100,6 +110,7 @@ def home_data(request):
             "id": restaurant.id,
             "name": restaurant.name,
             "slug": restaurant.slug,
+            "logo": absolute_media_url(request, restaurant.logo.name if restaurant.logo else None),
             "is_open": restaurant.is_open,
         },
         "categories": categories,

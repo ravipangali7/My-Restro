@@ -70,6 +70,7 @@ import { Route as OwnerExpensesRouteImport } from './routes/owner.expenses'
 import { Route as OwnerCustomersRouteImport } from './routes/owner.customers'
 import { Route as OwnerCombosRouteImport } from './routes/owner.combos'
 import { Route as OwnerCategoriesRouteImport } from './routes/owner.categories'
+import { Route as MenuRestaurantSlugRouteImport } from './routes/menu.$restaurantSlug'
 import { Route as CustomerTransactionsRouteImport } from './routes/customer.transactions'
 import { Route as CustomerRestaurantsRouteImport } from './routes/customer.restaurants'
 import { Route as CustomerProfileRouteImport } from './routes/customer.profile'
@@ -419,6 +420,11 @@ const OwnerCategoriesRoute = OwnerCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => OwnerRoute,
 } as any)
+const MenuRestaurantSlugRoute = MenuRestaurantSlugRouteImport.update({
+  id: '/menu/$restaurantSlug',
+  path: '/menu/$restaurantSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomerTransactionsRoute = CustomerTransactionsRouteImport.update({
   id: '/transactions',
   path: '/transactions',
@@ -657,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/restaurants': typeof CustomerRestaurantsRoute
   '/customer/transactions': typeof CustomerTransactionsRoute
+  '/menu/$restaurantSlug': typeof MenuRestaurantSlugRoute
   '/owner/categories': typeof OwnerCategoriesRoute
   '/owner/combos': typeof OwnerCombosRouteWithChildren
   '/owner/customers': typeof OwnerCustomersRoute
@@ -757,6 +764,7 @@ export interface FileRoutesByTo {
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/restaurants': typeof CustomerRestaurantsRoute
   '/customer/transactions': typeof CustomerTransactionsRoute
+  '/menu/$restaurantSlug': typeof MenuRestaurantSlugRoute
   '/owner/categories': typeof OwnerCategoriesRoute
   '/owner/combos': typeof OwnerCombosRouteWithChildren
   '/owner/customers': typeof OwnerCustomersRoute
@@ -863,6 +871,7 @@ export interface FileRoutesById {
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/restaurants': typeof CustomerRestaurantsRoute
   '/customer/transactions': typeof CustomerTransactionsRoute
+  '/menu/$restaurantSlug': typeof MenuRestaurantSlugRoute
   '/owner/categories': typeof OwnerCategoriesRoute
   '/owner/combos': typeof OwnerCombosRouteWithChildren
   '/owner/customers': typeof OwnerCustomersRoute
@@ -970,6 +979,7 @@ export interface FileRouteTypes {
     | '/customer/profile'
     | '/customer/restaurants'
     | '/customer/transactions'
+    | '/menu/$restaurantSlug'
     | '/owner/categories'
     | '/owner/combos'
     | '/owner/customers'
@@ -1070,6 +1080,7 @@ export interface FileRouteTypes {
     | '/customer/profile'
     | '/customer/restaurants'
     | '/customer/transactions'
+    | '/menu/$restaurantSlug'
     | '/owner/categories'
     | '/owner/combos'
     | '/owner/customers'
@@ -1175,6 +1186,7 @@ export interface FileRouteTypes {
     | '/customer/profile'
     | '/customer/restaurants'
     | '/customer/transactions'
+    | '/menu/$restaurantSlug'
     | '/owner/categories'
     | '/owner/combos'
     | '/owner/customers'
@@ -1274,6 +1286,7 @@ export interface RootRouteChildren {
   StaffRoute: typeof StaffRouteWithChildren
   SuperadminRoute: typeof SuperadminRouteWithChildren
   WaiterMenuRoute: typeof WaiterMenuRoute
+  MenuRestaurantSlugRoute: typeof MenuRestaurantSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1704,6 +1717,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/owner/categories'
       preLoaderRoute: typeof OwnerCategoriesRouteImport
       parentRoute: typeof OwnerRoute
+    }
+    '/menu/$restaurantSlug': {
+      id: '/menu/$restaurantSlug'
+      path: '/menu/$restaurantSlug'
+      fullPath: '/menu/$restaurantSlug'
+      preLoaderRoute: typeof MenuRestaurantSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/customer/transactions': {
       id: '/customer/transactions'
@@ -2324,6 +2344,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffRoute: StaffRouteWithChildren,
   SuperadminRoute: SuperadminRouteWithChildren,
   WaiterMenuRoute: WaiterMenuRoute,
+  MenuRestaurantSlugRoute: MenuRestaurantSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

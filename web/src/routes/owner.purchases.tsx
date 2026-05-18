@@ -326,7 +326,10 @@ function PurchasesPage() {
                 <label className="text-sm font-medium text-text-secondary mb-1.5 block">Supplier *</label>
                 <select
                   value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
+                  onChange={(e) => {
+                    setSupplierId(e.target.value);
+                    setPurchaseItems((prev) => prev.map((item) => ({ ...item, raw_material: "" })));
+                  }}
                   className="w-full h-11 px-4 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 >
                   <option value="">Select supplier</option>
@@ -356,9 +359,10 @@ function PurchasesPage() {
                     <select
                       value={item.raw_material}
                       onChange={(e) => onItemChange(idx, "raw_material", e.target.value)}
-                      className="h-9 px-2 rounded-lg border border-border bg-card text-xs col-span-1"
+                      disabled={!supplierId}
+                      className="h-9 px-2 rounded-lg border border-border bg-card text-xs col-span-1 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <option value="">Raw Material</option>
+                      <option value="">{supplierId ? "Raw Material" : "Select supplier first"}</option>
                       {(rawMaterials as { id: number; name: string }[] | undefined)?.map((rm) => (
                         <option key={rm.id} value={rm.id}>
                           {rm.name}

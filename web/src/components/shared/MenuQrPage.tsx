@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import { getApiBaseUrl, getStoredToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { buildPublicMenuUrl, resolvePublicMenuBaseUrl } from "@/lib/menu-url";
 
 /** Matches `:root` in `styles.css` (MyRestro light theme) for print-friendly PDFs. */
 const PDF_THEME = {
@@ -24,6 +25,7 @@ type MenuQrPageProps = {
   backTo: string;
   backLabel: string;
   restaurantId: number | null;
+  restaurantSlug?: string | null;
   restaurantName?: string;
   restaurantLogoUrl?: string | null;
 };
@@ -128,19 +130,13 @@ async function rasterizeImageSrcToPngDataUrl(src: string): Promise<string> {
   return canvas.toDataURL("image/png");
 }
 
-function resolveMenuQrBaseUrl(): string {
-  const raw = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)?.trim();
-  if (raw) return raw.replace(/\/+$/, "");
-  if (typeof window !== "undefined" && window.location?.origin) return window.location.origin;
-  return "";
-}
-
 export function MenuQrPage({
   title,
   subtitle,
   backTo,
   backLabel,
   restaurantId,
+  restaurantSlug,
   restaurantName,
   restaurantLogoUrl,
 }: MenuQrPageProps) {
@@ -155,13 +151,14 @@ export function MenuQrPage({
   const brandBlobRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setMenuBaseUrl(resolveMenuQrBaseUrl());
+    setMenuBaseUrl(resolvePublicMenuBaseUrl());
   }, []);
 
   const menuUrl = useMemo(() => {
-    if (restaurantId == null || !menuBaseUrl) return null;
-    return `${menuBaseUrl}/waiter-menu?restaurantId=${restaurantId}`;
-  }, [restaurantId, menuBaseUrl]);
+    const slug = restaurantSlug?.trim();
+    if (!slug || !menuBaseUrl) return null;
+    return buildPublicMenuUrl(menuBaseUrl, slug);
+  }, [restaurantSlug, menuBaseUrl]);
 
   useEffect(() => {
     if (!menuUrl) {
