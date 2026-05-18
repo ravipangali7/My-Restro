@@ -7,67 +7,49 @@ import {
 import type { ListItemSelectionProps } from "@/hooks/use-list-selection";
 import { cn } from "@/lib/utils";
 
+/** Passed from `PaginatedList` for typing; row actions stay enabled regardless of selection. */
 export type SuperAdminRowSelection = ListItemSelectionProps | { selectable?: false };
 
-export function rowActionsEnabled(sel: SuperAdminRowSelection): boolean {
-  return !sel.selectable || sel.selected;
-}
-
-export function rowActionClass(base: string, sel: SuperAdminRowSelection): string {
-  return cn(base, sel.selectable && !sel.selected && "pointer-events-none opacity-40");
-}
-
 type SuperAdminRowLinkProps = LinkProps & {
-  sel: SuperAdminRowSelection;
+  sel?: SuperAdminRowSelection;
   className?: string;
   children: ReactNode;
   onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 };
 
-export function SuperAdminRowLink({ sel, className, children, onClick, ...linkProps }: SuperAdminRowLinkProps) {
-  const base = className ?? ownerListActionClass;
-  if (!rowActionsEnabled(sel)) {
-    return (
-      <span className={rowActionClass(base, sel)} aria-disabled>
-        {children}
-      </span>
-    );
-  }
+export function SuperAdminRowLink({ className, children, onClick, ...linkProps }: SuperAdminRowLinkProps) {
   return (
     <Link
       {...linkProps}
-      className={rowActionClass(base, sel)}
+      className={className ?? ownerListActionClass}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.(e);
       }}
-    />
+    >
+      {children}
+    </Link>
   );
 }
 
 type SuperAdminRowButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  sel: SuperAdminRowSelection;
+  sel?: SuperAdminRowSelection;
   variant?: "default" | "danger";
 };
 
 export function SuperAdminRowButton({
-  sel,
   variant = "default",
   className,
-  disabled,
   onClick,
   ...props
 }: SuperAdminRowButtonProps) {
   const base = className ?? (variant === "danger" ? ownerListActionDangerClass : ownerListActionClass);
-  const locked = sel.selectable && !sel.selected;
   return (
     <button
       type="button"
       {...props}
-      disabled={disabled || locked}
-      className={rowActionClass(base, sel)}
+      className={base}
       onClick={(e) => {
-        if (locked) return;
         e.stopPropagation();
         onClick?.(e);
       }}
