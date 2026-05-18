@@ -318,6 +318,7 @@ function RawMaterialsPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">

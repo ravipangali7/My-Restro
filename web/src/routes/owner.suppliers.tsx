@@ -213,6 +213,7 @@ function SuppliersPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <h2 className="font-display font-semibold text-lg text-foreground">Suppliers</h2>

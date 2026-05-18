@@ -50,6 +50,7 @@ function StockLogPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <>
             <h2 className="font-display font-semibold text-lg text-foreground mb-4">Stock Log</h2>

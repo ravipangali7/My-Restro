@@ -214,6 +214,7 @@ function PurchasesPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-semibold text-lg text-foreground">Purchases</h2>

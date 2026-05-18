@@ -71,6 +71,7 @@ function OwnerRestaurantsPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-lg font-semibold text-foreground">Restaurants</h2>

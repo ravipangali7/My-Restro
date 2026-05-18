@@ -33,6 +33,7 @@ function CustomersPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={<h2 className="mb-4 font-display text-lg font-semibold text-foreground">Customers</h2>}
       >
       <PaginatedList

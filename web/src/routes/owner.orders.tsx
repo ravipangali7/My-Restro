@@ -87,6 +87,7 @@ function OrdersPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <>
             <h2 className="mb-1 font-display text-lg font-semibold text-foreground">Orders</h2>

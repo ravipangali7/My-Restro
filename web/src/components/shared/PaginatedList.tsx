@@ -6,8 +6,8 @@ import { useListSelection, type ListItemId, type ListItemSelectionProps } from "
 import { ListPaginationBar } from "@/components/shared/ListPaginationBar";
 import { cn } from "@/lib/utils";
 
-export type { ListItemSelectionProps };
 export { ListPageShell } from "@/components/shared/ListPageShell";
+export type { ListItemSelectionProps };
 
 export interface PaginatedListProps<T extends { id: ListItemId }> {
   items: T[];
@@ -44,7 +44,7 @@ export function PaginatedList<T extends { id: ListItemId }>({
   return (
     <div
       data-paginated-list-root
-      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", className)}
+      className={cn("flex min-w-0 flex-col gap-3", className)}
     >
       {showToolbar ? (
         <ListSelectionToolbar
@@ -65,23 +65,21 @@ export function PaginatedList<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <OwnerEntityCardStack className={cn("pb-1", stackClassName)}>
-          {pagination.pageItems.map((item) => {
-            const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
-              ? {
-                  selectable: true,
-                  selected: selection.isSelected(item.id),
-                  onSelectedChange: (checked) => selection.toggle(item.id, checked),
-                }
-              : { selectable: false };
-            return <div key={item.id}>{renderItem(item, selectionProps)}</div>;
-          })}
-        </OwnerEntityCardStack>
-      </div>
+      <OwnerEntityCardStack className={stackClassName}>
+        {pagination.pageItems.map((item) => {
+          const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
+            ? {
+                selectable: true,
+                selected: selection.isSelected(item.id),
+                onSelectedChange: (checked) => selection.toggle(item.id, checked),
+              }
+            : { selectable: false };
+          return <div key={item.id}>{renderItem(item, selectionProps)}</div>;
+        })}
+      </OwnerEntityCardStack>
 
       <ListPaginationBar
-        fixed
+        sticky
         page={pagination.page}
         totalPages={pagination.totalPages}
         totalCount={pagination.totalCount}

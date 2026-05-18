@@ -202,6 +202,7 @@ function UnitsPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>

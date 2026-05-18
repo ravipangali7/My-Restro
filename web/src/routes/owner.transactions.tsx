@@ -100,6 +100,7 @@ function TransactionsPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <>
             <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

@@ -13,7 +13,7 @@ export function OwnerPortalLayout({ children }: { children: ReactNode }) {
         bottomNavFeaturedTo={ownerBottomNavFeaturedTo}
         bottomNavFeaturedIcon="tab"
       >
-        {children}
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">{children}</div>
       </DashboardLayout>
     </PortalGate>
   );

@@ -142,6 +142,7 @@ function CombosPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-semibold text-lg text-foreground">Combo Sets</h2>

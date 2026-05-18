@@ -168,6 +168,7 @@ function ProductsPage() {
   return (
     <>
       <ListPageShell
+        fillViewport
         header={
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-foreground">Products</h2>

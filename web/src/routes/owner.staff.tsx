@@ -176,6 +176,7 @@ function StaffPage() {
         <p className="text-sm text-text-muted">No restaurants assigned.</p>
       ) : (
         <ListPageShell
+          fillViewport
           header={
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h2 className="font-display font-semibold text-lg text-foreground">Staff</h2>

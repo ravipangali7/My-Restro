@@ -65,7 +65,7 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
   return (
     <div
       data-paginated-list-root
-      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", className)}
+      className={cn("flex min-w-0 flex-col gap-3", className)}
     >
       {enableSelection && pagination.pageItems.length > 0 ? (
         <ListSelectionToolbar
@@ -86,12 +86,10 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <DataTable columns={tableColumns} data={pagination.pageItems} onRowClick={onRowClick} />
-      </div>
+      <DataTable columns={tableColumns} data={pagination.pageItems} onRowClick={onRowClick} />
 
       <ListPaginationBar
-        fixed
+        sticky
         page={pagination.page}
         totalPages={pagination.totalPages}
         totalCount={pagination.totalCount}

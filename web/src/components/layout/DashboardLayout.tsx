@@ -68,7 +68,7 @@ export function DashboardLayout({
         />
         <main
           className={cn(
-            "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 lg:p-6",
+            "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth p-4 lg:p-6",
             bottomTabs != null && bottomTabs.length > 0
               ? "max-lg:pb-[var(--app-mobile-bottom-nav-scroll-padding)] lg:pb-6"
               : undefined,
