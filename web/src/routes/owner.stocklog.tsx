@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { useRawMaterials, useStockLogs, useUnits } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
@@ -72,8 +73,11 @@ function StockLogPage() {
       ) : filtered.length === 0 ? (
         <p className="text-sm text-text-muted">No stock movements match this filter.</p>
       ) : (
-        <OwnerEntityCardStack>
-          {filtered.map((s) => {
+        <PaginatedList
+          items={filtered}
+          resetDeps={[filter]}
+          empty={<p className="text-sm text-text-muted">No stock movements match this filter.</p>}
+          renderItem={(s, sel) => {
             const when = (() => {
               const d = new Date(s.created_at);
               return Number.isNaN(d.getTime()) ? s.created_at : d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
@@ -81,7 +85,7 @@ function StockLogPage() {
             const source = s.purchase ? "Purchase" : s.order ? "Order" : "Manual";
             return (
               <OwnerEntityCard
-                key={s.id}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/owner/stocklog/$id", params: { id: String(s.id) } });
                 }}
@@ -128,8 +132,8 @@ function StockLogPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
+          }}
+        />
       )}
     </>
   );

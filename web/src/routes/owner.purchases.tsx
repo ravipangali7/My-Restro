@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePurchases, useRawMaterials, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -223,13 +224,13 @@ function PurchasesPage() {
       </div>
       {isLoading && purchases === undefined ? (
         <p className="text-sm text-text-muted py-8">Loading purchases…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-text-muted">No purchases yet.</p>
       ) : (
-        <OwnerEntityCardStack>
-          {rows.map((p) => (
+        <PaginatedList
+          items={rows}
+          empty={<p className="text-sm text-text-muted">No purchases yet.</p>}
+          renderItem={(p, sel) => (
             <OwnerEntityCard
-              key={p.id}
+              {...(sel.selectable ? sel : {})}
               onClick={() => {
                 void navigate({ to: "/owner/purchases/$id", params: { id: String(p.id) } });
               }}
@@ -278,8 +279,8 @@ function PurchasesPage() {
                 </>
               }
             />
-          ))}
-        </OwnerEntityCardStack>
+          )}
+        />
       )}
 
       {showForm && (

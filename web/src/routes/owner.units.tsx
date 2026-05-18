@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { useCallback, useMemo, useState, type DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerUnitsByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -145,11 +146,14 @@ function UnitsPage() {
     }
   };
 
-  const renderUnitCards = (list: UnitRow[]) => (
-    <OwnerEntityCardStack>
-      {list.map((u) => (
+  const renderUnitCards = (list: UnitRow[], resetDeps: DependencyList) => (
+    <PaginatedList
+      items={list}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No units for this restaurant yet.</p>}
+      renderItem={(u, sel) => (
         <OwnerEntityCard
-          key={u.id}
+          {...(sel.selectable ? sel : {})}
           leading={
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Ruler strokeWidth={2} aria-hidden />
@@ -185,8 +189,8 @@ function UnitsPage() {
             </>
           }
         />
-      ))}
-    </OwnerEntityCardStack>
+      )}
+    />
   );
 
   if (restaurantIds.length === 0) {
@@ -218,7 +222,7 @@ function UnitsPage() {
               {(units as UnitRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
               ) : (
-                renderUnitCards(units as UnitRow[])
+                renderUnitCards(units as UnitRow[], [rid])
               )}
             </section>
           ))}
@@ -226,7 +230,7 @@ function UnitsPage() {
       ) : (sections[0]?.units as UnitRow[] | undefined)?.length === 0 ? (
         <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
       ) : (
-        renderUnitCards((sections[0]?.units as UnitRow[]) ?? [])
+        renderUnitCards((sections[0]?.units as UnitRow[]) ?? [], [restaurantIds, restaurantId])
       )}
 
       {showForm && (

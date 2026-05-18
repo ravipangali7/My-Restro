@@ -3,10 +3,10 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   OwnerEntityCard,
-  OwnerEntityCardStack,
   ownerListActionClass,
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
@@ -108,16 +108,15 @@ function UsersPage() {
         }
       />
 
-      {users.length === 0 ? (
-        <SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>
-      ) : (
-        <OwnerEntityCardStack>
-          {users.map((u) => {
+      <PaginatedList
+        items={users}
+        empty={<SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>}
+        renderItem={(u, sel) => {
             const src = resolveMediaUrl(u.image);
             const placements = u.staff_placements ?? [];
             return (
               <OwnerEntityCard
-                key={u.id}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/superadmin/users/$id", params: { id: String(u.id) } });
                 }}
@@ -213,9 +212,8 @@ function UsersPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
-      )}
+        }}
+      />
 
       {showForm && (
         <AppModal

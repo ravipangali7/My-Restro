@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
 import {
   OwnerEntityCard,
-  OwnerEntityCardStack,
   ownerListActionClass,
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { AppModal } from "@/components/shared/AppModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -156,15 +156,14 @@ function RestaurantsPage() {
           </button>
         }
       />
-      {rows.length === 0 ? (
-        <SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>
-      ) : (
-        <OwnerEntityCardStack>
-          {rows.map((r) => {
+      <PaginatedList
+        items={rows}
+        empty={<SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>}
+        renderItem={(r, sel) => {
             const logoSrc = resolveMediaUrl(r.logo);
             return (
               <OwnerEntityCard
-                key={r.id}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/superadmin/restaurants/$id", params: { id: String(r.id) } });
                 }}
@@ -308,9 +307,8 @@ function RestaurantsPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
-      )}
+        }}
+      />
 
       {ConfirmDialog}
 

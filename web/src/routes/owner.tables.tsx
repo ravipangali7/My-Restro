@@ -1,5 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import type { DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useOwnerTablesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
@@ -35,14 +37,17 @@ function TablesPage() {
     void navigate({ to: "/owner/tables/$id", params: { id: String(t.id) } });
   };
 
-  const renderTableCards = (rows: TableRow[]) => (
-    <OwnerEntityCardStack>
-      {rows.map((t) => {
+  const renderTableCards = (rows: TableRow[], resetDeps: DependencyList) => (
+    <PaginatedList
+      items={rows}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No tables for this restaurant yet.</p>}
+      renderItem={(t, sel) => {
         const url = resolveMediaUrl(t.image);
         const floorLine = (t.floor ?? "").trim();
         return (
           <OwnerEntityCard
-            key={t.id}
+            {...(sel.selectable ? sel : {})}
             onClick={() => goToTable(t)}
             leading={
               url ? (
@@ -83,8 +88,8 @@ function TablesPage() {
             }
           />
         );
-      })}
-    </OwnerEntityCardStack>
+      }}
+    />
   );
 
   if (restaurantIds.length === 0) {
@@ -114,7 +119,7 @@ function TablesPage() {
                 {rows.length === 0 ? (
                   <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
                 ) : (
-                  renderTableCards(rows)
+                  renderTableCards(rows, [rid])
                 )}
               </section>
             );
@@ -123,7 +128,7 @@ function TablesPage() {
       ) : (sections[0]?.tables as TableRow[] | undefined)?.length === 0 ? (
         <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
       ) : (
-        renderTableCards((sections[0]?.tables as TableRow[]) ?? [])
+        renderTableCards((sections[0]?.tables as TableRow[]) ?? [], [restaurantIds])
       )}
       {isFormRoute ? (
         <RouteFormModal title="Table form" onClose={() => navigate({ to: "/owner/tables" })}>

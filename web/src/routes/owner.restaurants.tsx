@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AddRestaurantModal } from "@/components/owner/AddRestaurantModal";
 import { EditRestaurantModal, type EditRestaurantTarget } from "@/components/owner/EditRestaurantModal";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
@@ -80,19 +81,18 @@ function OwnerRestaurantsPage() {
         </button>
       </div>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-text-muted">No restaurants yet.</p>
-      ) : (
-        <OwnerEntityCardStack>
-          {rows.map((r) => {
-            const src = resolveMediaUrl(r.logo);
-            const deliveryKm = r.delivery_radius_km != null ? Number(r.delivery_radius_km) : null;
-            return (
-              <OwnerEntityCard
-                key={r.id}
-                onClick={() => {
-                  void navigate({ to: "/owner/restaurants/$restaurantId", params: { restaurantId: String(r.id) } });
-                }}
+      <PaginatedList
+        items={rows}
+        empty={<p className="text-sm text-text-muted">No restaurants yet.</p>}
+        renderItem={(r, sel) => {
+          const src = resolveMediaUrl(r.logo);
+          const deliveryKm = r.delivery_radius_km != null ? Number(r.delivery_radius_km) : null;
+          return (
+            <OwnerEntityCard
+              {...(sel.selectable ? sel : {})}
+              onClick={() => {
+                void navigate({ to: "/owner/restaurants/$restaurantId", params: { restaurantId: String(r.id) } });
+              }}
                 leading={
                   src ? (
                     <img
@@ -143,10 +143,9 @@ function OwnerRestaurantsPage() {
                   </>
                 }
               />
-            );
-          })}
-        </OwnerEntityCardStack>
-      )}
+          );
+        }}
+      />
       <AddRestaurantModal open={modalOpen} onClose={() => setModalOpen(false)} />
       <EditRestaurantModal
         open={editTarget != null}

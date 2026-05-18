@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { useEffect, useMemo, useState, type DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { AppModal } from "@/components/shared/AppModal";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -95,11 +96,14 @@ function StaffPage() {
     );
   };
 
-  const renderStaffCards = (list: StaffRow[]) => (
-    <OwnerEntityCardStack>
-      {list.map((s) => (
+  const renderStaffCards = (list: StaffRow[], resetDeps: DependencyList) => (
+    <PaginatedList
+      items={list}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No staff at this restaurant.</p>}
+      renderItem={(s, sel) => (
         <OwnerEntityCard
-          key={s.id}
+          {...(sel.selectable ? sel : {})}
           onClick={() => goToStaff(s)}
           leading={
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -125,8 +129,8 @@ function StaffPage() {
             </Link>
           }
         />
-      ))}
-    </OwnerEntityCardStack>
+      )}
+    />
   );
 
   const restaurantOptions = useMemo(
@@ -384,13 +388,13 @@ function StaffPage() {
               {(staff as StaffRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No staff at this restaurant.</p>
               ) : (
-                renderStaffCards(staff as StaffRow[])
+                renderStaffCards(staff as StaffRow[], [rid])
               )}
             </section>
           ))}
         </div>
       ) : (
-        renderStaffCards((sections[0]?.staff as StaffRow[]) ?? [])
+        renderStaffCards((sections[0]?.staff as StaffRow[]) ?? [], [restaurantIds])
       )}
       {isFormRoute ? (
         <RouteFormModal title="Staff form" onClose={() => navigate({ to: "/owner/staff" })}>

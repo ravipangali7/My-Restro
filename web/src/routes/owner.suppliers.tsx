@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { useCallback, useMemo, useState, type DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerSuppliersByRestaurant, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
@@ -154,15 +155,17 @@ function SuppliersPage() {
     });
   };
 
-  const renderSupplierCards = (list: SupplierRow[], showVenue: boolean) => (
-    <OwnerEntityCardStack>
-      {list.map((row) => {
+  const renderSupplierCards = (list: SupplierRow[], showVenue: boolean, resetDeps: DependencyList) => (
+    <PaginatedList
+      items={list}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>}
+      renderItem={(row, sel) => {
         const url = resolveMediaUrl(row.image);
-        const venue =
-          showVenue && row.restaurant != null ? restaurantLabel(row.restaurant) : null;
+        const venue = showVenue && row.restaurant != null ? restaurantLabel(row.restaurant) : null;
         return (
           <OwnerEntityCard
-            key={row.id}
+            {...(sel.selectable ? sel : {})}
             leading={
               url ? (
                 <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" />
@@ -199,8 +202,8 @@ function SuppliersPage() {
             }
           />
         );
-      })}
-    </OwnerEntityCardStack>
+      }}
+    />
   );
 
   if (restaurantIds.length === 0) return <p className="text-sm text-text-muted">No restaurants assigned.</p>;
@@ -234,7 +237,7 @@ function SuppliersPage() {
       </div>
 
       {showAllFlat ? (
-        renderSupplierCards(flatData as SupplierRow[], showRestaurantColInTable && showAllFlat)
+        renderSupplierCards(flatData as SupplierRow[], showRestaurantColInTable && showAllFlat, [showAllRestaurants])
       ) : restaurantIds.length > 1 ? (
         <div className="space-y-8">
           {sections.map(({ restaurantId: rid, suppliers }) => (
@@ -243,7 +246,7 @@ function SuppliersPage() {
               {(suppliers as SupplierRow[]).length === 0 ? (
                 <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
               ) : (
-                renderSupplierCards(suppliers as SupplierRow[], false)
+                renderSupplierCards(suppliers as SupplierRow[], false, [rid])
               )}
             </section>
           ))}
@@ -251,7 +254,7 @@ function SuppliersPage() {
       ) : (sections[0]?.suppliers as SupplierRow[] | undefined)?.length === 0 ? (
         <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
       ) : (
-        renderSupplierCards((sections[0]?.suppliers as SupplierRow[]) ?? [], false)
+        renderSupplierCards((sections[0]?.suppliers as SupplierRow[]) ?? [], false, [restaurantIds])
       )}
 
       {showForm && (

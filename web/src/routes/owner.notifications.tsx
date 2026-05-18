@@ -16,6 +16,8 @@ import {
 } from "@/lib/staff-bulk-notification-reads";
 import type { ApiBulkNotificationRow } from "@/lib/bulk-notification-types";
 import { BulkNotificationCard } from "@/components/notifications/BulkNotificationCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
+import { Checkbox } from "@/components/ui/checkbox";
 import { resolveMediaUrl } from "@/lib/api";
 
 export const Route = createFileRoute("/owner/notifications")({
@@ -23,6 +25,8 @@ export const Route = createFileRoute("/owner/notifications")({
 });
 
 type Row = { kind: "api"; row: ApiBulkNotificationRow } | { kind: "legacy"; row: OwnerNotification };
+
+type PaginatedRow = Row & { id: string };
 
 function OwnerNotificationsPage() {
   const navigate = useNavigate();
@@ -52,9 +56,17 @@ function OwnerNotificationsPage() {
     [bulkRaw],
   );
 
-  const rows: Row[] = useMemo(() => {
-    const apiPart: Row[] = apiRows.map((row) => ({ kind: "api" as const, row }));
-    const legacyPart: Row[] = legacy.map((row) => ({ kind: "legacy" as const, row }));
+  const rows: PaginatedRow[] = useMemo(() => {
+    const apiPart: PaginatedRow[] = apiRows.map((row) => ({
+      kind: "api" as const,
+      row,
+      id: `api-${row.id}`,
+    }));
+    const legacyPart: PaginatedRow[] = legacy.map((row) => ({
+      kind: "legacy" as const,
+      row,
+      id: `legacy-${row.id}`,
+    }));
     return [...apiPart, ...legacyPart].sort((a, b) => {
       const ta = a.kind === "api" ? a.row.created_at : a.row.createdAt;
       const tb = b.kind === "api" ? b.row.created_at : b.row.createdAt;
@@ -87,54 +99,80 @@ function OwnerNotificationsPage() {
           <p className="text-sm text-text-muted">No notifications yet.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {rows.map((item) => {
+        <PaginatedList
+          items={rows}
+          stackClassName="gap-2"
+          renderItem={(item, sel) => {
             if (item.kind === "legacy") {
               const notif = item.row;
               return (
-                <button
-                  key={`legacy-${notif.id}`}
-                  type="button"
-                  onClick={() => {
-                    markOwnerNotificationRead(notif.id);
-                    void navigate({ to: notif.to });
-                  }}
-                  className={`w-full text-left rounded-xl border p-3 transition-colors ${
+                <div
+                  className={`flex gap-3 rounded-xl border p-3 transition-colors ${
                     notif.read ? "bg-card border-border" : "bg-primary-50 border-primary/30"
-                  }`}
+                  } ${sel.selectable && sel.selected ? "ring-1 ring-primary/30" : ""}`}
                 >
-                  <p className="text-sm font-semibold text-foreground">{notif.title}</p>
-                  <p className="text-xs text-text-secondary mt-1">{notif.message}</p>
-                  <p className="text-[11px] text-text-muted mt-1">{new Date(notif.createdAt).toLocaleString()}</p>
-                </button>
+                  {sel.selectable ? (
+                    <div className="flex shrink-0 items-start pt-0.5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={sel.selected}
+                        onCheckedChange={(v) => sel.onSelectedChange(v === true)}
+                        aria-label="Select notification"
+                      />
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markOwnerNotificationRead(notif.id);
+                      void navigate({ to: notif.to });
+                    }}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <p className="text-sm font-semibold text-foreground">{notif.title}</p>
+                    <p className="text-xs text-text-secondary mt-1">{notif.message}</p>
+                    <p className="text-[11px] text-text-muted mt-1">{new Date(notif.createdAt).toLocaleString()}</p>
+                  </button>
+                </div>
               );
             }
             const notif = item.row;
             const read = userId != null && isStaffBulkNotificationRead(userId, notif.id);
             const thumb = resolveMediaUrl(notif.image ?? null);
             return (
-              <button
-                key={`api-${notif.id}`}
-                type="button"
-                onClick={() => {
-                  if (userId != null) markStaffBulkNotificationRead(userId, notif.id);
-                  void navigate({ to: "/owner/notifications/$id", params: { id: String(notif.id) } });
-                }}
-                className={`w-full text-left rounded-xl border p-3 transition-colors ${
+              <div
+                className={`flex gap-3 rounded-xl border p-3 transition-colors ${
                   read ? "bg-card border-border" : "bg-primary-50 border-primary/30"
-                }`}
+                } ${sel.selectable && sel.selected ? "ring-1 ring-primary/30" : ""}`}
               >
-                <BulkNotificationCard
-                  row={notif}
-                  density="compact"
-                  imageUrl={thumb}
-                  showSourceLabel
-                  isStaffViewer={false}
-                />
-              </button>
+                {sel.selectable ? (
+                  <div className="flex shrink-0 items-start pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={sel.selected}
+                      onCheckedChange={(v) => sel.onSelectedChange(v === true)}
+                      aria-label="Select notification"
+                    />
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (userId != null) markStaffBulkNotificationRead(userId, notif.id);
+                    void navigate({ to: "/owner/notifications/$id", params: { id: String(notif.id) } });
+                  }}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <BulkNotificationCard
+                    row={notif}
+                    density="compact"
+                    imageUrl={thumb}
+                    showSourceLabel
+                    isStaffViewer={false}
+                  />
+                </button>
+              </div>
             );
-          })}
-        </div>
+          }}
+        />
       )}
     </>
   );

@@ -2,10 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   OwnerEntityCard,
-  OwnerEntityCardStack,
   ownerListActionClass,
   ownerListActionSecondaryClass,
 } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { orderStatusConfirmMessage, useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
@@ -107,18 +107,19 @@ function OrdersPage() {
           </button>
         ))}
       </div>
-      {!isLoading && filtered.length === 0 ? (
-        <p className="text-sm text-text-muted">No orders match this filter.</p>
-      ) : !isLoading ? (
-        <OwnerEntityCardStack>
-          {filtered.map((o) => {
+      {!isLoading ? (
+        <PaginatedList
+          items={filtered}
+          resetDeps={[filter]}
+          empty={<p className="text-sm text-text-muted">No orders match this filter.</p>}
+          renderItem={(o, sel) => {
             const next = nextOwnerStatuses(o);
             return (
-            <OwnerEntityCard
-              key={o.id}
-              onClick={() => {
-                void navigate({ to: "/owner/orders/$id", params: { id: String(o.id) } });
-              }}
+              <OwnerEntityCard
+                {...(sel.selectable ? sel : {})}
+                onClick={() => {
+                  void navigate({ to: "/owner/orders/$id", params: { id: String(o.id) } });
+                }}
               leading={
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Receipt strokeWidth={2} aria-hidden />
@@ -193,8 +194,8 @@ function OrdersPage() {
               }
             />
             );
-          })}
-        </OwnerEntityCardStack>
+          }}
+        />
       ) : null}
       {ConfirmDialog}
     </>

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DataTable } from "@/components/shared/DataTable";
+import { PaginatedDataTable } from "@/components/shared/PaginatedDataTable";
 import { usePurchases } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn, restaurantTableColumn } from "@/lib/restaurant-table-column";
@@ -27,7 +27,8 @@ function StaffPurchases() {
   return (
     <>
       <h2 className="font-display font-semibold text-lg text-foreground mb-4">Purchases</h2>
-      <DataTable
+      <PaginatedDataTable
+        enableSelection={false}
         columns={[
           { header: "Purchase ID", accessor: "purchase_id" },
           ...(showRestaurantCol ? [restaurantTableColumn<PurchaseRow>()] : []),

@@ -2,12 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { AppModal } from "@/components/shared/AppModal";
 import { Plus, Wallet } from "lucide-react";
-import {
-  OwnerEntityCard,
-  OwnerEntityCardStack,
-  ownerListActionClass,
-  ownerListActionDangerClass,
-} from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -212,13 +208,13 @@ function WithdrawalsPage() {
         </TabsList>
       </Tabs>
 
-      {filtered.length === 0 ? (
-        <SuperAdminEmptyState>No withdrawals in this view.</SuperAdminEmptyState>
-      ) : (
-        <OwnerEntityCardStack>
-          {filtered.map((w) => (
+      <PaginatedList
+        items={filtered}
+        resetDeps={[tab]}
+        empty={<SuperAdminEmptyState>No withdrawals in this view.</SuperAdminEmptyState>}
+        renderItem={(w, sel) => (
             <OwnerEntityCard
-              key={w.id}
+              {...(sel.selectable ? sel : {})}
               onClick={() => {
                 void navigate({ to: "/superadmin/withdrawals/$id", params: { id: String(w.id) } });
               }}
@@ -292,9 +288,8 @@ function WithdrawalsPage() {
                 </>
               }
             />
-          ))}
-        </OwnerEntityCardStack>
-      )}
+        )}
+      />
 
       {showForm && (
         <AppModal

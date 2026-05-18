@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type ListItemId = number | string;
 
@@ -6,16 +6,6 @@ export function useListSelection(pageItems: { id: ListItemId }[]) {
   const [selectedIds, setSelectedIds] = useState<ListItemId[]>([]);
 
   const pageIds = useMemo(() => pageItems.map((item) => item.id), [pageItems]);
-
-  /** Drop selections that are no longer on the current page when the page changes. */
-  useEffect(() => {
-    const pageIdSet = new Set(pageIds);
-    setSelectedIds((prev) => {
-      const next = prev.filter((id) => pageIdSet.has(id));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [pageIds]);
-
   const pageIdSet = useMemo(() => new Set(pageIds), [pageIds]);
 
   const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { DataTable } from "@/components/shared/DataTable";
+import { PaginatedDataTable } from "@/components/shared/PaginatedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
 import { apiPost } from "@/lib/api";
@@ -68,7 +68,8 @@ function OwnerUsersPage() {
         </button>
       </div>
 
-      <DataTable
+      <PaginatedDataTable
+        enableSelection={false}
         columns={[
           { header: "Name", accessor: "name" },
           { header: "Phone", accessor: "phone" },

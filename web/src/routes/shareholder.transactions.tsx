@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRestaurants, useTransactions, useWithdrawals } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurantScope } from "@/lib/restaurant-context";
@@ -178,23 +180,44 @@ function ShareholderTransactions() {
 
       <section className="rounded-xl border border-border bg-card p-3 sm:p-4">
         <h3 className="font-semibold text-sm text-foreground mb-3">Ledger transactions</h3>
-        {filtered.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
-            <ArrowLeftRight className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
-            <p className="text-sm text-text-muted">No ledger transactions in this view yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map((t) => {
-              const n = Number(t.amount);
-              const sign = t.transaction_type === "out" ? "−" : t.transaction_type === "in" ? "+" : "";
-              const amountLine = `${sign}₹${n.toLocaleString()}`;
-              return (
-                <div key={t.id} className="rounded-xl border border-border bg-card transition-colors">
+        <PaginatedList
+          items={filtered}
+          resetDeps={[flowFilter]}
+          empty={
+            <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
+              <ArrowLeftRight className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
+              <p className="text-sm text-text-muted">No ledger transactions in this view yet.</p>
+            </div>
+          }
+          renderItem={(t, sel) => {
+            const n = Number(t.amount);
+            const sign = t.transaction_type === "out" ? "−" : t.transaction_type === "in" ? "+" : "";
+            const amountLine = `${sign}₹${n.toLocaleString()}`;
+            return (
+              <div
+                className={cn(
+                  "rounded-xl border border-border bg-card transition-colors",
+                  sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
+                )}
+              >
+                <div className="flex items-stretch gap-2">
+                  {sel.selectable ? (
+                    <div
+                      className="flex shrink-0 items-start pt-3 pl-2"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={sel.selected}
+                        onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                        aria-label="Select transaction"
+                      />
+                    </div>
+                  ) : null}
                   <Link
                     to="/shareholder/transactions/$id"
                     params={{ id: String(t.id) }}
-                    className="block w-full text-left p-3 rounded-xl hover:bg-accent/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                    className="block min-w-0 flex-1 text-left rounded-xl p-3 hover:bg-accent/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                   >
                     <div className="flex items-start justify-between gap-2 min-w-0">
                       <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">{amountLine}</p>
@@ -230,10 +253,10 @@ function ShareholderTransactions() {
                     </div>
                   </Link>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          }}
+        />
       </section>
     </>
   );

@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { useEffect, useMemo, useState, type DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerExpensesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
@@ -156,11 +157,14 @@ function ExpensesPage() {
     void navigate({ to: "/owner/expenses/$id", params: { id: String(e.id) } });
   };
 
-  const renderExpenseCards = (list: ExpRow[]) => (
-    <OwnerEntityCardStack>
-      {list.map((e) => (
+  const renderExpenseCards = (list: ExpRow[], resetDeps: DependencyList) => (
+    <PaginatedList
+      items={list}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No expenses for this restaurant.</p>}
+      renderItem={(e, sel) => (
         <OwnerEntityCard
-          key={e.id}
+          {...(sel.selectable ? sel : {})}
           onClick={() => goToExpense(e)}
           leading={
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -210,8 +214,8 @@ function ExpensesPage() {
             </>
           }
         />
-      ))}
-    </OwnerEntityCardStack>
+      )}
+    />
   );
 
   return (
@@ -238,14 +242,14 @@ function ExpensesPage() {
                 {sectionRows.length === 0 ? (
                   <p className="text-sm text-text-muted">No expenses for this restaurant.</p>
                 ) : (
-                  renderExpenseCards(sectionRows)
+                  renderExpenseCards(sectionRows, [s.restaurantId])
                 )}
               </section>
             );
           })}
         </div>
       ) : (
-        renderExpenseCards(rows)
+        renderExpenseCards(rows, [groupByRestaurant, restaurantIds])
       )}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

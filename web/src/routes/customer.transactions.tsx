@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useOrders } from "@/hooks/use-rest-api";
 import { restaurantDisplayName } from "@/lib/restaurant-table-column";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/customer/transactions")({
   component: CustomerTransactions,
@@ -34,31 +37,52 @@ function CustomerTransactions() {
           Your orders from the API (financial ledger per restaurant is owner-facing).
         </p>
       </div>
-      <div className="px-4 space-y-3 pb-8">
-        {rows.map((order) => (
-          <div
-            key={order.id}
-            className="w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between text-left hover:shadow-sm transition-shadow"
-          >
-            <div className="min-w-0 flex-1 pr-3">
-              <p className="text-sm font-semibold text-foreground font-mono">{order.order_id}</p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <StatusBadge status={order.status} />
-                {order.order_type ? (
-                  <span className="text-xs text-text-muted capitalize">{order.order_type}</span>
-                ) : null}
-              </div>
-              <p className="text-xs text-text-secondary mt-0.5">{restaurantDisplayName(order)}</p>
-              <p className="text-xs text-text-muted mt-1">{new Date(order.created_at).toLocaleString()}</p>
+      <div className="px-4 pb-8">
+        <PaginatedList
+          items={rows}
+          empty={
+            <div className="rounded-xl border border-dashed border-border bg-surface-alt/30 py-8 px-4 text-center text-sm text-text-muted">
+              No payments or orders yet.
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-bold text-foreground font-mono">₹{Number(order.total).toLocaleString()}</p>
-              <div className="mt-1 flex justify-end">
-                <StatusBadge status={order.payment_status} />
+          }
+          renderItem={(order, sel) => (
+            <div
+              className={cn(
+                "flex w-full items-center rounded-xl border border-border bg-card p-4 text-left transition-shadow hover:shadow-sm",
+                sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
+              )}
+            >
+              {sel.selectable ? (
+                <div className="shrink-0 pr-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={sel.selected}
+                    onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                    aria-label="Select order"
+                  />
+                </div>
+              ) : null}
+              <div className="min-w-0 flex-1 flex items-center justify-between gap-4">
+                <div className="min-w-0 pr-3">
+                  <p className="text-sm font-semibold text-foreground font-mono">{order.order_id}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <StatusBadge status={order.status} />
+                    {order.order_type ? (
+                      <span className="text-xs text-text-muted capitalize">{order.order_type}</span>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-text-secondary mt-0.5">{restaurantDisplayName(order)}</p>
+                  <p className="text-xs text-text-muted mt-1">{new Date(order.created_at).toLocaleString()}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-foreground font-mono">₹{Number(order.total).toLocaleString()}</p>
+                  <div className="mt-1 flex justify-end">
+                    <StatusBadge status={order.payment_status} />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )}
+        />
       </div>
     </>
   );

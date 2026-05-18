@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import {
   useOwnerRawMaterialsByRestaurant,
   useOwnerSuppliersByRestaurant,
@@ -253,6 +254,15 @@ function RawMaterialsPage() {
     return (rawMaterialsSingle as Rm[] | undefined) ?? [];
   }, [effectiveFilter, rmSections, rawMaterialsSingle, restaurants]);
 
+  const paginatedMaterials = useMemo(
+    () =>
+      rows.map((rm) => ({
+        rm,
+        id: effectiveFilter === "all" && multiRestaurant ? `${rm.restaurant ?? 0}-${rm.id}` : rm.id,
+      })),
+    [rows, effectiveFilter, multiRestaurant],
+  );
+
   useEffect(() => {
     if (editFromSearch == null) return;
     if (loadingSingle && effectiveFilter !== "all" && rows.length === 0) return;
@@ -350,13 +360,17 @@ function RawMaterialsPage() {
       {rows.length === 0 ? (
         <p className="text-sm text-text-muted">No raw materials in this scope.</p>
       ) : (
-        <OwnerEntityCardStack>
-          {rows.map((rm) => {
+        <PaginatedList
+          items={paginatedMaterials}
+          resetDeps={[materialsFilter, effectiveFilter]}
+          empty={<p className="text-sm text-text-muted">No raw materials in this scope.</p>}
+          renderItem={(item, sel) => {
+            const rm = item.rm;
             const low = Number(rm.stock) <= Number(rm.min_stock);
             const venue = rm.restaurant_name ?? restaurants.find((x) => x.id === rm.restaurant)?.name;
             return (
               <OwnerEntityCard
-                key={`${rm.restaurant ?? "x"}-${rm.id}`}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/owner/rawmaterials/$id", params: { id: String(rm.id) } });
                 }}
@@ -408,8 +422,8 @@ function RawMaterialsPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
+          }}
+        />
       )}
 
       {showForm && (

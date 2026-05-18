@@ -15,7 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -662,10 +663,13 @@ function ReportsPage() {
         {staffTableRows.length === 0 ? (
           <p className="text-sm text-text-muted">No staff in this scope.</p>
         ) : (
-          <OwnerEntityCardStack>
-            {staffTableRows.map((r) => (
+          <PaginatedList
+            items={staffTableRows}
+            resetDeps={[scope]}
+            empty={<p className="text-sm text-text-muted">No staff in this scope.</p>}
+            renderItem={(r, sel) => (
               <OwnerEntityCard
-                key={r.id}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/owner/staff/$id", params: { id: String(r.id) } });
                 }}
@@ -703,8 +707,8 @@ function ReportsPage() {
                   </Link>
                 }
               />
-            ))}
-          </OwnerEntityCardStack>
+            )}
+          />
         )}
       </div>
 
@@ -713,10 +717,13 @@ function ReportsPage() {
         {recentOrdersTable.length === 0 ? (
           <p className="text-sm text-text-muted">No orders in this scope.</p>
         ) : (
-          <OwnerEntityCardStack>
-            {recentOrdersTable.map((r) => (
+          <PaginatedList
+            items={recentOrdersTable}
+            resetDeps={[scope]}
+            empty={<p className="text-sm text-text-muted">No orders in this scope.</p>}
+            renderItem={(r, sel) => (
               <OwnerEntityCard
-                key={r.id}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => onOrderNavigate(r)}
                 leading={
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -754,8 +761,8 @@ function ReportsPage() {
                   </Link>
                 }
               />
-            ))}
-          </OwnerEntityCardStack>
+            )}
+          />
         )}
       </div>
     </>

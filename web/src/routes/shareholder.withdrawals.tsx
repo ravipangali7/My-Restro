@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { Wallet } from "lucide-react";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateWithdrawalRequest, useWithdrawals } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -215,47 +217,59 @@ function ShareholderWithdrawals() {
             </div>
           </div>
 
-          {tabRows.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
-              <Wallet className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
-              <p className="text-sm text-text-muted">No {tab} requests yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {tabRows.map((w) => {
-                const isPending = w.status === "pending";
-                return (
-                  <div
-                    key={w.id}
-                    className={cn(
-                      "rounded-xl border transition-colors",
-                      isPending ? "bg-primary-50 border-primary/30" : "bg-card border-border",
-                    )}
-                  >
-                    <div className="p-3">
-                      <div className="flex items-start justify-between gap-2 min-w-0">
+          <PaginatedList
+            items={tabRows}
+            resetDeps={[tab]}
+            empty={
+              <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
+                <Wallet className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
+                <p className="text-sm text-text-muted">No {tab} requests yet.</p>
+              </div>
+            }
+            renderItem={(w, sel) => {
+              const isPending = w.status === "pending";
+              return (
+                <div
+                  className={cn(
+                    "rounded-xl border transition-colors",
+                    isPending ? "bg-primary-50 border-primary/30" : "bg-card border-border",
+                    sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
+                  )}
+                >
+                  <div className="p-3">
+                    <div className="flex items-start gap-2 min-w-0">
+                      {sel.selectable ? (
+                        <div className="shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={sel.selected}
+                            onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                            aria-label="Select withdrawal"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
                         <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">
                           ₹{Number(w.amount).toLocaleString()}
                         </p>
                         <StatusBadge status={w.status} />
                       </div>
-                      <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
-                      <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
-                        {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
-                        {w.remarks?.trim() || "—"}
-                      </p>
-                      {tab === "rejected" && (w.reject_reason?.trim() || "") !== "" ? (
-                        <p className="text-xs text-error mt-2 pt-2 border-t border-border/60">
-                          <span className="font-medium">Reason: </span>
-                          {w.reject_reason}
-                        </p>
-                      ) : null}
                     </div>
+                    <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
+                    <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
+                      {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
+                      {w.remarks?.trim() || "—"}
+                    </p>
+                    {tab === "rejected" && (w.reject_reason?.trim() || "") !== "" ? (
+                      <p className="text-xs text-error mt-2 pt-2 border-t border-border/60">
+                        <span className="font-medium">Reason: </span>
+                        {w.reject_reason}
+                      </p>
+                    ) : null}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              );
+            }}
+          />
         </section>
       </div>
     </>

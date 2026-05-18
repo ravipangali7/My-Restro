@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Store, Search, MapPin } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMemo, useState } from "react";
 import { usePublicRestaurants } from "@/hooks/use-rest-api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/customer/restaurants")({
   component: CustomerRestaurants,
@@ -47,37 +50,63 @@ function CustomerRestaurants() {
       </div>
       {errMsg && <p className="px-4 text-sm text-error">{errMsg}</p>}
       {isLoading && <p className="px-4 text-sm text-text-muted">Loading…</p>}
-      <div className="px-4 space-y-3 pb-8">
-        {filtered.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() =>
-              void navigate({
-                to: "/customer",
-                search: { restaurantId: r.id },
-              })
-            }
-            className="w-full text-left bg-card rounded-xl border border-border p-4 flex items-center gap-4 hover:shadow-sm transition-shadow"
-          >
-            <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-              <Store size={24} className="text-primary" />
+      <div className="px-4 pb-8">
+        <PaginatedList
+          items={filtered}
+          resetDeps={[search]}
+          empty={
+            <div className="rounded-xl border border-dashed border-border bg-surface-alt/30 py-8 px-4 text-center text-sm text-text-muted">
+              No restaurants found.
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">{r.name}</p>
-              <p className="text-xs text-text-muted flex items-center gap-1 truncate">
-                <MapPin size={10} /> {r.address}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <StatusBadge status={r.is_open ? "open" : "closed"} />
-                {r.can_delivery && <span className="text-[10px] text-success font-medium">🚚 Delivery</span>}
-                {r.can_delivery && r.delivery_radius_km != null ? (
-                  <span className="text-[10px] text-text-muted">Inside {Number(r.delivery_radius_km).toLocaleString()} km</span>
-                ) : null}
-              </div>
+          }
+          renderItem={(r, sel) => (
+            <div
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-shadow hover:shadow-sm",
+                sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
+              )}
+            >
+              {sel.selectable ? (
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={sel.selected}
+                    onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                    aria-label="Select restaurant"
+                  />
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 rounded-lg"
+                onClick={() =>
+                  void navigate({
+                    to: "/customer",
+                    search: { restaurantId: r.id },
+                  })
+                }
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+                  <Store size={24} className="text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                  <p className="flex items-center gap-1 truncate text-xs text-text-muted">
+                    <MapPin size={10} /> {r.address}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={r.is_open ? "open" : "closed"} />
+                    {r.can_delivery && <span className="text-[10px] font-medium text-success">🚚 Delivery</span>}
+                    {r.can_delivery && r.delivery_radius_km != null ? (
+                      <span className="text-[10px] text-text-muted">
+                        Inside {Number(r.delivery_radius_km).toLocaleString()} km
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </button>
             </div>
-          </button>
-        ))}
+          )}
+        />
       </div>
     </>
   );

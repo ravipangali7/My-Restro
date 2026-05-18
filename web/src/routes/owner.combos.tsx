@@ -1,7 +1,8 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { useMemo, type DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { apiGet, resolveMediaUrl } from "@/lib/api";
@@ -78,16 +79,19 @@ function CombosPage() {
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user) && fetchIds.length <= 1;
   const multiVenue = fetchIds.length > 1;
 
-  const renderComboCards = (rows: ComboRow[]) => (
-    <OwnerEntityCardStack>
-      {rows.map((c) => {
+  const renderComboCards = (rows: ComboRow[], resetDeps: DependencyList) => (
+    <PaginatedList
+      items={rows}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>}
+      renderItem={(c, sel) => {
         const url = resolveMediaUrl(c.image);
         const itemCount = Array.isArray(c.products) ? c.products.length : 0;
         const discountLabel =
           c.discount_type === "percentage" ? `${Number(c.discount)}% off` : `₹${Number(c.discount).toLocaleString()} off`;
         return (
           <OwnerEntityCard
-            key={c.id}
+            {...(sel.selectable ? sel : {})}
             onClick={() => goToCombo(c)}
             leading={
               url ? (
@@ -127,8 +131,8 @@ function CombosPage() {
             }
           />
         );
-      })}
-    </OwnerEntityCardStack>
+      }}
+    />
   );
 
   if (fetchIds.length === 0) return <p className="text-sm text-text-muted">No restaurant context.</p>;
@@ -155,7 +159,7 @@ function CombosPage() {
           {rows.length === 0 ? (
             <p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>
           ) : (
-            renderComboCards(rows)
+            renderComboCards(rows, [rid])
           )}
         </div>
       ))}

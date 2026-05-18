@@ -1,7 +1,8 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { useMemo, type DependencyList } from "react";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
@@ -98,15 +99,18 @@ function ProductsPage() {
 
   const showRestaurantCol = ownerStaffShowsRestaurantColumn(user) && fetchIds.length <= 1;
 
-  const renderProductCards = (sectionRows: ProductRow[], catName: Map<number, string>) => (
-    <OwnerEntityCardStack>
-      {sectionRows.map((p) => {
+  const renderProductCards = (sectionRows: ProductRow[], catName: Map<number, string>, resetDeps: DependencyList) => (
+    <PaginatedList
+      items={sectionRows}
+      resetDeps={resetDeps}
+      empty={<p className="text-sm text-text-muted">No products in this restaurant yet.</p>}
+      renderItem={(p, sel) => {
         const url = resolveMediaUrl(p.image);
         const cat = p.category != null ? catName.get(p.category) ?? "—" : "—";
         const multiVenue = fetchIds.length > 1;
         return (
           <OwnerEntityCard
-            key={p.id}
+            {...(sel.selectable ? sel : {})}
             onClick={() => goToProduct(p)}
             leading={
               url ? (
@@ -149,8 +153,8 @@ function ProductsPage() {
             }
           />
         );
-      })}
-    </OwnerEntityCardStack>
+      }}
+    />
   );
 
   if (fetchIds.length === 0) return <p className="text-sm text-text-muted">No restaurant context.</p>;
@@ -182,7 +186,7 @@ function ProductsPage() {
             {rows.length === 0 ? (
               <p className="text-sm text-text-muted">No products in this restaurant yet.</p>
             ) : (
-              renderProductCards(rows, catName)
+              renderProductCards(rows, catName, [rid])
             )}
           </div>
         );

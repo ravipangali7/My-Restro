@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrders, useOrdersAcrossRestaurantIds, useRestaurants, useTransactions } from "@/hooks/use-rest-api";
@@ -143,13 +144,16 @@ function TransactionsPage() {
       {filteredRows.length === 0 ? (
         <p className="text-sm text-text-muted">No transactions in this view.</p>
       ) : (
-        <OwnerEntityCardStack>
-          {filteredRows.map((t) => {
+        <PaginatedList
+          items={filteredRows}
+          resetDeps={[tab, restaurantScope]}
+          empty={<p className="text-sm text-text-muted">No transactions in this view.</p>}
+          renderItem={(t, sel) => {
             const o = resolvePaidOrderForTransaction(t, ordersForLinks);
             const remarks = (t.remarks ?? "").trim();
             return (
               <OwnerEntityCard
-                key={t.id}
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/owner/transactions/$id", params: { id: String(t.id) } });
                 }}
@@ -201,8 +205,8 @@ function TransactionsPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
+          }}
+        />
       )}
     </>
   );

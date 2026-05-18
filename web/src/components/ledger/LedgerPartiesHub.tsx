@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCustomers, useLedgers, useStaffMembers, useSuppliers } from "@/hooks/use-rest-api";
@@ -159,10 +160,13 @@ export function LedgerPartiesHub({
       {filtered.length === 0 ? (
         <p className="text-sm text-text-muted">No parties match this filter.</p>
       ) : (
-        <OwnerEntityCardStack>
-          {filtered.map((row) => (
+        <PaginatedList
+          items={filtered}
+          resetDeps={[tab]}
+          empty={<p className="text-sm text-text-muted">No parties match this filter.</p>}
+          renderItem={(row, sel) => (
             <OwnerEntityCard
-              key={row.id}
+              {...(sel.selectable ? sel : {})}
               onClick={() => openParty(row)}
               leading={partyLeadingIcon(row.partyType)}
               title={row.name}
@@ -188,14 +192,14 @@ export function LedgerPartiesHub({
                   to={partyDetailTo}
                   params={{ partyType: row.partyType, partyId: row.partyId }}
                   onClick={(e) => e.stopPropagation()}
-                    className={ownerListActionClass}
+                  className={ownerListActionClass}
                 >
                   View ledger
                 </Link>
               }
-            />
-          ))}
-        </OwnerEntityCardStack>
+              />
+          )}
+        />
       )}
     </>
   );

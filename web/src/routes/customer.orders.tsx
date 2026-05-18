@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { OrderTableVisual } from "@/components/shared/OrderTableVisual";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -9,6 +10,8 @@ import { apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
 import { ChevronRight, MapPin } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/customer/orders")({
   component: CustomerOrders,
@@ -63,31 +66,54 @@ function CustomerOrders() {
       {isLoading && <p className="px-4 text-sm text-text-muted">Loading…</p>}
 
       <div className="px-4 space-y-3">
-        {customerOrders.map((order) => (
-          <button
-            key={order.id}
-            type="button"
-            onClick={() => setSelectedId(order.id)}
-            className="w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between text-left hover:shadow-sm transition-shadow"
-          >
-            <div>
-              <p className="text-sm font-semibold text-foreground font-mono">{order.order_id}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <StatusBadge status={order.status} />
-                <span className="text-xs text-text-muted capitalize">{order.order_type}</span>
-              </div>
-              <p className="text-xs text-text-secondary mt-0.5">{restaurantDisplayName(order)}</p>
-              <p className="text-xs text-text-muted mt-1">{order.items?.length ?? "—"} items</p>
+        <PaginatedList
+          items={customerOrders}
+          empty={
+            <div className="rounded-xl border border-dashed border-border bg-surface-alt/30 py-8 px-4 text-center text-sm text-text-muted">
+              No orders yet.
             </div>
-            <div className="text-right flex items-center gap-2">
-              <div>
-                <p className="text-sm font-bold text-foreground font-mono">₹{Number(order.total).toLocaleString()}</p>
-                <StatusBadge status={order.payment_status} />
-              </div>
-              <ChevronRight size={16} className="text-text-muted" />
+          }
+          renderItem={(order, sel) => (
+            <div
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-shadow hover:shadow-sm",
+                sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
+              )}
+            >
+              {sel.selectable ? (
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={sel.selected}
+                    onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                    aria-label="Select order"
+                  />
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center justify-between text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 rounded-lg"
+                onClick={() => setSelectedId(order.id)}
+              >
+                <div>
+                  <p className="text-sm font-semibold text-foreground font-mono">{order.order_id}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <StatusBadge status={order.status} />
+                    <span className="text-xs text-text-muted capitalize">{order.order_type}</span>
+                  </div>
+                  <p className="text-xs text-text-secondary mt-0.5">{restaurantDisplayName(order)}</p>
+                  <p className="text-xs text-text-muted mt-1">{order.items?.length ?? "—"} items</p>
+                </div>
+                <div className="text-right flex shrink-0 items-center gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-foreground font-mono">₹{Number(order.total).toLocaleString()}</p>
+                    <StatusBadge status={order.payment_status} />
+                  </div>
+                  <ChevronRight size={16} className="text-text-muted" />
+                </div>
+              </button>
             </div>
-          </button>
-        ))}
+          )}
+        />
       </div>
 
       {selectedOrder && selectedId != null && (

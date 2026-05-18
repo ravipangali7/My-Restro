@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 /** Primary text button / link in card action rows (owner lists). */
@@ -24,13 +25,28 @@ export interface OwnerEntityCardProps {
   /** Whole-card tap (e.g. navigate to detail). */
   onClick?: () => void;
   className?: string;
+  /** Row selection (used with PaginatedList). */
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
 }
 
 /**
  * Card-style list row for owner portal lists (matches compact “entity card” layout:
  * leading icon, left-stacked title / subtitle / meta / actions).
  */
-export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onClick, className }: OwnerEntityCardProps) {
+export function OwnerEntityCard({
+  leading,
+  title,
+  subtitle,
+  meta,
+  actions,
+  onClick,
+  className,
+  selectable,
+  selected,
+  onSelectedChange,
+}: OwnerEntityCardProps) {
   const interactive = Boolean(onClick);
 
   return (
@@ -52,9 +68,23 @@ export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onCli
         "flex gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors",
         interactive &&
           "cursor-pointer hover:border-primary/35 hover:shadow-md hover:bg-primary/[0.04] active:bg-primary/[0.06]",
+        selectable && selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
         className,
       )}
     >
+      {selectable ? (
+        <div
+          className="flex shrink-0 items-start pt-0.5"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(v) => onSelectedChange?.(v === true)}
+            aria-label="Select row"
+          />
+        </div>
+      ) : null}
       <div className="shrink-0 [&>svg]:size-[22px]">{leading}</div>
       <div className="min-w-0 flex-1">
         <div className="font-display text-base font-semibold leading-snug text-foreground">{title}</div>
