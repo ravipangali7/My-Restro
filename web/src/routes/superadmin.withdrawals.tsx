@@ -2,8 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { AppModal } from "@/components/shared/AppModal";
 import { Plus, Wallet } from "lucide-react";
-import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  OwnerEntityCard,
+  OwnerEntityCardStack,
+  ownerListActionClass,
+  ownerListActionDangerClass,
+} from "@/components/owner/OwnerEntityCard";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -190,34 +194,31 @@ function WithdrawalsPage() {
 
   return (
     <>
-      <ListPageShell
-        header={
-          <>
-            <SuperAdminPageHeader
-              title="Shareholder withdrawals"
-              description="Review payout requests, approve settlements, or reject with a reason."
-              actions={addButton}
-            />
-            {actionError ? <p className="text-sm text-error">{actionError}</p> : null}
-            <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)}>
-              <TabsList className="w-full max-w-2xl flex-wrap justify-stretch sm:w-auto">
-                {(["all", "pending", "approved", "rejected"] as const).map((t) => (
-                  <TabsTrigger key={t} value={t} className="flex-1 capitalize sm:flex-none">
-                    {t} ({t === "all" ? counts.all : counts[t] ?? 0})
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </>
-        }
-      >
-      <PaginatedList
-        items={filtered}
-        resetDeps={[tab]}
-        empty={<SuperAdminEmptyState>No withdrawals in this view.</SuperAdminEmptyState>}
-        renderItem={(w, sel) => (
+      <SuperAdminPageHeader
+        title="Shareholder withdrawals"
+        description="Review payout requests, approve settlements, or reject with a reason."
+        actions={addButton}
+      />
+
+      {actionError ? <p className="mb-3 text-sm text-error">{actionError}</p> : null}
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)} className="mb-4">
+        <TabsList className="w-full max-w-2xl flex-wrap justify-stretch sm:w-auto">
+          {(["all", "pending", "approved", "rejected"] as const).map((t) => (
+            <TabsTrigger key={t} value={t} className="flex-1 capitalize sm:flex-none">
+              {t} ({t === "all" ? counts.all : counts[t] ?? 0})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {filtered.length === 0 ? (
+        <SuperAdminEmptyState>No withdrawals in this view.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {filtered.map((w) => (
             <OwnerEntityCard
-              {...(sel.selectable ? sel : {})}
+              key={w.id}
               onClick={() => {
                 void navigate({ to: "/superadmin/withdrawals/$id", params: { id: String(w.id) } });
               }}
@@ -291,9 +292,9 @@ function WithdrawalsPage() {
                 </>
               }
             />
-        )}
-      />
-      </ListPageShell>
+          ))}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <AppModal

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
 import {
   OwnerEntityCard,
+  OwnerEntityCardStack,
   ownerListActionClass,
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { AppModal } from "@/components/shared/AppModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -143,33 +143,28 @@ function RestaurantsPage() {
 
   return (
     <>
-      <ListPageShell
-        header={
-          <>
-            <SuperAdminPageHeader
-              title="Restaurants"
-              description="Locations, billing, subscription windows, and activation status for every venue on the platform."
-              actions={
-                <button
-                  type="button"
-                  onClick={openAdd}
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-                >
-                  <Plus size={14} aria-hidden /> Add restaurant
-                </button>
-              }
-            />
-          </>
+      <SuperAdminPageHeader
+        title="Restaurants"
+        description="Locations, billing, subscription windows, and activation status for every venue on the platform."
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+          >
+            <Plus size={14} aria-hidden /> Add restaurant
+          </button>
         }
-      >
-      <PaginatedList
-        items={rows}
-        empty={<SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>}
-        renderItem={(r, sel) => {
+      />
+      {rows.length === 0 ? (
+        <SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {rows.map((r) => {
             const logoSrc = resolveMediaUrl(r.logo);
             return (
               <OwnerEntityCard
-                {...(sel.selectable ? sel : {})}
+                key={r.id}
                 onClick={() => {
                   void navigate({ to: "/superadmin/restaurants/$id", params: { id: String(r.id) } });
                 }}
@@ -313,9 +308,9 @@ function RestaurantsPage() {
                 }
               />
             );
-        }}
-      />
-      </ListPageShell>
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       {ConfirmDialog}
 

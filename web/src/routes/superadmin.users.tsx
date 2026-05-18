@@ -3,10 +3,10 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   OwnerEntityCard,
+  OwnerEntityCardStack,
   ownerListActionClass,
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
@@ -94,34 +94,30 @@ function UsersPage() {
 
   return (
     <>
-      <ListPageShell
-        header={
-          <>
-            <SuperAdminPageHeader
-              title="Users"
-              description="Owners, staff, customers, shareholder flags, and wallet balances across the directory."
-              actions={
-                <button
-                  type="button"
-                  onClick={openAdd}
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-                >
-                  <Plus size={14} aria-hidden /> Add user
-                </button>
-              }
-            />
-          </>
+      <SuperAdminPageHeader
+        title="Users"
+        description="Owners, staff, customers, shareholder flags, and wallet balances across the directory."
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+          >
+            <Plus size={14} aria-hidden /> Add user
+          </button>
         }
-      >
-      <PaginatedList
-        items={users}
-        empty={<SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>}
-        renderItem={(u, sel) => {
+      />
+
+      {users.length === 0 ? (
+        <SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {users.map((u) => {
             const src = resolveMediaUrl(u.image);
             const placements = u.staff_placements ?? [];
             return (
               <OwnerEntityCard
-                {...(sel.selectable ? sel : {})}
+                key={u.id}
                 onClick={() => {
                   void navigate({ to: "/superadmin/users/$id", params: { id: String(u.id) } });
                 }}
@@ -217,9 +213,9 @@ function UsersPage() {
                 }
               />
             );
-        }}
-      />
-      </ListPageShell>
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <AppModal

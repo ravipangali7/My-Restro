@@ -3,9 +3,9 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   OwnerEntityCard,
+  OwnerEntityCardStack,
   ownerListActionClass,
 } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { useUsers } from "@/hooks/use-rest-api";
 import { apiPatch, resolveMediaUrl } from "@/lib/api";
@@ -96,33 +96,28 @@ function ShareholdersPage() {
 
   return (
     <>
-      <ListPageShell
-        header={
-          <>
-            <SuperAdminPageHeader
-              title="Shareholders"
-              description="Platform equity participants drawn from super administrator accounts: share weights and wallet posture."
-              actions={
-                <button
-                  type="button"
-                  onClick={openAdd}
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-                >
-                  <Plus size={14} aria-hidden /> Add shareholder
-                </button>
-              }
-            />
-          </>
+      <SuperAdminPageHeader
+        title="Shareholders"
+        description="Platform equity participants drawn from super administrator accounts: share weights and wallet posture."
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+          >
+            <Plus size={14} aria-hidden /> Add shareholder
+          </button>
         }
-      >
-      <PaginatedList
-        items={shareholders}
-        empty={<SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>}
-        renderItem={(u, sel) => {
+      />
+      {shareholders.length === 0 ? (
+        <SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {shareholders.map((u) => {
             const src = resolveMediaUrl(u.image);
             return (
               <OwnerEntityCard
-                {...(sel.selectable ? sel : {})}
+                key={u.id}
                 onClick={() => {
                   void navigate({ to: "/superadmin/shareholders/$id", params: { id: String(u.id) } });
                 }}
@@ -175,9 +170,9 @@ function ShareholdersPage() {
                 }
               />
             );
-        }}
-      />
-      </ListPageShell>
+          })}
+        </OwnerEntityCardStack>
+      )}
 
       {showForm && (
         <AppModal

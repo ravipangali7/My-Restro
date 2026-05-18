@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Wallet } from "lucide-react";
-import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,41 +54,35 @@ function TransactionsPage() {
 
   return (
     <>
-      <ListPageShell
-        header={
-          <>
-            <SuperAdminPageHeader
-              title="Transactions"
-              description="Platform-wide money movement, per-order fees, and settlement status."
-            />
-            <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
-              <TabsList className="w-full max-w-xl justify-stretch sm:w-auto">
-                <TabsTrigger value="all" className="flex-1 sm:flex-none">
-                  All
-                </TabsTrigger>
-                <TabsTrigger value="in" className="flex-1 sm:flex-none">
-                  In
-                </TabsTrigger>
-                <TabsTrigger value="out" className="flex-1 sm:flex-none">
-                  Out
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="flex-1 sm:flex-none">
-                  Pending
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </>
-        }
-      >
-      <PaginatedList
-        items={filteredRows}
-        resetDeps={[tab]}
-        empty={<SuperAdminEmptyState>No transactions in this view.</SuperAdminEmptyState>}
-        renderItem={(t, sel) => {
+      <SuperAdminPageHeader
+        title="Transactions"
+        description="Platform-wide money movement, per-order fees, and settlement status."
+      />
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
+        <TabsList className="w-full max-w-xl justify-stretch sm:w-auto">
+          <TabsTrigger value="all" className="flex-1 sm:flex-none">
+            All
+          </TabsTrigger>
+          <TabsTrigger value="in" className="flex-1 sm:flex-none">
+            In
+          </TabsTrigger>
+          <TabsTrigger value="out" className="flex-1 sm:flex-none">
+            Out
+          </TabsTrigger>
+          <TabsTrigger value="pending" className="flex-1 sm:flex-none">
+            Pending
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {filteredRows.length === 0 ? (
+        <SuperAdminEmptyState>No transactions in this view.</SuperAdminEmptyState>
+      ) : (
+        <OwnerEntityCardStack>
+          {filteredRows.map((t) => {
             const remarks = (t.remarks ?? "").trim();
             return (
               <OwnerEntityCard
-                {...(sel.selectable ? sel : {})}
+                key={t.id}
                 onClick={() => {
                   void navigate({ to: "/superadmin/transactions/$id", params: { id: String(t.id) } });
                 }}
@@ -138,9 +131,9 @@ function TransactionsPage() {
                 }
               />
             );
-        }}
-      />
-      </ListPageShell>
+          })}
+        </OwnerEntityCardStack>
+      )}
     </>
   );
 }
