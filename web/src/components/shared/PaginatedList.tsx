@@ -11,11 +11,12 @@ export type { ListItemSelectionProps };
 
 export interface PaginatedListProps<T extends { id: ListItemId }> {
   items: T[];
-  /** Reset to page 1 when filters change (e.g. active tab). */
+  /** Reset to page 1 when filters change (e.g. active tab). Only applies when `enablePagination` is true. */
   resetDeps?: DependencyList;
   empty?: ReactNode;
   className?: string;
   stackClassName?: string;
+  enablePagination?: boolean;
   enableSelection?: boolean;
   /** Extra controls shown when items are selected (e.g. bulk delete). */
   selectionActions?: (ctx: { selectedIds: ListItemId[]; clearSelection: () => void }) => ReactNode;
@@ -28,31 +29,33 @@ export function PaginatedList<T extends { id: ListItemId }>({
   empty,
   className,
   stackClassName,
-  enableSelection = true,
+  enablePagination = false,
+  enableSelection = false,
   selectionActions,
   renderItem,
 }: PaginatedListProps<T>) {
-  const pagination = usePaginatedList(items, { resetDeps });
-  const selection = useListSelection(pagination.pageItems);
+  const pagination = usePaginatedList(items, {
+    resetDeps: enablePagination ? resetDeps : [],
+    pageSize: enablePagination ? undefined : Math.max(items.length, 1),
+  });
+  const displayItems = enablePagination ? pagination.pageItems : items;
+  const selection = useListSelection(enableSelection ? displayItems : []);
 
   if (items.length === 0) {
     return empty ? <>{empty}</> : null;
   }
 
-  const showToolbar = enableSelection && pagination.pageItems.length > 0;
+  const showToolbar = enableSelection && displayItems.length > 0;
 
   return (
-    <div
-      data-paginated-list-root
-      className={cn("flex min-w-0 flex-col gap-3", className)}
-    >
+    <div data-paginated-list-root className={cn("flex min-w-0 flex-col gap-3", className)}>
       {showToolbar ? (
         <ListSelectionToolbar
           selectedCount={selection.selectedCount}
           allOnPageSelected={selection.allOnPageSelected}
           selectAllIndeterminate={selection.selectAllIndeterminate}
           onToggleSelectAll={selection.toggleSelectAllOnPage}
-          pageCount={pagination.pageItems.length}
+          pageCount={displayItems.length}
           className="mb-0 shrink-0"
           actions={
             selection.selectedCount > 0 && selectionActions
@@ -66,7 +69,7 @@ export function PaginatedList<T extends { id: ListItemId }>({
       ) : null}
 
       <OwnerEntityCardStack className={stackClassName}>
-        {pagination.pageItems.map((item) => {
+        {displayItems.map((item) => {
           const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
             ? {
                 selectable: true,
@@ -78,25 +81,27 @@ export function PaginatedList<T extends { id: ListItemId }>({
         })}
       </OwnerEntityCardStack>
 
-      <ListPaginationBar
-        sticky
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        totalCount={pagination.totalCount}
-        rangeStart={pagination.rangeStart}
-        rangeEnd={pagination.rangeEnd}
-        pageSize={pagination.pageSize}
-        pageNumbers={pagination.pageNumbers}
-        canPrev={pagination.canPrev}
-        canNext={pagination.canNext}
-        onPageChange={pagination.setPage}
-        onPrev={pagination.goPrev}
-        onNext={pagination.goNext}
-        onPageSizeChange={(size) => {
-          pagination.setPageSize(size);
-          pagination.setPage(1);
-        }}
-      />
+      {enablePagination ? (
+        <ListPaginationBar
+          sticky
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalCount={pagination.totalCount}
+          rangeStart={pagination.rangeStart}
+          rangeEnd={pagination.rangeEnd}
+          pageSize={pagination.pageSize}
+          pageNumbers={pagination.pageNumbers}
+          canPrev={pagination.canPrev}
+          canNext={pagination.canNext}
+          onPageChange={pagination.setPage}
+          onPrev={pagination.goPrev}
+          onNext={pagination.goNext}
+          onPageSizeChange={(size) => {
+            pagination.setPageSize(size);
+            pagination.setPage(1);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -147,5 +152,3 @@ export function ListSelectionToolbar({
     </div>
   );
 }
-
-

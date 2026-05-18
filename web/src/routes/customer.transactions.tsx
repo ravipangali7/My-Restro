@@ -44,6 +44,8 @@ function CustomerTransactions() {
         <div className="px-4 pb-8">
         <PaginatedList
           items={rows}
+          enablePagination
+          enableSelection
           empty={
             <div className="rounded-xl border border-dashed border-border bg-surface-alt/30 py-8 px-4 text-center text-sm text-text-muted">
               No payments or orders yet.

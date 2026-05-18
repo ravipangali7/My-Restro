@@ -19,6 +19,7 @@ export interface PaginatedDataTableProps<T extends { id: ListItemId }> {
   data: T[];
   resetDeps?: DependencyList;
   onRowClick?: (row: T) => void;
+  enablePagination?: boolean;
   enableSelection?: boolean;
   selectionActions?: (ctx: { selectedIds: ListItemId[]; clearSelection: () => void }) => ReactNode;
   emptyMessage?: string;
@@ -30,13 +31,18 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
   data,
   resetDeps,
   onRowClick,
-  enableSelection = true,
+  enablePagination = false,
+  enableSelection = false,
   selectionActions,
   emptyMessage = "No data found.",
   className,
 }: PaginatedDataTableProps<T>) {
-  const pagination = usePaginatedList(data, { resetDeps });
-  const selection = useListSelection(pagination.pageItems);
+  const pagination = usePaginatedList(data, {
+    resetDeps: enablePagination ? resetDeps : [],
+    pageSize: enablePagination ? undefined : Math.max(data.length, 1),
+  });
+  const displayRows = enablePagination ? pagination.pageItems : data;
+  const selection = useListSelection(enableSelection ? displayRows : []);
 
   const selectionColumn: Column<T> = {
     header: "",
@@ -63,17 +69,14 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
   }
 
   return (
-    <div
-      data-paginated-list-root
-      className={cn("flex min-w-0 flex-col gap-3", className)}
-    >
-      {enableSelection && pagination.pageItems.length > 0 ? (
+    <div data-paginated-list-root className={cn("flex min-w-0 flex-col gap-3", className)}>
+      {enableSelection && displayRows.length > 0 ? (
         <ListSelectionToolbar
           selectedCount={selection.selectedCount}
           allOnPageSelected={selection.allOnPageSelected}
           selectAllIndeterminate={selection.selectAllIndeterminate}
           onToggleSelectAll={selection.toggleSelectAllOnPage}
-          pageCount={pagination.pageItems.length}
+          pageCount={displayRows.length}
           className="mb-0 shrink-0"
           actions={
             selection.selectedCount > 0 && selectionActions
@@ -86,27 +89,29 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <DataTable columns={tableColumns} data={pagination.pageItems} onRowClick={onRowClick} />
+      <DataTable columns={tableColumns} data={displayRows} onRowClick={onRowClick} />
 
-      <ListPaginationBar
-        sticky
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        totalCount={pagination.totalCount}
-        rangeStart={pagination.rangeStart}
-        rangeEnd={pagination.rangeEnd}
-        pageSize={pagination.pageSize}
-        pageNumbers={pagination.pageNumbers}
-        canPrev={pagination.canPrev}
-        canNext={pagination.canNext}
-        onPageChange={pagination.setPage}
-        onPrev={pagination.goPrev}
-        onNext={pagination.goNext}
-        onPageSizeChange={(size) => {
-          pagination.setPageSize(size);
-          pagination.setPage(1);
-        }}
-      />
+      {enablePagination ? (
+        <ListPaginationBar
+          sticky
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalCount={pagination.totalCount}
+          rangeStart={pagination.rangeStart}
+          rangeEnd={pagination.rangeEnd}
+          pageSize={pagination.pageSize}
+          pageNumbers={pagination.pageNumbers}
+          canPrev={pagination.canPrev}
+          canNext={pagination.canNext}
+          onPageChange={pagination.setPage}
+          onPrev={pagination.goPrev}
+          onNext={pagination.goNext}
+          onPageSizeChange={(size) => {
+            pagination.setPageSize(size);
+            pagination.setPage(1);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

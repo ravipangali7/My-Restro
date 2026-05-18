@@ -57,6 +57,8 @@ function StaffNotificationsPage() {
         >
         <PaginatedList
           items={apiRows}
+          enablePagination
+          enableSelection
           empty={
             <div className="rounded-xl border border-border bg-card p-6 text-center">
               <Bell className="mx-auto mb-2 text-text-muted" size={20} />

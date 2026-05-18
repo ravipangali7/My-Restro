@@ -73,6 +73,8 @@ function CustomerOrders() {
         <div className="px-4 space-y-3">
         <PaginatedList
           items={customerOrders}
+          enablePagination
+          enableSelection
           empty={
             <div className="rounded-xl border border-dashed border-border bg-surface-alt/30 py-8 px-4 text-center text-sm text-text-muted">
               No orders yet.

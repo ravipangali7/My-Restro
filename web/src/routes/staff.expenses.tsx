@@ -28,7 +28,7 @@ function StaffExpenses() {
     <>
       <ListPageShell header={<h2 className="font-display font-semibold text-lg text-foreground mb-4">Expenses</h2>}>
         <PaginatedDataTable
-        enableSelection={false}
+        enablePagination
         columns={[
           { header: "Expense ID", accessor: "expense_id" },
           ...(showRestaurantCol ? [restaurantTableColumn<ExpenseRow>()] : []),

@@ -225,6 +225,8 @@ function ShareholderWithdrawals() {
       >
         <PaginatedList
           items={tabRows}
+          enablePagination
+          enableSelection
           resetDeps={[tab]}
           empty={
             <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">

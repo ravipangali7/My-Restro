@@ -29,7 +29,7 @@ function StaffPurchases() {
     <>
       <ListPageShell header={<h2 className="font-display font-semibold text-lg text-foreground mb-4">Purchases</h2>}>
         <PaginatedDataTable
-        enableSelection={false}
+        enablePagination
         columns={[
           { header: "Purchase ID", accessor: "purchase_id" },
           ...(showRestaurantCol ? [restaurantTableColumn<PurchaseRow>()] : []),

@@ -187,6 +187,8 @@ function ShareholderTransactions() {
       >
         <PaginatedList
           items={filtered}
+          enablePagination
+          enableSelection
           resetDeps={[flowFilter]}
           empty={
             <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
