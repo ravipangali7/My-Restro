@@ -1,13 +1,4 @@
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
-import {
-  ChartCard,
-  PORTAL_CHART_ACCENT,
-  SectionHeader,
-  StatFrame,
-  TableShell,
-  chartTooltip,
-} from "@/components/shared/portal-dashboard-ui";
-import { SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -36,30 +27,26 @@ import { useRestaurantScope } from "@/lib/restaurant-context";
 import type { PlatformDefaultsDTO } from "@/lib/super-settings-cache";
 import { Link } from "@tanstack/react-router";
 import {
+  ArrowRight,
   BarChart2,
   Bell,
   BookOpen,
-  ChevronRight,
   LayoutGrid,
   Package,
   PieChart as PieChartIcon,
   Receipt,
-  Settings,
   ShoppingBag,
   Store,
   TrendingUp,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Area,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -106,28 +93,24 @@ function lastNDaysLabels(n: number): { key: string; label: string }[] {
   });
 }
 
-function KpiStat({
-  accentClass,
-  icon,
-  label,
-  value,
-}: {
-  accentClass: string;
-  icon: typeof Store;
-  label: string;
-  value: string;
-}) {
+function SeeAllLink({ to, label = "See all" }: { to: string; label?: string }) {
   return (
-    <StatFrame accentClass={accentClass}>
-      <StatCard className="h-full rounded-[0.9375rem] border-0 shadow-none" icon={icon} label={label} value={value} />
-    </StatFrame>
+    <div className="flex justify-end border-t border-border pt-3 mt-1">
+      <Link
+        to={to}
+        className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-600 transition-colors"
+      >
+        {label}
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+      </Link>
+    </div>
   );
 }
 
 function Panel({
   title,
   description,
-  icon: _Icon,
+  icon: Icon,
   children,
   className = "",
 }: {
@@ -138,9 +121,24 @@ function Panel({
   className?: string;
 }) {
   return (
-    <ChartCard title={title} description={description} className={className}>
-      {children}
-    </ChartCard>
+    <section
+      className={`rounded-2xl border border-border bg-card shadow-sm overflow-hidden ${className}`}
+    >
+      <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-primary-50/80 to-transparent">
+        <div className="flex items-start gap-2">
+          {Icon ? (
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Icon className="h-4 w-4" />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h3 className="font-display font-semibold text-sm text-foreground">{title}</h3>
+            {description ? <p className="text-xs text-text-muted mt-0.5">{description}</p> : null}
+          </div>
+        </div>
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
   );
 }
 
@@ -254,271 +252,83 @@ function OverviewTab({ restaurantId }: { restaurantId: number }) {
       .slice(0, TABLE_PREVIEW);
   }, [normalizedOrders]);
 
-  const statLoading = lo || lr;
-  const revenueChartData = revenueLast7Days.map((d) => ({ dayLabel: d.label, revenue: d.revenue }));
-
   return (
-    <div className="space-y-8">
-      <section className="space-y-5">
-        <SectionHeader
-          eyebrow="Metrics"
-          title="Location KPIs"
-          description="Portfolio size and performance for the restaurant selected above."
-        />
-        <StatCardsGrid>
-          <KpiStat
-            accentClass="from-primary/55 via-primary/20 to-transparent"
-            icon={Store}
-            label="Your restaurants"
-            value={statLoading ? "…" : String(locationCount)}
-          />
-          <KpiStat
-            accentClass="from-blue-600/40 via-blue-500/12 to-transparent"
-            icon={ShoppingBag}
-            label="Orders (this location)"
-            value={statLoading ? "…" : String(orderCount)}
-          />
-          <KpiStat
-            accentClass="from-emerald-500/45 via-emerald-400/12 to-transparent"
-            icon={TrendingUp}
-            label="Revenue (7 days)"
-            value={statLoading ? "…" : formatInr(revenue7d)}
-          />
-          <KpiStat
-            accentClass="from-amber-500/50 via-amber-400/15 to-transparent"
-            icon={PieChartIcon}
-            label="Avg ticket (7 days)"
-            value={statLoading ? "…" : formatInr(avgOrder)}
-          />
-        </StatCardsGrid>
-      </section>
+    <div className="space-y-4">
+      <StatCardsGrid>
+        <StatCard icon={Store} label="Your restaurants" value={lr ? "…" : String(locationCount)} />
+        <StatCard icon={ShoppingBag} label="Orders (this location)" value={lo ? "…" : String(orderCount)} />
+        <StatCard icon={TrendingUp} label="Revenue (7 days)" value={lo ? "…" : formatInr(revenue7d)} />
+        <StatCard icon={PieChartIcon} label="Avg ticket (7 days)" value={lo ? "…" : formatInr(avgOrder)} />
+      </StatCardsGrid>
 
-      <section className="space-y-5">
-        <SectionHeader
-          eyebrow="Analytics"
-          title="Revenue & order pipeline"
-          description="Seven-day revenue trend and current status mix for the selected location."
-        />
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <ChartCard
-            title="Revenue trend"
-            description="Last 7 days for the selected restaurant."
-            className="lg:col-span-2"
-          >
-            <ResponsiveContainer width="100%" height={252}>
-              <ComposedChart data={revenueChartData}>
-                <defs>
-                  <linearGradient id="ownerRevenueArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={PORTAL_CHART_ACCENT} stopOpacity={0.22} />
-                    <stop offset="88%" stopColor={PORTAL_CHART_ACCENT} stopOpacity={0.02} />
-                    <stop offset="100%" stopColor={PORTAL_CHART_ACCENT} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="dayLabel" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-                  width={48}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) => `₹${Number(v) >= 1000 ? `${Math.round(Number(v) / 1000)}k` : v}`}
-                />
-                <Tooltip {...chartTooltip} formatter={(value: number | string) => [formatInr(Number(value)), "Revenue"]} />
-                <Area type="monotone" dataKey="revenue" stroke={false} fill="url(#ownerRevenueArea)" />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke={PORTAL_CHART_ACCENT}
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "var(--card)", stroke: PORTAL_CHART_ACCENT, strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </ChartCard>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Panel title="Revenue trend" description="Last 7 days for the selected restaurant." icon={TrendingUp} className="lg:col-span-2">
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={revenueLast7Days}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="var(--text-muted)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="var(--text-muted)" tickFormatter={(v) => `₹${v}`} />
+              <Tooltip formatter={(value: number) => [formatInr(Number(value)), "Revenue"]} />
+              <Line type="monotone" dataKey="revenue" stroke="#F83232" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Panel>
 
-          <ChartCard title="Order pipeline" description="Current mix of order statuses.">
-            {orderStatusData.length === 0 ? (
-              <p className="py-12 text-center text-sm text-text-muted">No orders to chart yet.</p>
+        <Panel title="Order pipeline" description="Current mix of order statuses." icon={PieChartIcon}>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={orderStatusData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={80} paddingAngle={2}>
+                {orderStatusData.map((entry) => (
+                  <Cell key={entry.name} fill={statusColors[entry.name] ?? CHART_HEX[4]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => String(value).replace(/_/g, " ")} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Panel>
+      </div>
+
+      <Panel title="Recent orders" description="Latest activity from Orders." icon={ShoppingBag}>
+        <MiniTable
+          empty="No orders yet for this restaurant."
+          columns={[
+            { key: "id", header: "Order" },
+            { key: "type", header: "Type" },
+            { key: "status", header: "Status" },
+            { key: "total", header: "Total", className: "text-right" },
+          ]}
+          rows={recentOrders.map((o) => ({
+            id: o.id != null ? (
+              <Link to="/owner/orders/$id" params={{ id: String(o.id) }} className="font-medium text-primary hover:underline">
+                {o.order_id ?? `#${o.id}`}
+              </Link>
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={208}>
-                  <PieChart>
-                    <Pie
-                      data={orderStatusData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={48}
-                      outerRadius={76}
-                      paddingAngle={2}
-                      stroke="var(--card)"
-                      strokeWidth={2}
-                    >
-                      {orderStatusData.map((entry) => (
-                        <Cell key={entry.name} fill={statusColors[entry.name] ?? CHART_HEX[4]} />
-                      ))}
-                    </Pie>
-                    <Tooltip {...chartTooltip} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => String(value).replace(/_/g, " ")} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {orderStatusData.map((item) => (
-                    <span
-                      key={item.name}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-2.5 py-1 text-[11px] font-medium text-text-secondary shadow-sm"
-                    >
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full shadow-sm"
-                        style={{ backgroundColor: statusColors[item.name] ?? CHART_HEX[4] }}
-                      />
-                      {String(item.name).replace(/_/g, " ")} ({item.value})
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </ChartCard>
-        </div>
-      </section>
-
-      <section className="space-y-5">
-        <SectionHeader
-          eyebrow="Lists"
-          title="Recent orders"
-          description="Latest activity — open Orders for the full queue."
+              "—"
+            ),
+            type: <span className="capitalize">{String(o.order_type ?? "—")}</span>,
+            status: <span className="capitalize text-text-secondary">{String(o.status ?? "—")}</span>,
+            total: <span className="tabular-nums font-medium">{money(o.total ?? 0)}</span>,
+          }))}
         />
-        <TableShell
-          title="Orders"
-          seeAllTo="/owner/orders"
-          totalCount={orderCount}
-          rowCount={recentOrders.length}
-          emptyWhenNoRows={<p>No orders yet for this restaurant.</p>}
+        <SeeAllLink to="/owner/orders" />
+      </Panel>
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          to="/owner/reports"
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
         >
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-left text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                <th className="px-4 py-2.5 sm:px-5">Order</th>
-                <th className="px-4 py-2.5 sm:px-5">Type</th>
-                <th className="px-4 py-2.5 sm:px-5">Status</th>
-                <th className="px-4 py-2.5 text-right sm:px-5">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map((o) => (
-                <tr
-                  key={o.id ?? o.order_id}
-                  className="border-b border-border/60 transition-colors odd:bg-muted/20 last:border-0 hover:bg-primary/[0.04]"
-                >
-                  <td className="px-4 py-3 sm:px-5">
-                    {o.id != null ? (
-                      <Link
-                        to="/owner/orders/$id"
-                        params={{ id: String(o.id) }}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {o.order_id ?? `#${o.id}`}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 capitalize sm:px-5">{String(o.order_type ?? "—")}</td>
-                  <td className="px-4 py-3 capitalize text-text-secondary sm:px-5">{String(o.status ?? "—")}</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-medium sm:px-5">{money(o.total ?? 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableShell>
-      </section>
-
-      <section className="space-y-5">
-        <SectionHeader
-          eyebrow="Navigate"
-          title="Workspace shortcuts"
-          description="Jump into the modules you use most — aligned with the owner sidebar."
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {(
-            [
-              {
-                title: "Orders",
-                desc: "Live queue and order history.",
-                to: "/owner/orders",
-                icon: ShoppingBag,
-                stat: lo ? "…" : `${orderCount} at this location`,
-                stripe: "from-blue-500 to-blue-600",
-                iconBg: "bg-blue-50 text-blue-700 ring-blue-200/80",
-              },
-              {
-                title: "Menu",
-                desc: "Categories, products, and combos.",
-                to: "/owner/menu",
-                icon: UtensilsCrossed,
-                stat: "Manage catalog",
-                stripe: "from-teal-500 to-teal-600",
-                iconBg: "bg-teal-50 text-teal-700 ring-teal-200/80",
-              },
-              {
-                title: "Reports",
-                desc: "Sales and operational insights.",
-                to: "/owner/reports",
-                icon: BarChart2,
-                stat: "View analytics",
-                stripe: "from-violet-500 to-violet-600",
-                iconBg: "bg-violet-50 text-violet-700 ring-violet-200/80",
-              },
-              {
-                title: "Settings",
-                desc: "Restaurant preferences and billing.",
-                to: "/owner/settings",
-                icon: Settings,
-                stat: "Configure venue",
-                stripe: "from-slate-500 to-slate-600",
-                iconBg: "bg-slate-100 text-slate-800 ring-slate-200/80",
-              },
-            ] as const
-          ).map((m) => (
-            <Link
-              key={m.title}
-              to={m.to}
-              className="group relative overflow-hidden rounded-2xl border border-border/90 bg-gradient-to-br from-card via-card to-muted/25 p-5 shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg"
-            >
-              <div
-                className={cn(
-                  "absolute left-0 top-0 h-full w-1 bg-gradient-to-b opacity-90 transition-opacity group-hover:opacity-100",
-                  m.stripe,
-                )}
-                aria-hidden
-              />
-              <div className="relative flex items-start gap-4 pl-2">
-                <div
-                  className={cn(
-                    "flex size-11 shrink-0 items-center justify-center rounded-xl ring-1 shadow-inner transition-transform duration-300 group-hover:scale-105",
-                    m.iconBg,
-                  )}
-                >
-                  <m.icon className="size-5" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="font-display text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
-                    {m.title}
-                  </p>
-                  <p className="mt-1 text-sm text-text-muted">{m.desc}</p>
-                  <p className="mt-3 inline-flex items-center rounded-lg bg-muted/60 px-2.5 py-1 text-xs font-semibold text-text-secondary ring-1 ring-border/60">
-                    {m.stat}
-                  </p>
-                </div>
-                <ChevronRight
-                  className="size-5 shrink-0 text-text-muted transition-all group-hover:translate-x-0.5 group-hover:text-primary"
-                  aria-hidden
-                />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+          <BarChart2 className="h-4 w-4 text-primary" />
+          Reports
+        </Link>
+        <Link
+          to="/owner/settings"
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
+        >
+          Settings
+        </Link>
+      </div>
     </div>
   );
 }
@@ -564,20 +374,13 @@ function OperationsTab({ restaurantId }: { restaurantId: number }) {
   }, [bulkList]);
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-5">
-        <SectionHeader
-          eyebrow="Operations"
-          title="Orders & alerts"
-          description="Queue health, volume, and team broadcasts for this location."
-        />
-        <StatCardsGrid>
-          <KpiStat accentClass="from-amber-500/50 via-amber-400/15 to-transparent" icon={ShoppingBag} label="Pending" value={lo ? "…" : String(pending)} />
-          <KpiStat accentClass="from-blue-600/40 via-blue-500/12 to-transparent" icon={TrendingUp} label="In progress" value={lo ? "…" : String(inProgress)} />
-          <KpiStat accentClass="from-emerald-500/45 via-emerald-400/12 to-transparent" icon={Package} label="Ready to serve" value={lo ? "…" : String(ready)} />
-          <KpiStat accentClass="from-violet-500/45 via-violet-400/12 to-transparent" icon={Bell} label="Broadcasts" value={lb ? "…" : String(bulkList.length)} />
-        </StatCardsGrid>
-      </section>
+    <div className="space-y-4">
+      <StatCardsGrid>
+        <StatCard icon={ShoppingBag} label="Pending" value={lo ? "…" : String(pending)} />
+        <StatCard icon={TrendingUp} label="In progress" value={lo ? "…" : String(inProgress)} />
+        <StatCard icon={Package} label="Ready to serve" value={lo ? "…" : String(ready)} />
+        <StatCard icon={Bell} label="Broadcasts" value={lb ? "…" : String(bulkList.length)} />
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Order volume" description="Orders placed per day (last 7 days)." icon={BarChart2}>
@@ -625,6 +428,7 @@ function OperationsTab({ restaurantId }: { restaurantId: number }) {
             ),
           }))}
         />
+        <SeeAllLink to="/owner/notifications" label="See all notifications" />
       </Panel>
     </div>
   );
@@ -792,6 +596,7 @@ function CatalogTab({ restaurantId }: { restaurantId: number }) {
               ),
             }))}
           />
+          <SeeAllLink to="/owner/rawmaterials" />
         </Panel>
       </div>
 
@@ -814,6 +619,7 @@ function CatalogTab({ restaurantId }: { restaurantId: number }) {
               item: rmName(Number(s.raw_material)),
             }))}
           />
+          <SeeAllLink to="/owner/stocklog" />
         </Panel>
 
         <Panel title="Recent purchases" description="Inventory purchases for this location." icon={ShoppingBag}>
@@ -838,6 +644,7 @@ function CatalogTab({ restaurantId }: { restaurantId: number }) {
               ),
             }))}
           />
+          <SeeAllLink to="/owner/purchases" />
         </Panel>
       </div>
     </div>
@@ -979,6 +786,7 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
               pay: <span className="capitalize text-xs text-text-secondary">{String(t.payment_status)}</span>,
             }))}
           />
+          <SeeAllLink to="/owner/transactions" />
         </Panel>
 
         <Panel title="Recent expenses" description="Operational spend." icon={Receipt}>
@@ -995,6 +803,7 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
               amt: <span className="tabular-nums font-medium">{money(e.amount ?? 0)}</span>,
             }))}
           />
+          <SeeAllLink to="/owner/expenses" />
         </Panel>
       </div>
 
@@ -1013,6 +822,7 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
               amt: <span className="tabular-nums">{money(r.amount ?? 0)}</span>,
             }))}
           />
+          <SeeAllLink to="/owner/ledger" />
         </Panel>
 
         <Panel title="Customers & team" description="Snapshot lists — open full pages for detail." icon={Users}>
@@ -1028,6 +838,7 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
               phone: <span className="text-text-secondary">{c.phone ?? "—"}</span>,
             }))}
           />
+          <SeeAllLink to="/owner/customers" />
 
           <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mt-5 mb-2">Staff</p>
           <MiniTable
@@ -1041,6 +852,7 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
               role: <span className="capitalize">{String(s.role ?? "—")}</span>,
             }))}
           />
+          <SeeAllLink to="/owner/staff" />
         </Panel>
       </div>
     </div>
@@ -1116,20 +928,13 @@ function AllVenuesComparisonPanel({
   }, [rows]);
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-5">
-        <SectionHeader
-          eyebrow="Compare"
-          title="All locations"
-          description="Side-by-side metrics across your restaurants — pick one to open the full dashboard."
-        />
-        <StatCardsGrid>
-          <KpiStat accentClass="from-primary/55 via-primary/20 to-transparent" icon={Store} label="Locations compared" value={String(restaurantIds.length)} />
-          <KpiStat accentClass="from-blue-600/40 via-blue-500/12 to-transparent" icon={ShoppingBag} label="Orders (all locations)" value={String(totals.totalOrders)} />
-          <KpiStat accentClass="from-emerald-500/45 via-emerald-400/12 to-transparent" icon={TrendingUp} label="Revenue (7 days, all)" value={formatInr(totals.revenue)} />
-          <KpiStat accentClass="from-amber-500/50 via-amber-400/15 to-transparent" icon={PieChartIcon} label="Pending (all)" value={String(totals.pending)} />
-        </StatCardsGrid>
-      </section>
+    <div className="space-y-4">
+      <StatCardsGrid>
+        <StatCard icon={Store} label="Locations compared" value={String(restaurantIds.length)} />
+        <StatCard icon={ShoppingBag} label="Orders (all locations)" value={String(totals.totalOrders)} />
+        <StatCard icon={TrendingUp} label="Revenue (7 days, all)" value={formatInr(totals.revenue)} />
+        <StatCard icon={PieChartIcon} label="Pending (all)" value={String(totals.pending)} />
+      </StatCardsGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Revenue by location" description="Last 7 days — quick visual comparison." icon={BarChart2} className="lg:col-span-1">
@@ -1255,13 +1060,8 @@ export function OwnerHomeDashboard() {
     return <p className="text-sm text-text-muted p-4">No restaurant context.</p>;
   }
 
-  const selectedRestaurantName =
-    compareAllVenues && multiVenue
-      ? "All restaurants (compare)"
-      : (ownedRestaurants.find((r) => r.id === restaurantId)?.name ?? "Selected location");
-
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 max-w-[120rem] mx-auto pb-2">
       {dueAlert ? (
         <div
           className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
@@ -1274,18 +1074,19 @@ export function OwnerHomeDashboard() {
           </p>
         </div>
       ) : null}
-
-      <SuperAdminPageHeader
-        title="Dashboard"
-        description={`Operational snapshot for ${selectedRestaurantName}. KPIs, charts, and previews match the super admin and shareholder portal layout.`}
-        actions={
-          ownedRestaurants.length > 0 ? (
-            <div className="w-full sm:w-64">
-              <label htmlFor="dashboard-restaurant-scope" className="mb-1.5 block text-xs font-semibold text-text-secondary">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-50/90 to-transparent" aria-hidden />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Owner overview</p>
+          </div>
+          {ownedRestaurants.length > 0 ? (
+            <div className="w-full shrink-0 lg:w-72">
+              <label htmlFor="dashboard-restaurant-scope" className="text-xs font-semibold text-text-secondary block mb-1.5">
                 Restaurant
               </label>
               <Select value={selectValue} onValueChange={onVenueSelect}>
-                <SelectTrigger id="dashboard-restaurant-scope" className="w-full rounded-xl border-border/90 bg-background shadow-sm">
+                <SelectTrigger id="dashboard-restaurant-scope" className="w-full rounded-xl bg-background">
                   <SelectValue placeholder="Choose restaurant" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1300,9 +1101,9 @@ export function OwnerHomeDashboard() {
                 </SelectContent>
               </Select>
             </div>
-          ) : null
-        }
-      />
+          ) : null}
+        </div>
+      </div>
 
       {compareAllVenues && multiVenue ? (
         <AllVenuesComparisonPanel
@@ -1311,44 +1112,32 @@ export function OwnerHomeDashboard() {
           onDrillIntoRestaurant={drillIntoRestaurant}
         />
       ) : (
-        <Tabs value={tab} onValueChange={setTab} className="space-y-8">
-          <TabsList className="inline-flex h-auto w-full flex-wrap gap-1 rounded-2xl border border-border/90 bg-muted/30 p-1 shadow-sm ring-1 ring-black/[0.02] sm:w-auto">
-            <TabsTrigger
-              value="overview"
-              className="rounded-xl px-4 py-2 text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-sm"
-            >
+        <Tabs value={tab} onValueChange={setTab} className="space-y-5">
+          <TabsList className="h-auto w-full flex flex-wrap gap-1.5 justify-start rounded-xl bg-muted/70 p-1.5 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="overview" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
               Overview
             </TabsTrigger>
-            <TabsTrigger
-              value="operations"
-              className="rounded-xl px-4 py-2 text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-sm"
-            >
+            <TabsTrigger value="operations" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
               Orders &amp; alerts
             </TabsTrigger>
-            <TabsTrigger
-              value="catalog"
-              className="rounded-xl px-4 py-2 text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-sm"
-            >
+            <TabsTrigger value="catalog" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
               Menu &amp; inventory
             </TabsTrigger>
-            <TabsTrigger
-              value="finance"
-              className="rounded-xl px-4 py-2 text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm sm:text-sm"
-            >
+            <TabsTrigger value="finance" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
               People &amp; finance
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <TabsContent value="overview" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
             <OverviewTab restaurantId={restaurantId} />
           </TabsContent>
-          <TabsContent value="operations" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <TabsContent value="operations" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
             <OperationsTab restaurantId={restaurantId} />
           </TabsContent>
-          <TabsContent value="catalog" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <TabsContent value="catalog" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
             <CatalogTab restaurantId={restaurantId} />
           </TabsContent>
-          <TabsContent value="finance" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <TabsContent value="finance" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
             <FinanceTab restaurantId={restaurantId} />
           </TabsContent>
         </Tabs>
