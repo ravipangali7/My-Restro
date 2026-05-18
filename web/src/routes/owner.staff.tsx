@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { AppModal } from "@/components/shared/AppModal";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -170,29 +170,61 @@ function StaffPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Staff</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setNotifyError(null);
-              resetNotifyForm();
-              setNotifyOpen(true);
-            }}
-            disabled={restaurantIds.length === 0}
-            className="h-10 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-sm hover:bg-accent/60 flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Bell size={14} /> Notify team
-          </button>
-          <Link
-            to="/owner/staff/new"
-            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-          >
-            <Plus size={14} /> Add Staff
-          </Link>
-        </div>
-      </div>
+      {isPending ? (
+        <p className="text-sm text-text-muted">Loading staff…</p>
+      ) : restaurantIds.length === 0 ? (
+        <p className="text-sm text-text-muted">No restaurants assigned.</p>
+      ) : (
+        <ListPageShell
+          header={
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="font-display font-semibold text-lg text-foreground">Staff</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifyError(null);
+                    resetNotifyForm();
+                    setNotifyOpen(true);
+                  }}
+                  disabled={restaurantIds.length === 0}
+                  className="h-10 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-sm hover:bg-accent/60 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Bell size={14} /> Notify team
+                </button>
+                <Link
+                  to="/owner/staff/new"
+                  className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
+                >
+                  <Plus size={14} /> Add Staff
+                </Link>
+              </div>
+            </div>
+          }
+        >
+          {restaurantIds.length > 1 ? (
+            <div className="flex flex-col gap-8 min-h-0 flex-1">
+              {sections.map(({ restaurantId: rid, staff }) => (
+                <ListPageShell
+                  key={rid}
+                  header={
+                    <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
+                  }
+                  className="min-h-0 flex-1 basis-64"
+                >
+                  {(staff as StaffRow[]).length === 0 ? (
+                    <p className="text-sm text-text-muted">No staff at this restaurant.</p>
+                  ) : (
+                    renderStaffCards(staff as StaffRow[], [rid])
+                  )}
+                </ListPageShell>
+              ))}
+            </div>
+          ) : (
+            renderStaffCards((sections[0]?.staff as StaffRow[]) ?? [], [restaurantIds])
+          )}
+        </ListPageShell>
+      )}
       {notifyOpen ? (
         <AppModal
           overlayClassName="z-[70] bg-black/50"
@@ -376,26 +408,6 @@ function StaffPage() {
             </div>
         </AppModal>
       ) : null}
-      {isPending ? (
-        <p className="text-sm text-text-muted">Loading staff…</p>
-      ) : restaurantIds.length === 0 ? (
-        <p className="text-sm text-text-muted">No restaurants assigned.</p>
-      ) : restaurantIds.length > 1 ? (
-        <div className="space-y-8">
-          {sections.map(({ restaurantId: rid, staff }) => (
-            <section key={rid}>
-              <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-              {(staff as StaffRow[]).length === 0 ? (
-                <p className="text-sm text-text-muted">No staff at this restaurant.</p>
-              ) : (
-                renderStaffCards(staff as StaffRow[], [rid])
-              )}
-            </section>
-          ))}
-        </div>
-      ) : (
-        renderStaffCards((sections[0]?.staff as StaffRow[]) ?? [], [restaurantIds])
-      )}
       {isFormRoute ? (
         <RouteFormModal title="Staff form" onClose={() => navigate({ to: "/owner/staff" })}>
           <Outlet />

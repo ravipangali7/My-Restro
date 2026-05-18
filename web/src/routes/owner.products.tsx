@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tansta
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
@@ -167,30 +167,42 @@ function ProductsPage() {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold text-foreground">Products</h2>
-        <Link
-          to="/owner/products/new"
-          className="flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-        >
-          <Plus size={14} /> Add Product
-        </Link>
-      </div>
-      {groupedSections.map((section) => {
-        const { rid, title, rows, catName } = section;
-        return (
-          <div key={rid} className="mb-10 last:mb-0">
-            {fetchIds.length > 1 ? (
-              <h3 className="mb-3 font-display text-base font-semibold text-foreground">{title}</h3>
-            ) : null}
-            {rows.length === 0 ? (
-              <p className="text-sm text-text-muted">No products in this restaurant yet.</p>
-            ) : (
-              renderProductCards(rows, catName, [rid])
-            )}
+      <ListPageShell
+        header={
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold text-foreground">Products</h2>
+            <Link
+              to="/owner/products/new"
+              className="flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+            >
+              <Plus size={14} /> Add Product
+            </Link>
           </div>
-        );
-      })}
+        }
+      >
+        <div className="flex flex-col gap-8 min-h-0 flex-1">
+          {groupedSections.map((section) => {
+            const { rid, title, rows, catName } = section;
+            return (
+              <ListPageShell
+                key={rid}
+                header={
+                  fetchIds.length > 1 ? (
+                    <h3 className="mb-3 font-display text-base font-semibold text-foreground">{title}</h3>
+                  ) : undefined
+                }
+                className="min-h-0 flex-1 basis-64"
+              >
+                {rows.length === 0 ? (
+                  <p className="text-sm text-text-muted">No products in this restaurant yet.</p>
+                ) : (
+                  renderProductCards(rows, catName, [rid])
+                )}
+              </ListPageShell>
+            );
+          })}
+        </div>
+      </ListPageShell>
       {isFormRoute ? (
         <RouteFormModal title="Product form" onClose={() => navigate({ to: "/owner/products" })}>
           <Outlet />

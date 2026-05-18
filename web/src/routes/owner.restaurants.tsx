@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AddRestaurantModal } from "@/components/owner/AddRestaurantModal";
 import { EditRestaurantModal, type EditRestaurantTarget } from "@/components/owner/EditRestaurantModal";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
@@ -70,17 +70,20 @@ function OwnerRestaurantsPage() {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-semibold text-foreground">Restaurants</h2>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="inline-flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus size={14} aria-hidden /> Add restaurant
-        </button>
-      </div>
-
+      <ListPageShell
+        header={
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-lg font-semibold text-foreground">Restaurants</h2>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="inline-flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus size={14} aria-hidden /> Add restaurant
+            </button>
+          </div>
+        }
+      >
       <PaginatedList
         items={rows}
         empty={<p className="text-sm text-text-muted">No restaurants yet.</p>}
@@ -146,6 +149,7 @@ function OwnerRestaurantsPage() {
           );
         }}
       />
+      </ListPageShell>
       <AddRestaurantModal open={modalOpen} onClose={() => setModalOpen(false)} />
       <EditRestaurantModal
         open={editTarget != null}

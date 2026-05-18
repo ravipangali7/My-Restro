@@ -25,6 +25,8 @@ export interface ListPaginationBarProps {
   onNext: () => void;
   onPageSizeChange: (size: number) => void;
   className?: string;
+  /** Pin bar at bottom of list panel (no outer page scroll). */
+  fixed?: boolean;
 }
 
 export function ListPaginationBar({
@@ -42,6 +44,7 @@ export function ListPaginationBar({
   onNext,
   onPageSizeChange,
   className,
+  fixed = false,
 }: ListPaginationBarProps) {
   if (totalCount === 0) return null;
 
@@ -49,7 +52,10 @@ export function ListPaginationBar({
     <nav
       aria-label="List pagination"
       className={cn(
-        "mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        "flex flex-col gap-3 border border-border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        fixed
+          ? "mt-0 shrink-0 rounded-2xl border-t shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
+          : "mt-4 rounded-2xl",
         className,
       )}
     >

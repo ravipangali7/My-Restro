@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { useRawMaterials, useStockLogs, useUnits } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
 import { ownerStaffShowsRestaurantColumn, type RestaurantRowExtras } from "@/lib/restaurant-table-column";
@@ -49,30 +49,34 @@ function StockLogPage() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-4">Stock Log</h2>
-      <div className="flex gap-2 mb-4">
-        {["all", "in", "out"].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
-              filter === f ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary hover:bg-primary-50"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-      {isError && (
-        <p className="text-sm text-error mb-4" role="alert">
-          {error instanceof Error ? error.message : "Could not load stock log."}
-        </p>
-      )}
-      {isPending ? (
-        <div className="bg-card rounded-xl border border-border px-4 py-12 text-center text-text-muted text-sm">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-text-muted">No stock movements match this filter.</p>
-      ) : (
+      <ListPageShell
+        header={
+          <>
+            <h2 className="font-display font-semibold text-lg text-foreground mb-4">Stock Log</h2>
+            <div className="flex gap-2 mb-4">
+              {["all", "in", "out"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
+                    filter === f ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary hover:bg-primary-50"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            {isError ? (
+              <p className="text-sm text-error mb-4" role="alert">
+                {error instanceof Error ? error.message : "Could not load stock log."}
+              </p>
+            ) : null}
+          </>
+        }
+      >
+        {isPending ? (
+          <div className="bg-card rounded-xl border border-border px-4 py-12 text-center text-text-muted text-sm">Loading…</div>
+        ) : (
         <PaginatedList
           items={filtered}
           resetDeps={[filter]}
@@ -134,7 +138,8 @@ function StockLogPage() {
             );
           }}
         />
-      )}
+        )}
+      </ListPageShell>
     </>
   );
 }

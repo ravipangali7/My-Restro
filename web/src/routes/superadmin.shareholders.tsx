@@ -5,7 +5,7 @@ import {
   OwnerEntityCard,
   ownerListActionClass,
 } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { useUsers } from "@/hooks/use-rest-api";
 import { apiPatch, resolveMediaUrl } from "@/lib/api";
@@ -96,19 +96,25 @@ function ShareholdersPage() {
 
   return (
     <>
-      <SuperAdminPageHeader
-        title="Shareholders"
-        description="Platform equity participants drawn from super administrator accounts: share weights and wallet posture."
-        actions={
-          <button
-            type="button"
-            onClick={openAdd}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-          >
-            <Plus size={14} aria-hidden /> Add shareholder
-          </button>
+      <ListPageShell
+        header={
+          <>
+            <SuperAdminPageHeader
+              title="Shareholders"
+              description="Platform equity participants drawn from super administrator accounts: share weights and wallet posture."
+              actions={
+                <button
+                  type="button"
+                  onClick={openAdd}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+                >
+                  <Plus size={14} aria-hidden /> Add shareholder
+                </button>
+              }
+            />
+          </>
         }
-      />
+      >
       <PaginatedList
         items={shareholders}
         empty={<SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>}
@@ -171,6 +177,7 @@ function ShareholdersPage() {
             );
         }}
       />
+      </ListPageShell>
 
       {showForm && (
         <AppModal

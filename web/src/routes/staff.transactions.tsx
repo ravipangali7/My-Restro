@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrders, useTransactions } from "@/hooks/use-rest-api";
@@ -49,26 +49,29 @@ function StaffTransactions() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-4">Transactions</h2>
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
-        <TabsList className="w-full max-w-md justify-stretch sm:w-auto">
-          <TabsTrigger value="all" className="flex-1 sm:flex-none">
-            All
-          </TabsTrigger>
-          <TabsTrigger value="in" className="flex-1 sm:flex-none">
-            In
-          </TabsTrigger>
-          <TabsTrigger value="out" className="flex-1 sm:flex-none">
-            Out
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1 sm:flex-none">
-            Pending
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-      {filteredRows.length === 0 ? (
-        <p className="text-sm text-text-muted">No transactions in this view.</p>
-      ) : (
+      <ListPageShell
+        header={
+          <>
+            <h2 className="font-display font-semibold text-lg text-foreground mb-4">Transactions</h2>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
+              <TabsList className="w-full max-w-md justify-stretch sm:w-auto">
+                <TabsTrigger value="all" className="flex-1 sm:flex-none">
+                  All
+                </TabsTrigger>
+                <TabsTrigger value="in" className="flex-1 sm:flex-none">
+                  In
+                </TabsTrigger>
+                <TabsTrigger value="out" className="flex-1 sm:flex-none">
+                  Out
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex-1 sm:flex-none">
+                  Pending
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </>
+        }
+      >
         <PaginatedList
           items={filteredRows}
           resetDeps={[tab]}
@@ -129,7 +132,7 @@ function StaffTransactions() {
             );
           }}
         />
-      )}
+      </ListPageShell>
     </>
   );
 }

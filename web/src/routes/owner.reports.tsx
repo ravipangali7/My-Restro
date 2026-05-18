@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatCard, StatCardsGrid } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -658,16 +658,17 @@ function ReportsPage() {
         </ChartCard>
       </div>
 
-      <div className="mb-6 space-y-4">
-        <h3 className="font-display text-sm font-semibold text-foreground">Staff roster (linked restaurants & users)</h3>
-        {staffTableRows.length === 0 ? (
-          <p className="text-sm text-text-muted">No staff in this scope.</p>
-        ) : (
-          <PaginatedList
-            items={staffTableRows}
-            resetDeps={[scope]}
-            empty={<p className="text-sm text-text-muted">No staff in this scope.</p>}
-            renderItem={(r, sel) => (
+      <ListPageShell
+        className="mb-6"
+        header={
+          <h3 className="font-display text-sm font-semibold text-foreground">Staff roster (linked restaurants & users)</h3>
+        }
+      >
+        <PaginatedList
+          items={staffTableRows}
+          resetDeps={[scope]}
+          empty={<p className="text-sm text-text-muted">No staff in this scope.</p>}
+          renderItem={(r, sel) => (
               <OwnerEntityCard
                 {...(sel.selectable ? sel : {})}
                 onClick={() => {
@@ -709,19 +710,16 @@ function ReportsPage() {
               />
             )}
           />
-        )}
-      </div>
+      </ListPageShell>
 
-      <div className="space-y-4">
-        <h3 className="font-display text-sm font-semibold text-foreground">Recent orders</h3>
-        {recentOrdersTable.length === 0 ? (
-          <p className="text-sm text-text-muted">No orders in this scope.</p>
-        ) : (
-          <PaginatedList
-            items={recentOrdersTable}
-            resetDeps={[scope]}
-            empty={<p className="text-sm text-text-muted">No orders in this scope.</p>}
-            renderItem={(r, sel) => (
+      <ListPageShell
+        header={<h3 className="font-display text-sm font-semibold text-foreground">Recent orders</h3>}
+      >
+        <PaginatedList
+          items={recentOrdersTable}
+          resetDeps={[scope]}
+          empty={<p className="text-sm text-text-muted">No orders in this scope.</p>}
+          renderItem={(r, sel) => (
               <OwnerEntityCard
                 {...(sel.selectable ? sel : {})}
                 onClick={() => onOrderNavigate(r)}
@@ -763,8 +761,7 @@ function ReportsPage() {
               />
             )}
           />
-        )}
-      </div>
+      </ListPageShell>
     </>
   );
 }

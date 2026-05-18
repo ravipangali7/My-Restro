@@ -5,7 +5,7 @@ import {
   ownerListActionClass,
   ownerListActionSecondaryClass,
 } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { orderStatusConfirmMessage, useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOrders, useTransitionOrderStatus } from "@/hooks/use-rest-api";
@@ -86,28 +86,36 @@ function OrdersPage() {
 
   return (
     <>
-      <h2 className="mb-1 font-display text-lg font-semibold text-foreground">Orders</h2>
-      <p className="mb-4 text-xs text-text-muted max-w-2xl">
-        Status changes notify the customer by SMS when a phone is available; each successful SMS is billed to this
-        restaurant per platform settings.
-      </p>
-      {errMsg && <p className="mb-2 text-sm text-error">{errMsg}</p>}
-      {isLoading && <p className="mb-4 text-sm text-text-muted">Loading orders…</p>}
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {["all", "pending", "accepted", "running", "ready", "waiting_pickup", "delivered", "rejected"].map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-all ${
-              filter === f ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary hover:bg-primary-50"
-            }`}
-          >
-            {f === "all" ? "All" : f.replace(/_/g, " ")}
-          </button>
-        ))}
-      </div>
-      {!isLoading ? (
+      <ListPageShell
+        header={
+          <>
+            <h2 className="mb-1 font-display text-lg font-semibold text-foreground">Orders</h2>
+            <p className="mb-4 text-xs text-text-muted max-w-2xl">
+              Status changes notify the customer by SMS when a phone is available; each successful SMS is billed to this
+              restaurant per platform settings.
+            </p>
+            {errMsg ? <p className="mb-2 text-sm text-error">{errMsg}</p> : null}
+            {isLoading ? <p className="mb-4 text-sm text-text-muted">Loading orders…</p> : null}
+            {!isLoading ? (
+              <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+                {["all", "pending", "accepted", "running", "ready", "waiting_pickup", "delivered", "rejected"].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFilter(f)}
+                    className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-all ${
+                      filter === f ? "bg-primary text-primary-foreground" : "bg-surface-alt text-text-secondary hover:bg-primary-50"
+                    }`}
+                  >
+                    {f === "all" ? "All" : f.replace(/_/g, " ")}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </>
+        }
+      >
+        {!isLoading ? (
         <PaginatedList
           items={filtered}
           resetDeps={[filter]}
@@ -196,7 +204,8 @@ function OrdersPage() {
             );
           }}
         />
-      ) : null}
+        ) : null}
+      </ListPageShell>
       {ConfirmDialog}
     </>
   );

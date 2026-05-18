@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { ListPageShell } from "@/components/shared/PaginatedList";
 import { PaginatedDataTable } from "@/components/shared/PaginatedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants, useUsers } from "@/hooks/use-rest-api";
@@ -57,18 +58,21 @@ function OwnerUsersPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Users</h2>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> Add User
-        </button>
-      </div>
-
-      <PaginatedDataTable
+      <ListPageShell
+        header={
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-lg text-foreground">Users</h2>
+            <button
+              type="button"
+              onClick={openAdd}
+              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
+            >
+              <Plus size={14} /> Add User
+            </button>
+          </div>
+        }
+      >
+        <PaginatedDataTable
         enableSelection={false}
         columns={[
           { header: "Name", accessor: "name" },
@@ -77,6 +81,8 @@ function OwnerUsersPage() {
         ]}
         data={users}
       />
+
+      </ListPageShell>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

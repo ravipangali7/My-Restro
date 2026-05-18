@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tansta
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { apiGet, resolveMediaUrl } from "@/lib/api";
@@ -141,28 +141,40 @@ function CombosPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Combo Sets</h2>
-        <Link
-          to="/owner/combos/$id"
-          params={{ id: "new" }}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 inline-flex items-center gap-1"
-        >
-          <Plus size={14} /> Add Combo
-        </Link>
-      </div>
-      {groupedSections.map(({ rid, title, rows }) => (
-        <div key={rid} className="mb-10 last:mb-0">
-          {fetchIds.length > 1 ? (
-            <h3 className="mb-3 font-display text-base font-semibold text-foreground">{title}</h3>
-          ) : null}
-          {rows.length === 0 ? (
-            <p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>
-          ) : (
-            renderComboCards(rows, [rid])
-          )}
+      <ListPageShell
+        header={
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-lg text-foreground">Combo Sets</h2>
+            <Link
+              to="/owner/combos/$id"
+              params={{ id: "new" }}
+              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 inline-flex items-center gap-1"
+            >
+              <Plus size={14} /> Add Combo
+            </Link>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-8 min-h-0 flex-1">
+          {groupedSections.map(({ rid, title, rows }) => (
+            <ListPageShell
+              key={rid}
+              header={
+                fetchIds.length > 1 ? (
+                  <h3 className="mb-3 font-display text-base font-semibold text-foreground">{title}</h3>
+                ) : undefined
+              }
+              className="min-h-0 flex-1 basis-64"
+            >
+              {rows.length === 0 ? (
+                <p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>
+              ) : (
+                renderComboCards(rows, [rid])
+              )}
+            </ListPageShell>
+          ))}
         </div>
-      ))}
+      </ListPageShell>
       {isFormModalRoute ? (
         <RouteFormModal title="Combo set" onClose={() => navigate({ to: "/owner/combos" })}>
           <Outlet />

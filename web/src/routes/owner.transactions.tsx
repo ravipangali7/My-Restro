@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrders, useOrdersAcrossRestaurantIds, useRestaurants, useTransactions } from "@/hooks/use-rest-api";
@@ -99,51 +99,54 @@ function TransactionsPage() {
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="font-display font-semibold text-lg text-foreground">Transactions</h2>
-        {restaurantIds.length > 1 ? (
-          <div className="w-full sm:w-72 shrink-0">
-            <label htmlFor="owner-tx-restaurant" className="mb-1.5 block text-sm font-medium text-text-secondary">
-              Restaurant
-            </label>
-            <select
-              id="owner-tx-restaurant"
-              value={restaurantScope === "all" ? "all" : String(restaurantScope)}
-              onChange={(e) => {
-                const v = e.target.value;
-                setRestaurantScope(v === "all" ? "all" : Number.parseInt(v, 10));
-              }}
-              className="h-11 w-full rounded-xl border border-border bg-card px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="all">All restaurants</option>
-              {restaurantIds.map((rid) => (
-                <option key={rid} value={rid}>
-                  {restaurantNameById.get(rid) ?? `Restaurant #${rid}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-      </div>
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
-        <TabsList className="w-full max-w-md justify-stretch sm:w-auto">
-          <TabsTrigger value="all" className="flex-1 sm:flex-none">
-            All
-          </TabsTrigger>
-          <TabsTrigger value="in" className="flex-1 sm:flex-none">
-            In
-          </TabsTrigger>
-          <TabsTrigger value="out" className="flex-1 sm:flex-none">
-            Out
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1 sm:flex-none">
-            Pending
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-      {filteredRows.length === 0 ? (
-        <p className="text-sm text-text-muted">No transactions in this view.</p>
-      ) : (
+      <ListPageShell
+        header={
+          <>
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <h2 className="font-display font-semibold text-lg text-foreground">Transactions</h2>
+              {restaurantIds.length > 1 ? (
+                <div className="w-full sm:w-72 shrink-0">
+                  <label htmlFor="owner-tx-restaurant" className="mb-1.5 block text-sm font-medium text-text-secondary">
+                    Restaurant
+                  </label>
+                  <select
+                    id="owner-tx-restaurant"
+                    value={restaurantScope === "all" ? "all" : String(restaurantScope)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setRestaurantScope(v === "all" ? "all" : Number.parseInt(v, 10));
+                    }}
+                    className="h-11 w-full rounded-xl border border-border bg-card px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="all">All restaurants</option>
+                    {restaurantIds.map((rid) => (
+                      <option key={rid} value={rid}>
+                        {restaurantNameById.get(rid) ?? `Restaurant #${rid}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
+              <TabsList className="w-full max-w-md justify-stretch sm:w-auto">
+                <TabsTrigger value="all" className="flex-1 sm:flex-none">
+                  All
+                </TabsTrigger>
+                <TabsTrigger value="in" className="flex-1 sm:flex-none">
+                  In
+                </TabsTrigger>
+                <TabsTrigger value="out" className="flex-1 sm:flex-none">
+                  Out
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex-1 sm:flex-none">
+                  Pending
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </>
+        }
+      >
         <PaginatedList
           items={filteredRows}
           resetDeps={[tab, restaurantScope]}
@@ -207,7 +210,7 @@ function TransactionsPage() {
             );
           }}
         />
-      )}
+      </ListPageShell>
     </>
   );
 }

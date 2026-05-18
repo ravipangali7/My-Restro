@@ -5,6 +5,7 @@ import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { useListSelection, type ListItemId } from "@/hooks/use-list-selection";
 import { ListPaginationBar } from "@/components/shared/ListPaginationBar";
 import { ListSelectionToolbar } from "@/components/shared/PaginatedList";
+import { cn } from "@/lib/utils";
 
 type Column<T> = {
   header: string;
@@ -21,6 +22,7 @@ export interface PaginatedDataTableProps<T extends { id: ListItemId }> {
   enableSelection?: boolean;
   selectionActions?: (ctx: { selectedIds: ListItemId[]; clearSelection: () => void }) => ReactNode;
   emptyMessage?: string;
+  className?: string;
 }
 
 export function PaginatedDataTable<T extends { id: ListItemId }>({
@@ -31,6 +33,7 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
   enableSelection = true,
   selectionActions,
   emptyMessage = "No data found.",
+  className,
 }: PaginatedDataTableProps<T>) {
   const pagination = usePaginatedList(data, { resetDeps });
   const selection = useListSelection(pagination.pageItems);
@@ -60,7 +63,10 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
   }
 
   return (
-    <div>
+    <div
+      data-paginated-list-root
+      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", className)}
+    >
       {enableSelection && pagination.pageItems.length > 0 ? (
         <ListSelectionToolbar
           selectedCount={selection.selectedCount}
@@ -68,7 +74,7 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
           selectAllIndeterminate={selection.selectAllIndeterminate}
           onToggleSelectAll={selection.toggleSelectAllOnPage}
           pageCount={pagination.pageItems.length}
-          className="mb-3"
+          className="mb-0 shrink-0"
           actions={
             selection.selectedCount > 0 && selectionActions
               ? selectionActions({
@@ -80,9 +86,12 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <DataTable columns={tableColumns} data={pagination.pageItems} onRowClick={onRowClick} />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <DataTable columns={tableColumns} data={pagination.pageItems} onRowClick={onRowClick} />
+      </div>
 
       <ListPaginationBar
+        fixed
         page={pagination.page}
         totalPages={pagination.totalPages}
         totalCount={pagination.totalCount}

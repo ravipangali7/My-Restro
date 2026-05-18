@@ -15,8 +15,7 @@ import {
   subscribeStaffBulkNotificationReads,
 } from "@/lib/staff-bulk-notification-reads";
 import type { ApiBulkNotificationRow } from "@/lib/bulk-notification-types";
-import { BulkNotificationCard } from "@/components/notifications/BulkNotificationCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { Checkbox } from "@/components/ui/checkbox";
 import { resolveMediaUrl } from "@/lib/api";
 
@@ -84,25 +83,30 @@ function OwnerNotificationsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Notifications</h2>
-        <span className="text-xs text-text-muted">{unreadCount} unread</span>
-      </div>
-
       {restaurantId == null ? (
         <p className="text-sm text-text-muted">No restaurant selected.</p>
-      ) : isPending && rows.length === 0 ? (
-        <p className="text-sm text-text-muted">Loading…</p>
-      ) : rows.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-6 text-center">
-          <Bell className="mx-auto text-text-muted mb-2" size={20} />
-          <p className="text-sm text-text-muted">No notifications yet.</p>
-        </div>
       ) : (
-        <PaginatedList
-          items={rows}
-          stackClassName="gap-2"
-          renderItem={(item, sel) => {
+        <ListPageShell
+          header={
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-semibold text-lg text-foreground">Notifications</h2>
+              <span className="text-xs text-text-muted">{unreadCount} unread</span>
+            </div>
+          }
+        >
+          {isPending && rows.length === 0 ? (
+            <p className="text-sm text-text-muted">Loading…</p>
+          ) : (
+            <PaginatedList
+              items={rows}
+              stackClassName="gap-2"
+              empty={
+                <div className="bg-card rounded-xl border border-border p-6 text-center">
+                  <Bell className="mx-auto text-text-muted mb-2" size={20} />
+                  <p className="text-sm text-text-muted">No notifications yet.</p>
+                </div>
+              }
+              renderItem={(item, sel) => {
             if (item.kind === "legacy") {
               const notif = item.row;
               return (
@@ -173,6 +177,8 @@ function OwnerNotificationsPage() {
             );
           }}
         />
+          )}
+        </ListPageShell>
       )}
     </>
   );

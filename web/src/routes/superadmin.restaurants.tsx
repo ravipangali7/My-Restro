@@ -7,7 +7,7 @@ import {
   ownerListActionClass,
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { AppModal } from "@/components/shared/AppModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -143,19 +143,25 @@ function RestaurantsPage() {
 
   return (
     <>
-      <SuperAdminPageHeader
-        title="Restaurants"
-        description="Locations, billing, subscription windows, and activation status for every venue on the platform."
-        actions={
-          <button
-            type="button"
-            onClick={openAdd}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-          >
-            <Plus size={14} aria-hidden /> Add restaurant
-          </button>
+      <ListPageShell
+        header={
+          <>
+            <SuperAdminPageHeader
+              title="Restaurants"
+              description="Locations, billing, subscription windows, and activation status for every venue on the platform."
+              actions={
+                <button
+                  type="button"
+                  onClick={openAdd}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+                >
+                  <Plus size={14} aria-hidden /> Add restaurant
+                </button>
+              }
+            />
+          </>
         }
-      />
+      >
       <PaginatedList
         items={rows}
         empty={<SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>}
@@ -309,6 +315,7 @@ function RestaurantsPage() {
             );
         }}
       />
+      </ListPageShell>
 
       {ConfirmDialog}
 

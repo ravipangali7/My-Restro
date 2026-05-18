@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerUnitsByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -201,37 +201,47 @@ function UnitsPage() {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h2 className="font-display font-semibold text-lg text-foreground">Units</h2>
-          {listActionError && <p className="text-sm text-error mt-1">{listActionError}</p>}
-        </div>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> Add Unit
-        </button>
-      </div>
-      {restaurantIds.length > 1 ? (
-        <div className="space-y-8">
-          {sections.map(({ restaurantId: rid, units }) => (
-            <section key={rid}>
-              <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-              {(units as UnitRow[]).length === 0 ? (
-                <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
-              ) : (
-                renderUnitCards(units as UnitRow[], [rid])
-              )}
-            </section>
-          ))}
-        </div>
-      ) : (sections[0]?.units as UnitRow[] | undefined)?.length === 0 ? (
-        <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
-      ) : (
-        renderUnitCards((sections[0]?.units as UnitRow[]) ?? [], [restaurantIds, restaurantId])
-      )}
+      <ListPageShell
+        header={
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 className="font-display font-semibold text-lg text-foreground">Units</h2>
+              {listActionError && <p className="text-sm text-error mt-1">{listActionError}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={openAdd}
+              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
+            >
+              <Plus size={14} /> Add Unit
+            </button>
+          </div>
+        }
+      >
+        {restaurantIds.length > 1 ? (
+          <div className="flex flex-col gap-8 min-h-0 flex-1">
+            {sections.map(({ restaurantId: rid, units }) => (
+              <ListPageShell
+                key={rid}
+                header={
+                  <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
+                }
+                className="min-h-0 flex-1 basis-64"
+              >
+                {(units as UnitRow[]).length === 0 ? (
+                  <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
+                ) : (
+                  renderUnitCards(units as UnitRow[], [rid])
+                )}
+              </ListPageShell>
+            ))}
+          </div>
+        ) : (sections[0]?.units as UnitRow[] | undefined)?.length === 0 ? (
+          <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
+        ) : (
+          renderUnitCards((sections[0]?.units as UnitRow[]) ?? [], [restaurantIds, restaurantId])
+        )}
+      </ListPageShell>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

@@ -6,7 +6,7 @@ import {
   ownerListActionClass,
   ownerListActionDangerClass,
 } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
@@ -94,20 +94,25 @@ function UsersPage() {
 
   return (
     <>
-      <SuperAdminPageHeader
-        title="Users"
-        description="Owners, staff, customers, shareholder flags, and wallet balances across the directory."
-        actions={
-          <button
-            type="button"
-            onClick={openAdd}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
-          >
-            <Plus size={14} aria-hidden /> Add user
-          </button>
+      <ListPageShell
+        header={
+          <>
+            <SuperAdminPageHeader
+              title="Users"
+              description="Owners, staff, customers, shareholder flags, and wallet balances across the directory."
+              actions={
+                <button
+                  type="button"
+                  onClick={openAdd}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
+                >
+                  <Plus size={14} aria-hidden /> Add user
+                </button>
+              }
+            />
+          </>
         }
-      />
-
+      >
       <PaginatedList
         items={users}
         empty={<SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>}
@@ -214,6 +219,7 @@ function UsersPage() {
             );
         }}
       />
+      </ListPageShell>
 
       {showForm && (
         <AppModal

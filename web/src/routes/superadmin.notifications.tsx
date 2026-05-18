@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader, SuperAdminPanel } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useBulkNotifications, useCreateSuperadminBulkNotification, useUsers } from "@/hooks/use-rest-api";
@@ -264,7 +264,9 @@ function NotificationsPage() {
       </SuperAdminPanel>
 
       <SuperAdminPanel>
-        <h3 className="font-display font-semibold text-base text-foreground mb-4">Notification history</h3>
+        <ListPageShell
+          header={<h3 className="font-display font-semibold text-base text-foreground">Notification history</h3>}
+        >
         <PaginatedList
           items={rows}
           empty={<SuperAdminEmptyState>No bulk campaigns yet.</SuperAdminEmptyState>}
@@ -313,6 +315,7 @@ function NotificationsPage() {
               );
           }}
         />
+        </ListPageShell>
       </SuperAdminPanel>
     </>
   );

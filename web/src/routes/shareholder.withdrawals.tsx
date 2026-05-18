@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { Wallet } from "lucide-react";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateWithdrawalRequest, useWithdrawals } from "@/hooks/use-rest-api";
@@ -109,169 +109,174 @@ function ShareholderWithdrawals() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="font-display font-semibold text-lg text-foreground">Withdrawals</h2>
-          <p className="text-[11px] text-text-muted mt-0.5">Request payouts and track review status</p>
-        </div>
-        <span className="text-xs text-text-muted tabular-nums">{counts.pending} pending</span>
-      </div>
-
-      <div className="space-y-4">
-        <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-          <h3 className="font-semibold text-sm text-foreground leading-snug">Request a withdrawal</h3>
-          <p className="text-xs text-text-secondary mt-1">
-            Submit a request for the super admin to review. Your balance is not reduced until a request is approved.
-          </p>
-          {user && (
-            <div className="mt-4 rounded-lg border border-border bg-surface-alt/50 px-3 py-2.5 text-xs text-text-secondary space-y-1">
-              <p>
-                <span className="font-medium text-foreground">Current balance:</span> ₹
-                {balanceNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Held in pending requests:</span> ₹
-                {pendingReserved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Available to request now:</span> ₹
-                {availableForWithdrawal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-            </div>
-          )}
-          <form onSubmit={onSubmit} className="mt-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <ListPageShell
+        header={
+          <>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <label htmlFor="wd-amount" className="text-xs font-medium text-text-secondary mb-1 block">
-                  Amount (₹) *
-                </label>
-                <input
-                  id="wd-amount"
-                  type="number"
-                  min="0"
-                  max={availableForWithdrawal > 0 ? availableForWithdrawal : undefined}
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                />
+                <h2 className="font-display font-semibold text-lg text-foreground">Withdrawals</h2>
+                <p className="text-[11px] text-text-muted mt-0.5">Request payouts and track review status</p>
               </div>
-              <div>
-                <label htmlFor="wd-remarks" className="text-xs font-medium text-text-secondary mb-1 block">
-                  Remarks *
-                </label>
-                <input
-                  id="wd-remarks"
-                  type="text"
-                  required
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Bank / UPI / reference (required)…"
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                />
-              </div>
+              <span className="text-xs text-text-muted tabular-nums">{counts.pending} pending</span>
             </div>
-            {formError && <p className="text-sm text-error">{formError}</p>}
-            {user && availableForWithdrawal <= 0 && (
-              <p className="text-xs text-text-muted">
-                You cannot submit a new request until your available amount is above zero (approve or cancel pending
-                requests, or wait for your balance to update).
+
+            <section className="rounded-xl border border-border bg-card p-4 sm:p-5 mb-4">
+              <h3 className="font-semibold text-sm text-foreground leading-snug">Request a withdrawal</h3>
+              <p className="text-xs text-text-secondary mt-1">
+                Submit a request for the super admin to review. Your balance is not reduced until a request is approved.
               </p>
-            )}
-            <button
-              type="submit"
-              disabled={createReq.isPending || (user != null && availableForWithdrawal <= 0)}
-              className="h-10 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-95 disabled:opacity-60"
-            >
-              {createReq.isPending ? "Submitting…" : "Submit request"}
-            </button>
-          </form>
-        </section>
-
-        <section className="rounded-xl border border-border bg-card p-3 sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-            <h3 className="font-semibold text-sm text-foreground">Your requests</h3>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  ["pending", "Pending"],
-                  ["approved", "Approved"],
-                  ["rejected", "Rejected"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTab(key)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors",
-                    tab === key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-surface-alt text-text-secondary hover:bg-accent/50",
-                  )}
-                >
-                  {label} ({counts[key]})
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <PaginatedList
-            items={tabRows}
-            resetDeps={[tab]}
-            empty={
-              <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
-                <Wallet className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
-                <p className="text-sm text-text-muted">No {tab} requests yet.</p>
-              </div>
-            }
-            renderItem={(w, sel) => {
-              const isPending = w.status === "pending";
-              return (
-                <div
-                  className={cn(
-                    "rounded-xl border transition-colors",
-                    isPending ? "bg-primary-50 border-primary/30" : "bg-card border-border",
-                    sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
-                  )}
-                >
-                  <div className="p-3">
-                    <div className="flex items-start gap-2 min-w-0">
-                      {sel.selectable ? (
-                        <div className="shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={sel.selected}
-                            onCheckedChange={(c) => sel.onSelectedChange(c === true)}
-                            aria-label="Select withdrawal"
-                          />
-                        </div>
-                      ) : null}
-                      <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                        <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">
-                          ₹{Number(w.amount).toLocaleString()}
-                        </p>
-                        <StatusBadge status={w.status} />
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
-                    <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
-                      {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
-                      {w.remarks?.trim() || "—"}
-                    </p>
-                    {tab === "rejected" && (w.reject_reason?.trim() || "") !== "" ? (
-                      <p className="text-xs text-error mt-2 pt-2 border-t border-border/60">
-                        <span className="font-medium">Reason: </span>
-                        {w.reject_reason}
-                      </p>
-                    ) : null}
+              {user && (
+                <div className="mt-4 rounded-lg border border-border bg-surface-alt/50 px-3 py-2.5 text-xs text-text-secondary space-y-1">
+                  <p>
+                    <span className="font-medium text-foreground">Current balance:</span> ₹
+                    {balanceNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Held in pending requests:</span> ₹
+                    {pendingReserved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Available to request now:</span> ₹
+                    {availableForWithdrawal.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+              )}
+              <form onSubmit={onSubmit} className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="wd-amount" className="text-xs font-medium text-text-secondary mb-1 block">
+                      Amount (₹) *
+                    </label>
+                    <input
+                      id="wd-amount"
+                      type="number"
+                      min="0"
+                      max={availableForWithdrawal > 0 ? availableForWithdrawal : undefined}
+                      step="0.01"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="wd-remarks" className="text-xs font-medium text-text-secondary mb-1 block">
+                      Remarks *
+                    </label>
+                    <input
+                      id="wd-remarks"
+                      type="text"
+                      required
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="Bank / UPI / reference (required)…"
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
                   </div>
                 </div>
-              );
-            }}
-          />
-        </section>
-      </div>
+                {formError && <p className="text-sm text-error">{formError}</p>}
+                {user && availableForWithdrawal <= 0 && (
+                  <p className="text-xs text-text-muted">
+                    You cannot submit a new request until your available amount is above zero (approve or cancel pending
+                    requests, or wait for your balance to update).
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={createReq.isPending || (user != null && availableForWithdrawal <= 0)}
+                  className="h-10 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-95 disabled:opacity-60"
+                >
+                  {createReq.isPending ? "Submitting…" : "Submit request"}
+                </button>
+              </form>
+            </section>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <h3 className="font-semibold text-sm text-foreground">Your requests</h3>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["pending", "Pending"],
+                    ["approved", "Approved"],
+                    ["rejected", "Rejected"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTab(key)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors",
+                      tab === key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-surface-alt text-text-secondary hover:bg-accent/50",
+                    )}
+                  >
+                    {label} ({counts[key]})
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        }
+      >
+        <PaginatedList
+          items={tabRows}
+          resetDeps={[tab]}
+          empty={
+            <div className="rounded-lg border border-dashed border-border bg-surface-alt/30 p-6 text-center">
+              <Wallet className="mx-auto text-text-muted mb-2" size={20} aria-hidden />
+              <p className="text-sm text-text-muted">No {tab} requests yet.</p>
+            </div>
+          }
+          renderItem={(w, sel) => {
+            const isPending = w.status === "pending";
+            return (
+              <div
+                className={cn(
+                  "rounded-xl border transition-colors",
+                  isPending ? "bg-primary-50 border-primary/30" : "bg-card border-border",
+                  sel.selectable && sel.selected && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
+                )}
+              >
+                <div className="p-3">
+                  <div className="flex items-start gap-2 min-w-0">
+                    {sel.selectable ? (
+                      <div className="shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={sel.selected}
+                          onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                          aria-label="Select withdrawal"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                      <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">
+                        ₹{Number(w.amount).toLocaleString()}
+                      </p>
+                      <StatusBadge status={w.status} />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
+                  <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
+                    {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
+                    {w.remarks?.trim() || "—"}
+                  </p>
+                  {tab === "rejected" && (w.reject_reason?.trim() || "") !== "" ? (
+                    <p className="text-xs text-error mt-2 pt-2 border-t border-border/60">
+                      <span className="font-medium">Reason: </span>
+                      {w.reject_reason}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            );
+          }}
+        />
+      </ListPageShell>
     </>
   );
 }

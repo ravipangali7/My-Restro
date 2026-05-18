@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import {
   useOwnerRawMaterialsByRestaurant,
   useOwnerSuppliersByRestaurant,
@@ -317,49 +317,52 @@ function RawMaterialsPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">
-        <div>
-          <h2 className="font-display font-semibold text-lg text-foreground">Raw Materials</h2>
-          {scopeDescription ? (
-            <p className="text-sm text-text-muted mt-1">
-              Showing inventory for <span className="font-medium text-foreground">{scopeDescription}</span>.
-            </p>
-          ) : null}
-          {listActionError ? <p className="text-sm text-error mt-2">{listActionError}</p> : null}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center shrink-0">
-          {multiRestaurant ? (
-            <div className="min-w-[200px]">
-              <label className="text-xs text-text-secondary block mb-1">Restaurant</label>
-              <select
-                value={materialsFilter === "all" ? "all" : String(materialsFilter)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setMaterialsFilter(v === "all" ? "all" : Number.parseInt(v, 10));
-                }}
-                className="w-full sm:w-auto min-w-[200px] h-10 px-3 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-              >
-                <option value="all">All</option>
-                {restaurantIds.map((rid) => (
-                  <option key={rid} value={rid}>
-                    {restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`}
-                  </option>
-                ))}
-              </select>
+      <ListPageShell
+        header={
+          <>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">
+              <div>
+                <h2 className="font-display font-semibold text-lg text-foreground">Raw Materials</h2>
+                {scopeDescription ? (
+                  <p className="text-sm text-text-muted mt-1">
+                    Showing inventory for <span className="font-medium text-foreground">{scopeDescription}</span>.
+                  </p>
+                ) : null}
+                {listActionError ? <p className="text-sm text-error mt-2">{listActionError}</p> : null}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center shrink-0">
+                {multiRestaurant ? (
+                  <div className="min-w-[200px]">
+                    <label className="text-xs text-text-secondary block mb-1">Restaurant</label>
+                    <select
+                      value={materialsFilter === "all" ? "all" : String(materialsFilter)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setMaterialsFilter(v === "all" ? "all" : Number.parseInt(v, 10));
+                      }}
+                      className="w-full sm:w-auto min-w-[200px] h-10 px-3 rounded-xl border border-border bg-card text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    >
+                      <option value="all">All</option>
+                      {restaurantIds.map((rid) => (
+                        <option key={rid} value={rid}>
+                          {restaurants.find((r) => r.id === rid)?.name ?? `Restaurant #${rid}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={openAdd}
+                  className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center justify-center gap-1 shrink-0"
+                >
+                  <Plus size={14} /> Add Material
+                </button>
+              </div>
             </div>
-          ) : null}
-          <button
-            type="button"
-            onClick={openAdd}
-            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center justify-center gap-1 shrink-0"
-          >
-            <Plus size={14} /> Add Material
-          </button>
-        </div>
-      </div>
-      {rows.length === 0 ? (
-        <p className="text-sm text-text-muted">No raw materials in this scope.</p>
-      ) : (
+          </>
+        }
+      >
         <PaginatedList
           items={paginatedMaterials}
           resetDeps={[materialsFilter, effectiveFilter]}
@@ -424,7 +427,7 @@ function RawMaterialsPage() {
             );
           }}
         />
-      )}
+      </ListPageShell>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

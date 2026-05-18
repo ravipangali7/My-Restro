@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ListPageShell } from "@/components/shared/PaginatedList";
 import { PaginatedDataTable } from "@/components/shared/PaginatedDataTable";
 import { useExpenses } from "@/hooks/use-rest-api";
 import { useAuth } from "@/lib/auth-context";
@@ -25,8 +26,8 @@ function StaffExpenses() {
 
   return (
     <>
-      <h2 className="font-display font-semibold text-lg text-foreground mb-4">Expenses</h2>
-      <PaginatedDataTable
+      <ListPageShell header={<h2 className="font-display font-semibold text-lg text-foreground mb-4">Expenses</h2>}>
+        <PaginatedDataTable
         enableSelection={false}
         columns={[
           { header: "Expense ID", accessor: "expense_id" },
@@ -36,6 +37,7 @@ function StaffExpenses() {
         ]}
         data={rows as ExpenseRow[]}
       />
+      </ListPageShell>
     </>
   );
 }

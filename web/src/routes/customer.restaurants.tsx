@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Store, Search, MapPin } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,22 +35,28 @@ function CustomerRestaurants() {
 
   return (
     <>
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display font-bold text-xl text-foreground mb-3">Restaurants</h1>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Search restaurants…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-11 pl-9 pr-4 rounded-xl border border-border bg-card text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-          />
-        </div>
-      </div>
-      {errMsg && <p className="px-4 text-sm text-error">{errMsg}</p>}
-      {isLoading && <p className="px-4 text-sm text-text-muted">Loading…</p>}
-      <div className="px-4 pb-8">
+      <ListPageShell
+        header={
+          <>
+            <div className="px-4 pt-6 pb-4">
+              <h1 className="font-display font-bold text-xl text-foreground mb-3">Restaurants</h1>
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search restaurants…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full h-11 pl-9 pr-4 rounded-xl border border-border bg-card text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+            </div>
+            {errMsg ? <p className="px-4 text-sm text-error">{errMsg}</p> : null}
+            {isLoading ? <p className="px-4 text-sm text-text-muted">Loading…</p> : null}
+          </>
+        }
+      >
+        <div className="px-4 pb-8">
         <PaginatedList
           items={filtered}
           resetDeps={[search]}
@@ -108,6 +114,7 @@ function CustomerRestaurants() {
           )}
         />
       </div>
+      </ListPageShell>
     </>
   );
 }

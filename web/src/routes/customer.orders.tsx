@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { OrderTableVisual } from "@/components/shared/OrderTableVisual";
 import { MenuMediaThumb } from "@/components/shared/MenuMediaThumb";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -59,13 +59,18 @@ function CustomerOrders() {
 
   return (
     <>
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display font-bold text-xl text-foreground">My Orders</h1>
-      </div>
-      {errMsg && <p className="px-4 text-sm text-error">{errMsg}</p>}
-      {isLoading && <p className="px-4 text-sm text-text-muted">Loading…</p>}
-
-      <div className="px-4 space-y-3">
+      <ListPageShell
+        header={
+          <>
+            <div className="px-4 pt-6 pb-4">
+              <h1 className="font-display font-bold text-xl text-foreground">My Orders</h1>
+            </div>
+            {errMsg ? <p className="px-4 text-sm text-error">{errMsg}</p> : null}
+            {isLoading ? <p className="px-4 text-sm text-text-muted">Loading…</p> : null}
+          </>
+        }
+      >
+        <div className="px-4 space-y-3">
         <PaginatedList
           items={customerOrders}
           empty={
@@ -115,6 +120,7 @@ function CustomerOrders() {
           )}
         />
       </div>
+      </ListPageShell>
 
       {selectedOrder && selectedId != null && (
         <div className="fixed inset-0 bg-black/40 flex items-end lg:items-center justify-center z-50">

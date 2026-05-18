@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useOrders } from "@/hooks/use-rest-api";
@@ -31,13 +31,17 @@ function CustomerTransactions() {
 
   return (
     <>
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display font-bold text-xl text-foreground">Payments & orders</h1>
-        <p className="text-xs text-text-muted mt-1">
-          Your orders from the API (financial ledger per restaurant is owner-facing).
-        </p>
-      </div>
-      <div className="px-4 pb-8">
+      <ListPageShell
+        header={
+          <div className="px-4 pt-6 pb-4">
+            <h1 className="font-display font-bold text-xl text-foreground">Payments & orders</h1>
+            <p className="text-xs text-text-muted mt-1">
+              Your orders from the API (financial ledger per restaurant is owner-facing).
+            </p>
+          </div>
+        }
+      >
+        <div className="px-4 pb-8">
         <PaginatedList
           items={rows}
           empty={
@@ -83,7 +87,8 @@ function CustomerTransactions() {
             </div>
           )}
         />
-      </div>
+        </div>
+      </ListPageShell>
     </>
   );
 }

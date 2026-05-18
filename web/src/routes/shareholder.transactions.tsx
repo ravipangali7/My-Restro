@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRestaurants, useTransactions, useWithdrawals } from "@/hooks/use-rest-api";
@@ -123,63 +123,68 @@ function ShareholderTransactions() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
-        <div>
-          <h2 className="font-display font-semibold text-lg text-foreground">{title}</h2>
-          <p className="text-[11px] text-text-muted mt-0.5 max-w-prose">{subtitle}</p>
-        </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
-          {(["all", "in", "out"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setFlowFilter(t)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-[11px] font-semibold capitalize transition-colors",
-                flowFilter === t
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-surface-alt text-text-secondary hover:bg-accent/50",
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {myPendingWithdrawals.length > 0 && (
-        <section className="mb-6">
-          <h3 className="font-semibold text-sm text-foreground mb-2">Pending withdrawal requests</h3>
-          <p className="text-xs text-text-secondary mb-3">
-            These requests are awaiting review. Your balance is unchanged until a request is approved.
-          </p>
-          <div className="space-y-2">
-            {myPendingWithdrawals.map((w) => (
-              <div
-                key={w.id}
-                className="rounded-xl border transition-colors bg-primary-50 border-primary/30"
-              >
-                <div className="p-3">
-                  <div className="flex items-start justify-between gap-2 min-w-0">
-                    <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">
-                      ₹{Number(w.amount).toLocaleString()}
-                    </p>
-                    <StatusBadge status={w.status} />
-                  </div>
-                  <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
-                  <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
-                    {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
-                    {w.remarks?.trim() || "—"}
-                  </p>
-                </div>
+      <ListPageShell
+        header={
+          <>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+              <div>
+                <h2 className="font-display font-semibold text-lg text-foreground">{title}</h2>
+                <p className="text-[11px] text-text-muted mt-0.5 max-w-prose">{subtitle}</p>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+              <div className="flex flex-wrap gap-2 shrink-0">
+                {(["all", "in", "out"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFlowFilter(t)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[11px] font-semibold capitalize transition-colors",
+                      flowFilter === t
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-surface-alt text-text-secondary hover:bg-accent/50",
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-      <section className="rounded-xl border border-border bg-card p-3 sm:p-4">
-        <h3 className="font-semibold text-sm text-foreground mb-3">Ledger transactions</h3>
+            {myPendingWithdrawals.length > 0 ? (
+              <section className="mb-6">
+                <h3 className="font-semibold text-sm text-foreground mb-2">Pending withdrawal requests</h3>
+                <p className="text-xs text-text-secondary mb-3">
+                  These requests are awaiting review. Your balance is unchanged until a request is approved.
+                </p>
+                <div className="space-y-2">
+                  {myPendingWithdrawals.map((w) => (
+                    <div
+                      key={w.id}
+                      className="rounded-xl border transition-colors bg-primary-50 border-primary/30"
+                    >
+                      <div className="p-3">
+                        <div className="flex items-start justify-between gap-2 min-w-0">
+                          <p className="font-semibold text-foreground leading-snug text-sm tabular-nums">
+                            ₹{Number(w.amount).toLocaleString()}
+                          </p>
+                          <StatusBadge status={w.status} />
+                        </div>
+                        <p className="text-[11px] text-text-muted mt-1">{formatWhen(w.created_at)}</p>
+                        <p className="text-xs text-text-secondary mt-1.5 line-clamp-2">
+                          {w.remarks?.trim() ? <span className="font-medium text-foreground">Note: </span> : null}
+                          {w.remarks?.trim() || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <h3 className="font-semibold text-sm text-foreground mb-3">Ledger transactions</h3>
+          </>
+        }
+      >
         <PaginatedList
           items={filtered}
           resetDeps={[flowFilter]}
@@ -257,7 +262,7 @@ function ShareholderTransactions() {
             );
           }}
         />
-      </section>
+      </ListPageShell>
     </>
   );
 }

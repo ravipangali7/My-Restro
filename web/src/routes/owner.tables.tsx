@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import type { DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useOwnerTablesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
@@ -100,36 +100,46 @@ function TablesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Tables</h2>
-        <Link
-          to="/owner/tables/add"
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1 hover:bg-primary-600"
-        >
-          <Plus size={14} /> Add Table
-        </Link>
-      </div>
-      {restaurantIds.length > 1 ? (
-        <div className="space-y-8">
-          {sections.map(({ restaurantId: rid, tables }) => {
-            const rows = tables as TableRow[];
-            return (
-              <section key={rid}>
-                <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-                {rows.length === 0 ? (
-                  <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
-                ) : (
-                  renderTableCards(rows, [rid])
-                )}
-              </section>
-            );
-          })}
-        </div>
-      ) : (sections[0]?.tables as TableRow[] | undefined)?.length === 0 ? (
-        <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
-      ) : (
-        renderTableCards((sections[0]?.tables as TableRow[]) ?? [], [restaurantIds])
-      )}
+      <ListPageShell
+        header={
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-lg text-foreground">Tables</h2>
+            <Link
+              to="/owner/tables/add"
+              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1 hover:bg-primary-600"
+            >
+              <Plus size={14} /> Add Table
+            </Link>
+          </div>
+        }
+      >
+        {restaurantIds.length > 1 ? (
+          <div className="flex flex-col gap-8 min-h-0 flex-1">
+            {sections.map(({ restaurantId: rid, tables }) => {
+              const rows = tables as TableRow[];
+              return (
+                <ListPageShell
+                  key={rid}
+                  header={
+                    <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
+                  }
+                  className="min-h-0 flex-1 basis-64"
+                >
+                  {rows.length === 0 ? (
+                    <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
+                  ) : (
+                    renderTableCards(rows, [rid])
+                  )}
+                </ListPageShell>
+              );
+            })}
+          </div>
+        ) : (sections[0]?.tables as TableRow[] | undefined)?.length === 0 ? (
+          <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
+        ) : (
+          renderTableCards((sections[0]?.tables as TableRow[]) ?? [], [restaurantIds])
+        )}
+      </ListPageShell>
       {isFormRoute ? (
         <RouteFormModal title="Table form" onClose={() => navigate({ to: "/owner/tables" })}>
           <Outlet />

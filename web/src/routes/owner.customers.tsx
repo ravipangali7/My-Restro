@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { useCustomers } from "@/hooks/use-rest-api";
 import { useRestaurantScope } from "@/lib/restaurant-context";
 import { Phone, UserRound } from "lucide-react";
@@ -32,7 +32,9 @@ function CustomersPage() {
 
   return (
     <>
-      <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Customers</h2>
+      <ListPageShell
+        header={<h2 className="mb-4 font-display text-lg font-semibold text-foreground">Customers</h2>}
+      >
       <PaginatedList
         items={rows}
         resetDeps={[restaurantId]}
@@ -68,6 +70,7 @@ function CustomersPage() {
           />
         )}
       />
+      </ListPageShell>
     </>
   );
 }

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePurchases, useRawMaterials, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -213,19 +213,23 @@ function PurchasesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Purchases</h2>
-        <button
-          onClick={openAdd}
-          className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
-        >
-          <Plus size={14} /> New Purchase
-        </button>
-      </div>
-      {isLoading && purchases === undefined ? (
-        <p className="text-sm text-text-muted py-8">Loading purchases…</p>
-      ) : (
-        <PaginatedList
+      <ListPageShell
+        header={
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-lg text-foreground">Purchases</h2>
+            <button
+              onClick={openAdd}
+              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary-600 flex items-center gap-1"
+            >
+              <Plus size={14} /> New Purchase
+            </button>
+          </div>
+        }
+      >
+        {isLoading && purchases === undefined ? (
+          <p className="text-sm text-text-muted py-8">Loading purchases…</p>
+        ) : (
+          <PaginatedList
           items={rows}
           empty={<p className="text-sm text-text-muted">No purchases yet.</p>}
           renderItem={(p, sel) => (
@@ -280,8 +284,9 @@ function PurchasesPage() {
               }
             />
           )}
-        />
-      )}
+          />
+        )}
+      </ListPageShell>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

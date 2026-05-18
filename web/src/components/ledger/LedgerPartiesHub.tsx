@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCustomers, useLedgers, useStaffMembers, useSuppliers } from "@/hooks/use-rest-api";
@@ -144,27 +144,30 @@ export function LedgerPartiesHub({
   if (isLoading) return <p className="text-sm text-text-muted">Loading…</p>;
 
   return (
-    <>
-      <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Ledger</h2>
-      <p className="mb-4 text-xs text-text-muted">Parties at this restaurant — open a party to view and manage ledger lines.</p>
+    <ListPageShell
+      header={
+        <>
+          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Ledger</h2>
+          <p className="mb-4 text-xs text-text-muted">
+            Parties at this restaurant — open a party to view and manage ledger lines.
+          </p>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as PartyTab)} className="mb-4">
-        <TabsList className="flex w-full flex-wrap justify-start gap-1 sm:w-auto">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="supplier">Supplier</TabsTrigger>
-          <TabsTrigger value="staff">Staff</TabsTrigger>
-          <TabsTrigger value="customer">Customer</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {filtered.length === 0 ? (
-        <p className="text-sm text-text-muted">No parties match this filter.</p>
-      ) : (
-        <PaginatedList
-          items={filtered}
-          resetDeps={[tab]}
-          empty={<p className="text-sm text-text-muted">No parties match this filter.</p>}
-          renderItem={(row, sel) => (
+          <Tabs value={tab} onValueChange={(v) => setTab(v as PartyTab)} className="mb-4">
+            <TabsList className="flex w-full flex-wrap justify-start gap-1 sm:w-auto">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="supplier">Supplier</TabsTrigger>
+              <TabsTrigger value="staff">Staff</TabsTrigger>
+              <TabsTrigger value="customer">Customer</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </>
+      }
+    >
+      <PaginatedList
+        items={filtered}
+        resetDeps={[tab]}
+        empty={<p className="text-sm text-text-muted">No parties match this filter.</p>}
+        renderItem={(row, sel) => (
             <OwnerEntityCard
               {...(sel.selectable ? sel : {})}
               onClick={() => openParty(row)}
@@ -197,10 +200,9 @@ export function LedgerPartiesHub({
                   View ledger
                 </Link>
               }
-              />
-          )}
-        />
-      )}
-    </>
+            />
+        )}
+      />
+    </ListPageShell>
   );
 }

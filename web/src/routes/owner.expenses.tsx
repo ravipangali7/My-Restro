@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerExpensesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
@@ -220,37 +220,47 @@ function ExpensesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="font-display font-semibold text-lg text-foreground">Expenses</h2>
-          <p className="text-sm text-text-muted">
-            Total:{" "}
-            <span className="font-mono font-semibold text-foreground">₹{total.toLocaleString()}</span>
-          </p>
+      <ListPageShell
+        header={
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display font-semibold text-lg text-foreground">Expenses</h2>
+              <p className="text-sm text-text-muted">
+                Total:{" "}
+                <span className="font-mono font-semibold text-foreground">₹{total.toLocaleString()}</span>
+              </p>
+            </div>
+            <button type="button" onClick={openAdd} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1">
+              <Plus size={14} /> Add Expense
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-8 min-h-0 flex-1">
+          {groupByRestaurant ? (
+            sectionsOrdered.map((s) => {
+              const sectionRows = (s.expenses as ExpRow[]).slice().sort((a, b) => String(b.expense_date ?? "").localeCompare(String(a.expense_date ?? "")));
+              return (
+                <ListPageShell
+                  key={s.restaurantId}
+                  header={
+                    <h3 className="font-display font-semibold text-base text-foreground mb-3 border-b border-border pb-2">{s.restaurantName}</h3>
+                  }
+                  className="min-h-0 flex-1 basis-64"
+                >
+                  {sectionRows.length === 0 ? (
+                    <p className="text-sm text-text-muted">No expenses for this restaurant.</p>
+                  ) : (
+                    renderExpenseCards(sectionRows, [s.restaurantId])
+                  )}
+                </ListPageShell>
+              );
+            })
+          ) : (
+            renderExpenseCards(rows, [groupByRestaurant, restaurantIds])
+          )}
         </div>
-        <button type="button" onClick={openAdd} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1">
-          <Plus size={14} /> Add Expense
-        </button>
-      </div>
-      {groupByRestaurant ? (
-        <div className="space-y-8">
-          {sectionsOrdered.map((s) => {
-            const sectionRows = (s.expenses as ExpRow[]).slice().sort((a, b) => String(b.expense_date ?? "").localeCompare(String(a.expense_date ?? "")));
-            return (
-              <section key={s.restaurantId}>
-                <h3 className="font-display font-semibold text-base text-foreground mb-3 border-b border-border pb-2">{s.restaurantName}</h3>
-                {sectionRows.length === 0 ? (
-                  <p className="text-sm text-text-muted">No expenses for this restaurant.</p>
-                ) : (
-                  renderExpenseCards(sectionRows, [s.restaurantId])
-                )}
-              </section>
-            );
-          })}
-        </div>
-      ) : (
-        renderExpenseCards(rows, [groupByRestaurant, restaurantIds])
-      )}
+      </ListPageShell>
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md max-h-[min(92dvh,calc(100vh-2rem))] overflow-y-auto overscroll-contain shadow-xl">

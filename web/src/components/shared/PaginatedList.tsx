@@ -7,6 +7,7 @@ import { ListPaginationBar } from "@/components/shared/ListPaginationBar";
 import { cn } from "@/lib/utils";
 
 export type { ListItemSelectionProps };
+export { ListPageShell } from "@/components/shared/ListPageShell";
 
 export interface PaginatedListProps<T extends { id: ListItemId }> {
   items: T[];
@@ -41,7 +42,10 @@ export function PaginatedList<T extends { id: ListItemId }>({
   const showToolbar = enableSelection && pagination.pageItems.length > 0;
 
   return (
-    <div className={className}>
+    <div
+      data-paginated-list-root
+      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", className)}
+    >
       {showToolbar ? (
         <ListSelectionToolbar
           selectedCount={selection.selectedCount}
@@ -49,6 +53,7 @@ export function PaginatedList<T extends { id: ListItemId }>({
           selectAllIndeterminate={selection.selectAllIndeterminate}
           onToggleSelectAll={selection.toggleSelectAllOnPage}
           pageCount={pagination.pageItems.length}
+          className="mb-0 shrink-0"
           actions={
             selection.selectedCount > 0 && selectionActions
               ? selectionActions({
@@ -60,20 +65,23 @@ export function PaginatedList<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <OwnerEntityCardStack className={stackClassName}>
-        {pagination.pageItems.map((item) => {
-          const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
-            ? {
-                selectable: true,
-                selected: selection.isSelected(item.id),
-                onSelectedChange: (checked) => selection.toggle(item.id, checked),
-              }
-            : { selectable: false };
-          return <div key={item.id}>{renderItem(item, selectionProps)}</div>;
-        })}
-      </OwnerEntityCardStack>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <OwnerEntityCardStack className={cn("pb-1", stackClassName)}>
+          {pagination.pageItems.map((item) => {
+            const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
+              ? {
+                  selectable: true,
+                  selected: selection.isSelected(item.id),
+                  onSelectedChange: (checked) => selection.toggle(item.id, checked),
+                }
+              : { selectable: false };
+            return <div key={item.id}>{renderItem(item, selectionProps)}</div>;
+          })}
+        </OwnerEntityCardStack>
+      </div>
 
       <ListPaginationBar
+        fixed
         page={pagination.page}
         totalPages={pagination.totalPages}
         totalCount={pagination.totalCount}
@@ -141,3 +149,5 @@ export function ListSelectionToolbar({
     </div>
   );
 }
+
+

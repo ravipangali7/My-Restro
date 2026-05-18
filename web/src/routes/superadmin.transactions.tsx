@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Wallet } from "lucide-react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,26 +55,32 @@ function TransactionsPage() {
 
   return (
     <>
-      <SuperAdminPageHeader
-        title="Transactions"
-        description="Platform-wide money movement, per-order fees, and settlement status."
-      />
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
-        <TabsList className="w-full max-w-xl justify-stretch sm:w-auto">
-          <TabsTrigger value="all" className="flex-1 sm:flex-none">
-            All
-          </TabsTrigger>
-          <TabsTrigger value="in" className="flex-1 sm:flex-none">
-            In
-          </TabsTrigger>
-          <TabsTrigger value="out" className="flex-1 sm:flex-none">
-            Out
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1 sm:flex-none">
-            Pending
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <ListPageShell
+        header={
+          <>
+            <SuperAdminPageHeader
+              title="Transactions"
+              description="Platform-wide money movement, per-order fees, and settlement status."
+            />
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TransactionTab)} className="mb-4">
+              <TabsList className="w-full max-w-xl justify-stretch sm:w-auto">
+                <TabsTrigger value="all" className="flex-1 sm:flex-none">
+                  All
+                </TabsTrigger>
+                <TabsTrigger value="in" className="flex-1 sm:flex-none">
+                  In
+                </TabsTrigger>
+                <TabsTrigger value="out" className="flex-1 sm:flex-none">
+                  Out
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex-1 sm:flex-none">
+                  Pending
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </>
+        }
+      >
       <PaginatedList
         items={filteredRows}
         resetDeps={[tab]}
@@ -134,6 +140,7 @@ function TransactionsPage() {
             );
         }}
       />
+      </ListPageShell>
     </>
   );
 }

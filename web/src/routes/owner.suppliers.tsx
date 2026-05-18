@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
-import { PaginatedList } from "@/components/shared/PaginatedList";
+import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerSuppliersByRestaurant, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
@@ -212,50 +212,59 @@ function SuppliersPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <h2 className="font-display font-semibold text-lg text-foreground">Suppliers</h2>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          {isSuper && (
-            <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showAllRestaurants}
-                onChange={(e) => setShowAllRestaurants(e.target.checked)}
-                className="rounded border-border"
-              />
-              All restaurants
-            </label>
-          )}
-          <button
-            type="button"
-            onClick={openAdd}
-            className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1"
-          >
-            <Plus size={14} /> Add Supplier
-          </button>
-        </div>
-      </div>
-
-      {showAllFlat ? (
-        renderSupplierCards(flatData as SupplierRow[], showRestaurantColInTable && showAllFlat, [showAllRestaurants])
-      ) : restaurantIds.length > 1 ? (
-        <div className="space-y-8">
-          {sections.map(({ restaurantId: rid, suppliers }) => (
-            <section key={rid}>
-              <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-              {(suppliers as SupplierRow[]).length === 0 ? (
-                <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
-              ) : (
-                renderSupplierCards(suppliers as SupplierRow[], false, [rid])
+      <ListPageShell
+        header={
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="font-display font-semibold text-lg text-foreground">Suppliers</h2>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              {isSuper && (
+                <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showAllRestaurants}
+                    onChange={(e) => setShowAllRestaurants(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  All restaurants
+                </label>
               )}
-            </section>
-          ))}
-        </div>
-      ) : (sections[0]?.suppliers as SupplierRow[] | undefined)?.length === 0 ? (
-        <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
-      ) : (
-        renderSupplierCards((sections[0]?.suppliers as SupplierRow[]) ?? [], false, [restaurantIds])
-      )}
+              <button
+                type="button"
+                onClick={openAdd}
+                className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1"
+              >
+                <Plus size={14} /> Add Supplier
+              </button>
+            </div>
+          </div>
+        }
+      >
+        {showAllFlat ? (
+          renderSupplierCards(flatData as SupplierRow[], showRestaurantColInTable && showAllFlat, [showAllRestaurants])
+        ) : restaurantIds.length > 1 ? (
+          <div className="flex flex-col gap-8 min-h-0 flex-1">
+            {sections.map(({ restaurantId: rid, suppliers }) => (
+              <ListPageShell
+                key={rid}
+                header={
+                  <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
+                }
+                className="min-h-0 flex-1 basis-64"
+              >
+                {(suppliers as SupplierRow[]).length === 0 ? (
+                  <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
+                ) : (
+                  renderSupplierCards(suppliers as SupplierRow[], false, [rid])
+                )}
+              </ListPageShell>
+            ))}
+          </div>
+        ) : (sections[0]?.suppliers as SupplierRow[] | undefined)?.length === 0 ? (
+          <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
+        ) : (
+          renderSupplierCards((sections[0]?.suppliers as SupplierRow[]) ?? [], false, [restaurantIds])
+        )}
+      </ListPageShell>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
