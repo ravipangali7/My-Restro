@@ -88,6 +88,7 @@ function CombosPage() {
     <PaginatedList
       items={rows}
       enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>}

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 import {
   markOwnerNotificationRead,
   readOwnerNotifications,
@@ -16,6 +16,7 @@ import {
 } from "@/lib/staff-bulk-notification-reads";
 import type { ApiBulkNotificationRow } from "@/lib/bulk-notification-types";
 import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import { Checkbox } from "@/components/ui/checkbox";
 import { BulkNotificationCard } from "@/components/notifications/BulkNotificationCard";
 import { resolveMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -100,6 +101,7 @@ function OwnerNotificationsPage() {
         <PaginatedList
           items={listItems}
           enablePagination
+          enableSelection
           stackClassName="gap-2"
           empty={
             <div className="rounded-xl border border-border bg-card p-6 text-center">
@@ -107,50 +109,65 @@ function OwnerNotificationsPage() {
               <p className="text-sm text-text-muted">No notifications yet.</p>
             </div>
           }
-          renderItem={({ entry }, _sel) => {
+          renderItem={({ entry }, sel) => {
+            const rowShell = (unread: boolean, body: ReactNode, onOpen: () => void) => (
+              <div
+                className={cn(
+                  "flex w-full items-stretch gap-2 rounded-xl border p-3 text-left transition-colors",
+                  unread ? "border-primary/30 bg-primary-50" : "border-border bg-card",
+                  sel.selectable && sel.selected && "border-primary/40 ring-1 ring-primary/20",
+                )}
+              >
+                {sel.selectable ? (
+                  <div
+                    className="flex shrink-0 items-start pt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={sel.selected}
+                      onCheckedChange={(c) => sel.onSelectedChange(c === true)}
+                      aria-label="Select notification"
+                    />
+                  </div>
+                ) : null}
+                <button type="button" className="min-w-0 flex-1 text-left outline-none" onClick={onOpen}>
+                  {body}
+                </button>
+              </div>
+            );
+
             if (entry.kind === "legacy") {
               const notif = entry.row;
-              return (
-                <button
-                  type="button"
-                  onClick={() => {
-                    markOwnerNotificationRead(notif.id);
-                    void navigate({ to: notif.to });
-                  }}
-                  className={cn(
-                    "w-full text-left rounded-xl border p-3 transition-colors",
-                    notif.read ? "bg-card border-border" : "bg-primary-50 border-primary/30",
-                  )}
-                >
+              return rowShell(
+                !notif.read,
+                <>
                   <p className="text-sm font-semibold text-foreground">{notif.title}</p>
-                  <p className="text-xs text-text-secondary mt-1">{notif.message}</p>
-                  <p className="text-[11px] text-text-muted mt-1">{new Date(notif.createdAt).toLocaleString()}</p>
-                </button>
+                  <p className="mt-1 text-xs text-text-secondary">{notif.message}</p>
+                  <p className="mt-1 text-[11px] text-text-muted">{new Date(notif.createdAt).toLocaleString()}</p>
+                </>,
+                () => {
+                  markOwnerNotificationRead(notif.id);
+                  void navigate({ to: notif.to });
+                },
               );
             }
             const notif = entry.row;
             const read = userId != null && isStaffBulkNotificationRead(userId, notif.id);
             const thumb = resolveMediaUrl(notif.image ?? null);
-            return (
-              <button
-                type="button"
-                onClick={() => {
-                  if (userId != null) markStaffBulkNotificationRead(userId, notif.id);
-                  void navigate({ to: "/owner/notifications/$id", params: { id: String(notif.id) } });
-                }}
-                className={cn(
-                  "w-full text-left rounded-xl border p-3 transition-colors",
-                  read ? "bg-card border-border" : "bg-primary-50 border-primary/30",
-                )}
-              >
-                <BulkNotificationCard
-                  row={notif}
-                  density="compact"
-                  imageUrl={thumb}
-                  showSourceLabel
-                  isStaffViewer={false}
-                />
-              </button>
+            return rowShell(
+              !read,
+              <BulkNotificationCard
+                row={notif}
+                density="compact"
+                imageUrl={thumb}
+                showSourceLabel
+                isStaffViewer={false}
+              />,
+              () => {
+                if (userId != null) markStaffBulkNotificationRead(userId, notif.id);
+                void navigate({ to: "/owner/notifications/$id", params: { id: String(notif.id) } });
+              },
             );
           }}
         />

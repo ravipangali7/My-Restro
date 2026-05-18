@@ -151,6 +151,7 @@ function TransactionsPage() {
         <PaginatedList
           items={filteredRows}
           enablePagination
+          enableSelection
           resetDeps={[tab, restaurantScope]}
           empty={<p className="text-sm text-text-muted">No transactions in this view.</p>}
           renderItem={(t, sel) => {

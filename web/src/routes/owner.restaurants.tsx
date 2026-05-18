@@ -88,6 +88,7 @@ function OwnerRestaurantsPage() {
       <PaginatedList
         items={rows}
         enablePagination
+        enableSelection
         empty={<p className="text-sm text-text-muted">No restaurants yet.</p>}
         renderItem={(r, sel) => {
           const src = resolveMediaUrl(r.logo);

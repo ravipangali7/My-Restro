@@ -50,6 +50,7 @@ function TablesPage() {
     <PaginatedList
       items={rows}
       enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No tables for this restaurant yet.</p>}

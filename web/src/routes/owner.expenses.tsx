@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerBulkToolbarButton } from "@/components/owner/owner-list-bulk";
 import {
   GroupedListSections,
   ListPageShell,
@@ -166,9 +167,35 @@ function ExpensesPage() {
     <PaginatedList
       items={list}
       enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No expenses for this restaurant.</p>}
+      selectionActions={({ selectedIds, clearSelection }) =>
+        selectedIds.length > 0 ? (
+          <OwnerBulkToolbarButton
+            variant="danger"
+            onClick={() => {
+              if (!token) return;
+              requestConfirm({
+                title: "Delete selected expenses",
+                message: `Delete ${selectedIds.length} expense(s)? This cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "danger",
+                onConfirm: async () => {
+                  for (const id of selectedIds) {
+                    await apiDelete(`/api/expenses/${id}/`, token);
+                  }
+                  refresh();
+                  clearSelection();
+                },
+              });
+            }}
+          >
+            Delete selected ({selectedIds.length})
+          </OwnerBulkToolbarButton>
+        ) : null
+      }
       renderItem={(e, sel) => (
         <OwnerEntityCard
           {...(sel.selectable ? sel : {})}

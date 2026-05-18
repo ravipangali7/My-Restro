@@ -105,6 +105,7 @@ function StaffPage() {
     <PaginatedList
       items={list}
       enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No staff at this restaurant.</p>}

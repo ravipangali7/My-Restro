@@ -11,9 +11,11 @@ interface StatCardProps {
   className?: string;
 }
 
-/** Two-column grid for stat cards (mobile / Flutter WebView–safe; avoids sub-`sm` single-column layouts). */
+/** Stat card grid: 2-up on small screens, 4-up on large so dashboards use full width. */
 export function StatCardsGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid grid-cols-2 gap-3 [&>*]:min-w-0", className)}>{children}</div>;
+  return (
+    <div className={cn("grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 [&>*]:min-w-0", className)}>{children}</div>
+  );
 }
 
 export function StatCard({ icon: Icon, label, value, trend, trendUp, className }: StatCardProps) {

@@ -24,6 +24,7 @@ import {
 } from "@/hooks/use-rest-api";
 import { money } from "@/lib/money";
 import { useRestaurantScope } from "@/lib/restaurant-context";
+import { cn } from "@/lib/utils";
 import type { PlatformDefaultsDTO } from "@/lib/super-settings-cache";
 import { Link } from "@tanstack/react-router";
 import {
@@ -60,6 +61,20 @@ import {
 
 const TABLE_PREVIEW = 5;
 const CHART_HEX = ["#F83232", "#2563EB", "#16A34A", "#D97706", "#7C3AED", "#FF9D9D"];
+
+/** Responsive chart height so panels scale on full-width desktop layouts. */
+function ChartFrame({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "h-[min(34vh,280px)] min-h-[200px] w-full sm:min-h-[220px] lg:min-h-[260px] xl:min-h-[280px]",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface DashboardOrder {
   id?: number;
@@ -261,31 +276,40 @@ function OverviewTab({ restaurantId }: { restaurantId: number }) {
         <StatCard icon={PieChartIcon} label="Avg ticket (7 days)" value={lo ? "…" : formatInr(avgOrder)} />
       </StatCardsGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Panel title="Revenue trend" description="Last 7 days for the selected restaurant." icon={TrendingUp} className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={revenueLast7Days}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="var(--text-muted)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="var(--text-muted)" tickFormatter={(v) => `₹${v}`} />
-              <Tooltip formatter={(value: number) => [formatInr(Number(value)), "Revenue"]} />
-              <Line type="monotone" dataKey="revenue" stroke="#F83232" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
+        <Panel
+          title="Revenue trend"
+          description="Last 7 days for the selected restaurant."
+          icon={TrendingUp}
+          className="xl:col-span-8"
+        >
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={revenueLast7Days}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="var(--text-muted)" />
+                <YAxis tick={{ fontSize: 11 }} stroke="var(--text-muted)" tickFormatter={(v) => `₹${v}`} />
+                <Tooltip formatter={(value: number) => [formatInr(Number(value)), "Revenue"]} />
+                <Line type="monotone" dataKey="revenue" stroke="#F83232" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
 
-        <Panel title="Order pipeline" description="Current mix of order statuses." icon={PieChartIcon}>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={orderStatusData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={80} paddingAngle={2}>
-                {orderStatusData.map((entry) => (
-                  <Cell key={entry.name} fill={statusColors[entry.name] ?? CHART_HEX[4]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => String(value).replace(/_/g, " ")} />
-            </PieChart>
-          </ResponsiveContainer>
+        <Panel title="Order pipeline" description="Current mix of order statuses." icon={PieChartIcon} className="xl:col-span-4">
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={orderStatusData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={80} paddingAngle={2}>
+                  {orderStatusData.map((entry) => (
+                    <Cell key={entry.name} fill={statusColors[entry.name] ?? CHART_HEX[4]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => String(value).replace(/_/g, " ")} />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
       </div>
 
@@ -382,31 +406,35 @@ function OperationsTab({ restaurantId }: { restaurantId: number }) {
         <StatCard icon={Bell} label="Broadcasts" value={lb ? "…" : String(bulkList.length)} />
       </StatCardsGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
         <Panel title="Order volume" description="Orders placed per day (last 7 days)." icon={BarChart2}>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={ordersPerDay}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="orders" fill="#2563EB" radius={[6, 6, 0, 0]} name="Orders" />
-            </BarChart>
-          </ResponsiveContainer>
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={ordersPerDay}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="orders" fill="#2563EB" radius={[6, 6, 0, 0]} name="Orders" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
 
         <Panel title="Orders by channel" description="Table, packing, and delivery." icon={PieChartIcon}>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie data={orderTypeData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={88} label>
-                {orderTypeData.map((_, i) => (
-                  <Cell key={i} fill={CHART_HEX[i % CHART_HEX.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={orderTypeData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={88} label>
+                  {orderTypeData.map((_, i) => (
+                    <Cell key={i} fill={CHART_HEX[i % CHART_HEX.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
       </div>
 
@@ -528,50 +556,56 @@ function CatalogTab({ restaurantId }: { restaurantId: number }) {
         <StatCard icon={LayoutGrid} label="Tables" value={lt ? "…" : String((tables as unknown[]).length)} />
       </StatCardsGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Panel title="Stock log activity" description="Inventory movements per day." icon={TrendingUp} className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={stockActivity}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="movements" stroke="#7C3AED" strokeWidth={2} dot={{ r: 3 }} name="Movements" />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
+        <Panel title="Stock log activity" description="Inventory movements per day." icon={TrendingUp} className="xl:col-span-8">
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={stockActivity}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="movements" stroke="#7C3AED" strokeWidth={2} dot={{ r: 3 }} name="Movements" />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
 
-        <Panel title="Raw material health" description="Count of SKUs above vs at/below minimum." icon={PieChartIcon}>
-          <ResponsiveContainer width="100%" height={230}>
-            <PieChart>
-              <Pie data={inventoryHealth} dataKey="value" nameKey="name" innerRadius={50} outerRadius={78}>
-                {inventoryHealth.map((entry) => (
-                  <Cell key={entry.name} fill={entry.name === "Healthy" ? "#16A34A" : "#F83232"} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <Panel title="Raw material health" description="Count of SKUs above vs at/below minimum." icon={PieChartIcon} className="xl:col-span-4">
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={inventoryHealth} dataKey="value" nameKey="name" innerRadius={50} outerRadius={78}>
+                  {inventoryHealth.map((entry) => (
+                    <Cell key={entry.name} fill={entry.name === "Healthy" ? "#16A34A" : "#F83232"} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartFrame>
           <p className="text-xs text-text-muted mt-1">{ls ? "…" : `${(suppliers as unknown[]).length} suppliers linked`}</p>
         </Panel>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Stock movement types" description="Recent log mix ( capped to top types )." icon={BarChart2}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={stockTypePie}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-12} textAnchor="end" height={48} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {stockTypePie.map((_, i) => (
-                  <Cell key={i} fill={CHART_HEX[i % CHART_HEX.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stockTypePie}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-12} textAnchor="end" height={48} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {stockTypePie.map((_, i) => (
+                    <Cell key={i} fill={CHART_HEX[i % CHART_HEX.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
 
         <Panel title="Low stock watchlist" description="Items at or below minimum stock." icon={Package}>
@@ -742,31 +776,35 @@ function FinanceTab({ restaurantId }: { restaurantId: number }) {
         <StatCard icon={BookOpen} label="Ledger lines" value={ll ? "…" : String((ledger as unknown[]).length)} />
       </StatCardsGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Panel title="Expense trend" description="Recorded expenses by day." icon={TrendingUp} className="lg:col-span-2">
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={expenseSeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${v}`} />
-              <Tooltip formatter={(v: number) => [formatInr(Number(v)), "Spent"]} />
-              <Line type="monotone" dataKey="spent" stroke="#D97706" strokeWidth={2.5} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
+        <Panel title="Expense trend" description="Recorded expenses by day." icon={TrendingUp} className="xl:col-span-8">
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={expenseSeries}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${v}`} />
+                <Tooltip formatter={(v: number) => [formatInr(Number(v)), "Spent"]} />
+                <Line type="monotone" dataKey="spent" stroke="#D97706" strokeWidth={2.5} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
 
-        <Panel title="Transaction flow" description="In vs out entries (counts)." icon={PieChartIcon}>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie data={txFlowPie} dataKey="value" nameKey="name" innerRadius={54} outerRadius={86}>
-                {txFlowPie.map((entry) => (
-                  <Cell key={entry.name} fill={entry.name === "Money in" ? "#16A34A" : "#F83232"} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <Panel title="Transaction flow" description="In vs out entries (counts)." icon={PieChartIcon} className="xl:col-span-4">
+          <ChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={txFlowPie} dataKey="value" nameKey="name" innerRadius={54} outerRadius={86}>
+                  {txFlowPie.map((entry) => (
+                    <Cell key={entry.name} fill={entry.name === "Money in" ? "#16A34A" : "#F83232"} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartFrame>
           <p className="text-xs text-text-muted mt-1">{lt ? "Loading transactions…" : `${transactions.length} rows in register`}</p>
         </Panel>
       </div>
@@ -936,23 +974,25 @@ function AllVenuesComparisonPanel({
         <StatCard icon={PieChartIcon} label="Pending (all)" value={String(totals.pending)} />
       </StatCardsGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
         <Panel title="Revenue by location" description="Last 7 days — quick visual comparison." icon={BarChart2} className="lg:col-span-1">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--text-muted)" tickFormatter={(v) => `₹${v}`} />
-              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} stroke="var(--text-muted)" />
-              <Tooltip
-                formatter={(value: number) => [formatInr(Number(value)), "Revenue (7d)"]}
-                labelFormatter={(_, payload) => {
-                  const p = payload?.[0]?.payload as { fullName?: string; name?: string } | undefined;
-                  return p?.fullName ?? p?.name ?? "";
-                }}
-              />
-              <Bar dataKey="revenue" fill="#F83232" radius={[0, 6, 6, 0]} name="Revenue" />
-            </BarChart>
-          </ResponsiveContainer>
+          <ChartFrame className="h-[min(40vh,320px)] min-h-[240px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--text-muted)" tickFormatter={(v) => `₹${v}`} />
+                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} stroke="var(--text-muted)" />
+                <Tooltip
+                  formatter={(value: number) => [formatInr(Number(value)), "Revenue (7d)"]}
+                  labelFormatter={(_, payload) => {
+                    const p = payload?.[0]?.payload as { fullName?: string; name?: string } | undefined;
+                    return p?.fullName ?? p?.name ?? "";
+                  }}
+                />
+                <Bar dataKey="revenue" fill="#F83232" radius={[0, 6, 6, 0]} name="Revenue" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartFrame>
         </Panel>
 
         <Panel title="Per-location metrics" description="Open a location for full dashboard tabs." icon={Store}>
@@ -1061,7 +1101,7 @@ export function OwnerHomeDashboard() {
   }
 
   return (
-    <div className="space-y-6 max-w-[120rem] mx-auto pb-2">
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-5 sm:gap-6">
       {dueAlert ? (
         <div
           className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
@@ -1074,14 +1114,17 @@ export function OwnerHomeDashboard() {
           </p>
         </div>
       ) : null}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+      <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-50/90 to-transparent" aria-hidden />
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Owner overview</p>
+            <p className="mt-1 text-sm text-text-secondary">
+              KPIs, charts, and shortcuts for the restaurant you select below.
+            </p>
           </div>
           {ownedRestaurants.length > 0 ? (
-            <div className="w-full shrink-0 lg:w-72">
+            <div className="w-full shrink-0 sm:max-w-xs lg:max-w-sm">
               <label htmlFor="dashboard-restaurant-scope" className="text-xs font-semibold text-text-secondary block mb-1.5">
                 Restaurant
               </label>
@@ -1112,8 +1155,9 @@ export function OwnerHomeDashboard() {
           onDrillIntoRestaurant={drillIntoRestaurant}
         />
       ) : (
-        <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-          <TabsList className="h-auto w-full flex flex-wrap gap-1.5 justify-start rounded-xl bg-muted/70 p-1.5 sm:inline-flex sm:w-auto">
+        <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0 space-y-4 sm:space-y-5">
+          <div className="sticky top-0 z-10 -mx-4 border-b border-border/50 bg-surface/95 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
+            <TabsList className="h-auto w-full flex flex-wrap gap-1.5 justify-start rounded-xl bg-muted/70 p-1.5 lg:inline-flex lg:w-auto">
             <TabsTrigger value="overview" className="rounded-lg px-3 py-2 text-xs sm:text-sm">
               Overview
             </TabsTrigger>
@@ -1127,6 +1171,7 @@ export function OwnerHomeDashboard() {
               People &amp; finance
             </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="overview" className="mt-0 space-y-4 focus-visible:outline-none focus-visible:ring-0">
             <OverviewTab restaurantId={restaurantId} />

@@ -81,6 +81,7 @@ function StockLogPage() {
         <PaginatedList
           items={filtered}
           enablePagination
+          enableSelection
           resetDeps={[filter]}
           empty={<p className="text-sm text-text-muted">No stock movements match this filter.</p>}
           renderItem={(s, sel) => {

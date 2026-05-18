@@ -108,6 +108,7 @@ function ProductsPage() {
     <PaginatedList
       items={sectionRows}
       enablePagination
+      enableSelection
       resetDeps={resetDeps}
       stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No products in this restaurant yet.</p>}

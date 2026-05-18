@@ -367,6 +367,7 @@ function RawMaterialsPage() {
         <PaginatedList
           items={paginatedMaterials}
           enablePagination
+          enableSelection
           resetDeps={[materialsFilter, effectiveFilter]}
           empty={<p className="text-sm text-text-muted">No raw materials in this scope.</p>}
           renderItem={(item, sel) => {

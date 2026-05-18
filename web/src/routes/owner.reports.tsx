@@ -667,6 +667,7 @@ function ReportsPage() {
         <PaginatedList
           items={staffTableRows}
           enablePagination
+          enableSelection
           resetDeps={[scope]}
           empty={<p className="text-sm text-text-muted">No staff in this scope.</p>}
           renderItem={(r, sel) => (
@@ -719,6 +720,7 @@ function ReportsPage() {
         <PaginatedList
           items={recentOrdersTable}
           enablePagination
+          enableSelection
           resetDeps={[scope]}
           empty={<p className="text-sm text-text-muted">No orders in this scope.</p>}
           renderItem={(r, sel) => (

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerBulkToolbarButton } from "@/components/owner/owner-list-bulk";
 import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { usePurchases, useRawMaterials, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
@@ -233,7 +234,33 @@ function PurchasesPage() {
           <PaginatedList
           items={rows}
           enablePagination
+          enableSelection
           empty={<p className="text-sm text-text-muted">No purchases yet.</p>}
+          selectionActions={({ selectedIds, clearSelection }) =>
+            selectedIds.length > 0 ? (
+              <OwnerBulkToolbarButton
+                variant="danger"
+                onClick={() => {
+                  if (!token) return;
+                  requestConfirm({
+                    title: "Delete selected purchases",
+                    message: `Delete ${selectedIds.length} purchase(s)? This cannot be undone.`,
+                    confirmLabel: "Delete",
+                    variant: "danger",
+                    onConfirm: async () => {
+                      for (const id of selectedIds) {
+                        await apiDelete(`/api/purchases/${id}/`, token);
+                      }
+                      refresh();
+                      clearSelection();
+                    },
+                  });
+                }}
+              >
+                Delete selected ({selectedIds.length})
+              </OwnerBulkToolbarButton>
+            ) : null
+          }
           renderItem={(p, sel) => (
             <OwnerEntityCard
               {...(sel.selectable ? sel : {})}

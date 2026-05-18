@@ -120,6 +120,7 @@ function OrdersPage() {
         <PaginatedList
           items={filtered}
           enablePagination
+          enableSelection
           resetDeps={[filter]}
           empty={<p className="text-sm text-text-muted">No orders match this filter.</p>}
           renderItem={(o, sel) => {
