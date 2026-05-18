@@ -1,11 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import {
-  OwnerEntityCard,
-  OwnerEntityCardStack,
-  ownerListActionClass,
-} from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { useUsers } from "@/hooks/use-rest-api";
 import { apiPatch, resolveMediaUrl } from "@/lib/api";
@@ -109,15 +106,14 @@ function ShareholdersPage() {
           </button>
         }
       />
-      {shareholders.length === 0 ? (
-        <SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>
-      ) : (
-        <OwnerEntityCardStack>
-          {shareholders.map((u) => {
+      <PaginatedList
+        items={shareholders}
+        enablePagination
+        empty={<SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>}
+        renderItem={(u) => {
             const src = resolveMediaUrl(u.image);
             return (
               <OwnerEntityCard
-                key={u.id}
                 onClick={() => {
                   void navigate({ to: "/superadmin/shareholders/$id", params: { id: String(u.id) } });
                 }}
@@ -170,9 +166,8 @@ function ShareholdersPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
-      )}
+        }}
+      />
 
       {showForm && (
         <AppModal

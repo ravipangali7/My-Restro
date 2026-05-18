@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader, SuperAdminPanel } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useBulkNotifications, useCreateSuperadminBulkNotification, useUsers } from "@/hooks/use-rest-api";
@@ -264,11 +265,11 @@ function NotificationsPage() {
 
       <SuperAdminPanel>
         <h3 className="font-display font-semibold text-base text-foreground mb-4">Notification history</h3>
-        {rows.length === 0 ? (
-          <SuperAdminEmptyState>No bulk campaigns yet.</SuperAdminEmptyState>
-        ) : (
-          <OwnerEntityCardStack>
-            {rows.map((n) => {
+        <PaginatedList
+          items={rows}
+          enablePagination
+          empty={<SuperAdminEmptyState>No bulk campaigns yet.</SuperAdminEmptyState>}
+          renderItem={(n) => {
               const count = Array.isArray(n.receivers) ? n.receivers.length : 0;
               const receiverLabel =
                 count === 0 && n.restaurant == null
@@ -279,7 +280,6 @@ function NotificationsPage() {
               const thumb = n.type === "push" ? resolveMediaUrl(n.image ?? null) : null;
               return (
                 <OwnerEntityCard
-                  key={n.id}
                   leading={
                     thumb ? (
                       <div className="h-12 w-12 shrink-0 rounded-xl border border-border bg-surface-alt overflow-hidden">
@@ -311,9 +311,8 @@ function NotificationsPage() {
                   }
                 />
               );
-            })}
-          </OwnerEntityCardStack>
-        )}
+          }}
+        />
       </SuperAdminPanel>
     </>
   );

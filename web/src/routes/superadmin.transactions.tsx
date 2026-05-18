@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Wallet } from "lucide-react";
-import { OwnerEntityCard, OwnerEntityCardStack, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { PaginatedList } from "@/components/shared/PaginatedList";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -74,15 +75,15 @@ function TransactionsPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      {filteredRows.length === 0 ? (
-        <SuperAdminEmptyState>No transactions in this view.</SuperAdminEmptyState>
-      ) : (
-        <OwnerEntityCardStack>
-          {filteredRows.map((t) => {
+      <PaginatedList
+        items={filteredRows}
+        enablePagination
+        resetDeps={[tab]}
+        empty={<SuperAdminEmptyState>No transactions in this view.</SuperAdminEmptyState>}
+        renderItem={(t) => {
             const remarks = (t.remarks ?? "").trim();
             return (
               <OwnerEntityCard
-                key={t.id}
                 onClick={() => {
                   void navigate({ to: "/superadmin/transactions/$id", params: { id: String(t.id) } });
                 }}
@@ -131,9 +132,8 @@ function TransactionsPage() {
                 }
               />
             );
-          })}
-        </OwnerEntityCardStack>
-      )}
+        }}
+      />
     </>
   );
 }
