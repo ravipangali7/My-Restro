@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { ListItemSelectionProps } from "@/hooks/use-list-selection";
 import { cn } from "@/lib/utils";
 
 /** Primary text button / link in card action rows (owner lists). */
@@ -24,13 +26,28 @@ export interface OwnerEntityCardProps {
   /** Whole-card tap (e.g. navigate to detail). */
   onClick?: () => void;
   className?: string;
+  /** When set, shows a row checkbox (from `PaginatedList` selection). */
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
+}
+
+function selectionFromProps(props: OwnerEntityCardProps): ListItemSelectionProps | null {
+  if (!props.selectable) return null;
+  return {
+    selectable: true,
+    selected: props.selected ?? false,
+    onSelectedChange: props.onSelectedChange ?? (() => {}),
+  };
 }
 
 /**
  * Card-style list row for owner portal lists (matches compact “entity card” layout:
  * leading icon, left-stacked title / subtitle / meta / actions).
  */
-export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onClick, className }: OwnerEntityCardProps) {
+export function OwnerEntityCard(props: OwnerEntityCardProps) {
+  const { leading, title, subtitle, meta, actions, onClick, className } = props;
+  const selection = selectionFromProps(props);
   const interactive = Boolean(onClick);
   const fillHeight = Boolean(className?.includes("h-full"));
 
@@ -53,9 +70,23 @@ export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onCli
         "flex gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors",
         interactive &&
           "cursor-pointer hover:border-primary/35 hover:shadow-md hover:bg-primary/[0.04] active:bg-primary/[0.06]",
+        selection?.selected && "border-primary/40 ring-1 ring-primary/20",
         className,
       )}
     >
+      {selection ? (
+        <div
+          className="shrink-0 pt-0.5"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Checkbox
+            checked={selection.selected}
+            onCheckedChange={(c) => selection.onSelectedChange(c === true)}
+            aria-label="Select row"
+          />
+        </div>
+      ) : null}
       <div className="shrink-0 [&>svg]:size-[22px]">{leading}</div>
       <div className={cn("min-w-0 flex-1", fillHeight && "flex flex-col")}>
         <div className="font-display text-base font-semibold leading-snug text-foreground">{title}</div>

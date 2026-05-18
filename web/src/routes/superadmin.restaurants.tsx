@@ -2,12 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { LocationMapPicker } from "@/components/shared/LocationMapPicker";
-import {
-  OwnerEntityCard,
-  ownerListActionClass,
-  ownerListActionDangerClass,
-} from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard } from "@/components/owner/OwnerEntityCard";
 import { PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  SuperAdminBulkToolbarButton,
+  SuperAdminRowButton,
+  SuperAdminRowLink,
+} from "@/components/superadmin/super-admin-list-selection";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { AppModal } from "@/components/shared/AppModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -159,11 +160,76 @@ function RestaurantsPage() {
       <PaginatedList
         items={rows}
         enablePagination
+        enableSelection
+        selectionActions={({ selectedIds, clearSelection }) => {
+          const selected = rows.filter((r) => selectedIds.includes(r.id));
+          const pending = selected.filter((r) => r.is_active === false);
+          const active = selected.filter((r) => r.is_active !== false);
+          const bulk = (title: string, ids: number[], variant: "info" | "warning" | "danger", run: (id: number) => Promise<void>) => {
+            if (!token || ids.length === 0) return;
+            requestConfirm({
+              title,
+              message: `Apply to ${ids.length} selected restaurant(s)?`,
+              confirmLabel: title,
+              variant,
+              onConfirm: async () => {
+                for (const id of ids) {
+                  await run(id);
+                }
+                void queryClient.invalidateQueries({ queryKey: ["public-restaurants"] });
+                clearSelection();
+              },
+            });
+          };
+          return (
+            <>
+              {isSuperAdmin && pending.length > 0 ? (
+                <SuperAdminBulkToolbarButton
+                  onClick={() =>
+                    bulk("Approve selected", pending.map((r) => r.id), "info", async (id) => {
+                      const updated = await apiPatch<R>(`/api/restaurants/${id}/`, { is_active: true }, token);
+                      await syncRestaurantsListAfterUpsert(queryClient, updated);
+                    })
+                  }
+                >
+                  Approve ({pending.length})
+                </SuperAdminBulkToolbarButton>
+              ) : null}
+              {active.length > 0 ? (
+                <SuperAdminBulkToolbarButton
+                  variant="danger"
+                  onClick={() =>
+                    bulk("Suspend selected", active.map((r) => r.id), "warning", async (id) => {
+                      const updated = await apiPatch<R>(`/api/restaurants/${id}/`, { is_active: false }, token);
+                      await syncRestaurantsListAfterUpsert(queryClient, updated);
+                    })
+                  }
+                >
+                  Suspend ({active.length})
+                </SuperAdminBulkToolbarButton>
+              ) : null}
+              {isSuperAdmin && selected.length > 0 ? (
+                <SuperAdminBulkToolbarButton
+                  variant="danger"
+                  onClick={() =>
+                    bulk("Delete selected", selected.map((r) => r.id), "danger", async (id) => {
+                      await apiDelete(`/api/restaurants/${id}/`, token);
+                      await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
+                    })
+                  }
+                >
+                  Delete ({selected.length})
+                </SuperAdminBulkToolbarButton>
+              ) : null}
+            </>
+          );
+        }}
         empty={<SuperAdminEmptyState>No restaurants yet.</SuperAdminEmptyState>}
-        renderItem={(r) => {
+        renderItem={(r, sel) => {
             const logoSrc = resolveMediaUrl(r.logo);
             return (
               <OwnerEntityCard
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/superadmin/restaurants/$id", params: { id: String(r.id) } });
                 }}
@@ -203,29 +269,16 @@ function RestaurantsPage() {
                 }
                 actions={
                   <>
-                    <Link
-                      to="/superadmin/restaurants/$id"
-                      params={{ id: String(r.id) }}
-                      onClick={(e) => e.stopPropagation()}
-                      className={ownerListActionClass}
-                    >
+                    <SuperAdminRowLink sel={sel} to="/superadmin/restaurants/$id" params={{ id: String(r.id) }}>
                       View
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(r);
-                      }}
-                      className={ownerListActionClass}
-                    >
+                    </SuperAdminRowLink>
+                    <SuperAdminRowButton sel={sel} onClick={() => openEdit(r)}>
                       Edit
-                    </button>
+                    </SuperAdminRowButton>
                     {isSuperAdmin && r.is_active === false ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                      <SuperAdminRowButton
+                        sel={sel}
+                        onClick={() => {
                           if (!token) return;
                           requestConfirm({
                             title: "Approve restaurant",
@@ -243,16 +296,15 @@ function RestaurantsPage() {
                             },
                           });
                         }}
-                        className={ownerListActionClass}
                       >
                         Approve
-                      </button>
+                      </SuperAdminRowButton>
                     ) : null}
                     {r.is_active !== false ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                      <SuperAdminRowButton
+                        sel={sel}
+                        variant="danger"
+                        onClick={() => {
                           if (!token) return;
                           requestConfirm({
                             title: "Suspend restaurant",
@@ -270,16 +322,16 @@ function RestaurantsPage() {
                             },
                           });
                         }}
-                        className={ownerListActionDangerClass}
                       >
                         Suspend
-                      </button>
+                      </SuperAdminRowButton>
                     ) : null}
                     {isSuperAdmin ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                      <SuperAdminRowButton
+                        sel={sel}
+                        variant="danger"
+                        disabled={deletingId === r.id}
+                        onClick={() => {
                           if (!token) return;
                           requestConfirm({
                             title: "Delete restaurant",
@@ -297,11 +349,9 @@ function RestaurantsPage() {
                             },
                           });
                         }}
-                        disabled={deletingId === r.id}
-                        className={ownerListActionDangerClass}
                       >
                         {deletingId === r.id ? "Deleting…" : "Delete"}
-                      </button>
+                      </SuperAdminRowButton>
                     ) : null}
                   </>
                 }

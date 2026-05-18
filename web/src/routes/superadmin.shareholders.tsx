@@ -1,8 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard } from "@/components/owner/OwnerEntityCard";
 import { PaginatedList } from "@/components/shared/PaginatedList";
+import { SuperAdminRowButton, SuperAdminRowLink } from "@/components/superadmin/super-admin-list-selection";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { useUsers } from "@/hooks/use-rest-api";
 import { apiPatch, resolveMediaUrl } from "@/lib/api";
@@ -109,11 +110,13 @@ function ShareholdersPage() {
       <PaginatedList
         items={shareholders}
         enablePagination
+        enableSelection
         empty={<SuperAdminEmptyState>No shareholders yet.</SuperAdminEmptyState>}
-        renderItem={(u) => {
+        renderItem={(u, sel) => {
             const src = resolveMediaUrl(u.image);
             return (
               <OwnerEntityCard
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/superadmin/shareholders/$id", params: { id: String(u.id) } });
                 }}
@@ -144,24 +147,12 @@ function ShareholdersPage() {
                 }
                 actions={
                   <>
-                    <Link
-                      to="/superadmin/shareholders/$id"
-                      params={{ id: String(u.id) }}
-                      onClick={(e) => e.stopPropagation()}
-                      className={ownerListActionClass}
-                    >
+                    <SuperAdminRowLink sel={sel} to="/superadmin/shareholders/$id" params={{ id: String(u.id) }}>
                       View
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(u);
-                      }}
-                      className={ownerListActionClass}
-                    >
+                    </SuperAdminRowLink>
+                    <SuperAdminRowButton sel={sel} onClick={() => openEdit(u)}>
                       Edit
-                    </button>
+                    </SuperAdminRowButton>
                   </>
                 }
               />

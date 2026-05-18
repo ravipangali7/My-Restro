@@ -1,12 +1,13 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import {
-  OwnerEntityCard,
-  ownerListActionClass,
-  ownerListActionDangerClass,
-} from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard } from "@/components/owner/OwnerEntityCard";
 import { PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  SuperAdminBulkToolbarButton,
+  SuperAdminRowButton,
+  SuperAdminRowLink,
+} from "@/components/superadmin/super-admin-list-selection";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
@@ -111,12 +112,39 @@ function UsersPage() {
       <PaginatedList
         items={users}
         enablePagination
+        enableSelection
+        selectionActions={({ selectedIds, clearSelection }) =>
+          selectedIds.length > 0 ? (
+            <SuperAdminBulkToolbarButton
+              variant="danger"
+              onClick={() => {
+                if (!token) return;
+                requestConfirm({
+                  title: "Delete selected users",
+                  message: `Delete ${selectedIds.length} user(s)? This cannot be undone.`,
+                  confirmLabel: "Delete",
+                  variant: "danger",
+                  onConfirm: async () => {
+                    for (const id of selectedIds) {
+                      await apiDelete(`/api/users/${id}/`, token);
+                    }
+                    await queryClient.invalidateQueries({ queryKey: ["users"] });
+                    clearSelection();
+                  },
+                });
+              }}
+            >
+              Delete selected ({selectedIds.length})
+            </SuperAdminBulkToolbarButton>
+          ) : null
+        }
         empty={<SuperAdminEmptyState>No users yet.</SuperAdminEmptyState>}
-        renderItem={(u) => {
+        renderItem={(u, sel) => {
             const src = resolveMediaUrl(u.image);
             const placements = u.staff_placements ?? [];
             return (
               <OwnerEntityCard
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/superadmin/users/$id", params: { id: String(u.id) } });
                 }}
@@ -164,28 +192,17 @@ function UsersPage() {
                 }
                 actions={
                   <>
-                    <Link
-                      to="/superadmin/users/$id"
-                      params={{ id: String(u.id) }}
-                      onClick={(e) => e.stopPropagation()}
-                      className={ownerListActionClass}
-                    >
+                    <SuperAdminRowLink sel={sel} to="/superadmin/users/$id" params={{ id: String(u.id) }}>
                       View
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(u);
-                      }}
-                      className={ownerListActionClass}
-                    >
+                    </SuperAdminRowLink>
+                    <SuperAdminRowButton sel={sel} onClick={() => openEdit(u)}>
                       Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                    </SuperAdminRowButton>
+                    <SuperAdminRowButton
+                      sel={sel}
+                      variant="danger"
+                      disabled={deletingId === u.id}
+                      onClick={() => {
                         if (!token) return;
                         requestConfirm({
                           title: "Delete user",
@@ -203,11 +220,9 @@ function UsersPage() {
                           },
                         });
                       }}
-                      disabled={deletingId === u.id}
-                      className={ownerListActionDangerClass}
                     >
                       {deletingId === u.id ? "Deleting…" : "Delete"}
-                    </button>
+                    </SuperAdminRowButton>
                   </>
                 }
               />

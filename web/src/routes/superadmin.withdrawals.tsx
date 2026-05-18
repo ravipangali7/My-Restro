@@ -2,12 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { AppModal } from "@/components/shared/AppModal";
 import { Plus, Wallet } from "lucide-react";
-import {
-  OwnerEntityCard,
-  ownerListActionClass,
-  ownerListActionDangerClass,
-} from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard } from "@/components/owner/OwnerEntityCard";
 import { PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  SuperAdminBulkToolbarButton,
+  SuperAdminRowButton,
+  SuperAdminRowLink,
+} from "@/components/superadmin/super-admin-list-selection";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +38,8 @@ function WithdrawalsPage() {
   const updateMut = useAdminUpdateShareholderWithdrawal();
 
   const [tab, setTab] = useState<FilterTab>("all");
-  const [rejectModal, setRejectModal] = useState<string | null>(null);
+  const [rejectModal, setRejectModal] = useState<string | "bulk" | null>(null);
+  const [bulkRejectIds, setBulkRejectIds] = useState<number[]>([]);
   const [rejectReason, setRejectReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const { requestConfirm, ConfirmDialog } = useConfirmAction();
@@ -159,6 +161,7 @@ function WithdrawalsPage() {
   const openReject = (w: W) => {
     setActionError(null);
     setRejectReason("");
+    setBulkRejectIds([]);
     setRejectModal(String(w.id));
   };
 
@@ -215,10 +218,51 @@ function WithdrawalsPage() {
       <PaginatedList
         items={filtered}
         enablePagination
+        enableSelection
         resetDeps={[tab]}
+        selectionActions={({ selectedIds, clearSelection }) => {
+          const selected = list.filter((w) => selectedIds.includes(w.id));
+          const pending = selected.filter((w) => w.status === "pending");
+          if (pending.length === 0) return null;
+          return (
+            <>
+              <SuperAdminBulkToolbarButton
+                disabled={approveMut.isPending}
+                onClick={() => {
+                  requestConfirm({
+                    title: "Approve selected withdrawals",
+                    message: `Approve ${pending.length} pending withdrawal(s)?`,
+                    confirmLabel: "Approve",
+                    variant: "info",
+                    onConfirm: async () => {
+                      for (const w of pending) {
+                        await approveMut.mutateAsync(w.id);
+                      }
+                      clearSelection();
+                    },
+                  });
+                }}
+              >
+                Approve selected ({pending.length})
+              </SuperAdminBulkToolbarButton>
+              <SuperAdminBulkToolbarButton
+                variant="danger"
+                onClick={() => {
+                  setActionError(null);
+                  setRejectReason("");
+                  setBulkRejectIds(pending.map((w) => w.id));
+                  setRejectModal("bulk");
+                }}
+              >
+                Reject selected ({pending.length})
+              </SuperAdminBulkToolbarButton>
+            </>
+          );
+        }}
         empty={<SuperAdminEmptyState>No withdrawals in this view.</SuperAdminEmptyState>}
-        renderItem={(w) => (
+        renderItem={(w, sel) => (
             <OwnerEntityCard
+              {...(sel.selectable ? sel : {})}
               onClick={() => {
                 void navigate({ to: "/superadmin/withdrawals/$id", params: { id: String(w.id) } });
               }}
@@ -246,47 +290,24 @@ function WithdrawalsPage() {
               meta={<StatusBadge status={w.status} />}
               actions={
                 <>
-                  <Link
-                    to="/superadmin/withdrawals/$id"
-                    params={{ id: String(w.id) }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={ownerListActionClass}
-                  >
+                  <SuperAdminRowLink sel={sel} to="/superadmin/withdrawals/$id" params={{ id: String(w.id) }}>
                     View
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(w);
-                    }}
-                    className={ownerListActionClass}
-                  >
+                  </SuperAdminRowLink>
+                  <SuperAdminRowButton sel={sel} onClick={() => openEdit(w)}>
                     Edit
-                  </button>
+                  </SuperAdminRowButton>
                   {w.status === "pending" ? (
                     <>
-                      <button
-                        type="button"
+                      <SuperAdminRowButton
+                        sel={sel}
                         disabled={approveMut.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onApprove(w);
-                        }}
-                        className={ownerListActionClass}
+                        onClick={() => onApprove(w)}
                       >
                         Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openReject(w);
-                        }}
-                        className={ownerListActionDangerClass}
-                      >
+                      </SuperAdminRowButton>
+                      <SuperAdminRowButton sel={sel} variant="danger" onClick={() => openReject(w)}>
                         Reject
-                      </button>
+                      </SuperAdminRowButton>
                     </>
                   ) : null}
                 </>
@@ -420,7 +441,9 @@ function WithdrawalsPage() {
 
       {rejectModal && (
         <AppModal panelClassName="max-w-sm p-6">
-            <h3 className="font-display font-semibold text-lg text-foreground mb-4">Reject Withdrawal</h3>
+            <h3 className="font-display font-semibold text-lg text-foreground mb-4">
+              {rejectModal === "bulk" ? `Reject ${bulkRejectIds.length} withdrawals` : "Reject Withdrawal"}
+            </h3>
             {actionError && <p className="text-sm text-error mb-3">{actionError}</p>}
             <div>
               <label className="text-sm font-medium text-text-secondary mb-1.5 block">Reason *</label>
@@ -446,16 +469,28 @@ function WithdrawalsPage() {
               <button
                 type="button"
                 disabled={rejectMut.isPending}
-                onClick={() => {
-                  const rid = rejectModal;
+                onClick={async () => {
                   const trimmed = rejectReason.trim();
                   if (!trimmed) {
                     setActionError("A reason is required.");
                     return;
                   }
                   setActionError(null);
+                  if (rejectModal === "bulk") {
+                    try {
+                      for (const id of bulkRejectIds) {
+                        await rejectMut.mutateAsync({ id, reason: trimmed });
+                      }
+                      setRejectModal(null);
+                      setRejectReason("");
+                      setBulkRejectIds([]);
+                    } catch (e) {
+                      setActionError(e instanceof Error ? e.message : "Reject failed.");
+                    }
+                    return;
+                  }
                   rejectMut.mutate(
-                    { id: Number(rid), reason: trimmed },
+                    { id: Number(rejectModal), reason: trimmed },
                     {
                       onSuccess: () => {
                         setRejectModal(null);

@@ -1,8 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Wallet } from "lucide-react";
-import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
+import { OwnerEntityCard } from "@/components/owner/OwnerEntityCard";
 import { PaginatedList } from "@/components/shared/PaginatedList";
+import { SuperAdminRowLink } from "@/components/superadmin/super-admin-list-selection";
 import { SuperAdminEmptyState, SuperAdminPageHeader } from "@/components/superadmin/super-admin-ui";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,12 +79,14 @@ function TransactionsPage() {
       <PaginatedList
         items={filteredRows}
         enablePagination
+        enableSelection
         resetDeps={[tab]}
         empty={<SuperAdminEmptyState>No transactions in this view.</SuperAdminEmptyState>}
-        renderItem={(t) => {
+        renderItem={(t, sel) => {
             const remarks = (t.remarks ?? "").trim();
             return (
               <OwnerEntityCard
+                {...(sel.selectable ? sel : {})}
                 onClick={() => {
                   void navigate({ to: "/superadmin/transactions/$id", params: { id: String(t.id) } });
                 }}
@@ -121,14 +124,9 @@ function TransactionsPage() {
                   </>
                 }
                 actions={
-                  <Link
-                    to="/superadmin/transactions/$id"
-                    params={{ id: String(t.id) }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={ownerListActionClass}
-                  >
+                  <SuperAdminRowLink sel={sel} to="/superadmin/transactions/$id" params={{ id: String(t.id) }}>
                     View transaction
-                  </Link>
+                  </SuperAdminRowLink>
                 }
               />
             );
