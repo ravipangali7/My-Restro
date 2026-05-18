@@ -37,10 +37,18 @@ function TablesPage() {
     void navigate({ to: "/owner/tables/$id", params: { id: String(t.id) } });
   };
 
-  const renderTableCards = (rows: TableRow[], resetDeps: DependencyList) => (
+  const tableCardGridClass =
+    "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4";
+
+  const renderTableCards = (
+    rows: TableRow[],
+    resetDeps: DependencyList,
+    { showVenueMeta = false }: { showVenueMeta?: boolean } = {},
+  ) => (
     <PaginatedList
       items={rows}
       resetDeps={resetDeps}
+      stackClassName={tableCardGridClass}
       empty={<p className="text-sm text-text-muted">No tables for this restaurant yet.</p>}
       renderItem={(t, sel) => {
         const url = resolveMediaUrl(t.image);
@@ -49,6 +57,7 @@ function TablesPage() {
           <OwnerEntityCard
             {...(sel.selectable ? sel : {})}
             onClick={() => goToTable(t)}
+            className="h-full"
             leading={
               url ? (
                 <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" />
@@ -69,7 +78,7 @@ function TablesPage() {
               </span>
             }
             meta={
-              t.restaurant_name ? (
+              showVenueMeta && t.restaurant_name ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
                   <MapPin size={12} className="shrink-0 text-primary" aria-hidden />
                   {t.restaurant_name}
@@ -101,13 +110,12 @@ function TablesPage() {
   return (
     <>
       <ListPageShell
-        fillViewport
         header={
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display font-semibold text-lg text-foreground">Tables</h2>
             <Link
               to="/owner/tables/add"
-              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-1 hover:bg-primary-600"
+              className="flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
             >
               <Plus size={14} /> Add Table
             </Link>
@@ -115,30 +123,27 @@ function TablesPage() {
         }
       >
         {restaurantIds.length > 1 ? (
-          <div className="flex flex-col gap-8 min-h-0 flex-1">
+          <div className="flex w-full flex-col gap-10">
             {sections.map(({ restaurantId: rid, tables }) => {
               const rows = tables as TableRow[];
               return (
-                <ListPageShell
-                  key={rid}
-                  header={
-                    <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-                  }
-                  className="min-h-0 flex-1 basis-64"
-                >
+                <section key={rid} className="w-full space-y-4">
+                  <h3 className="border-b border-border pb-2 font-display text-base font-semibold text-foreground">
+                    {restaurantLabel(rid)}
+                  </h3>
                   {rows.length === 0 ? (
                     <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
                   ) : (
                     renderTableCards(rows, [rid])
                   )}
-                </ListPageShell>
+                </section>
               );
             })}
           </div>
         ) : (sections[0]?.tables as TableRow[] | undefined)?.length === 0 ? (
           <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
         ) : (
-          renderTableCards((sections[0]?.tables as TableRow[]) ?? [], [restaurantIds])
+          renderTableCards((sections[0]?.tables as TableRow[]) ?? [], [restaurantIds], { showVenueMeta: true })
         )}
       </ListPageShell>
       {isFormRoute ? (

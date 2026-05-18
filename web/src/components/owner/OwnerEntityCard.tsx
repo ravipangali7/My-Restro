@@ -32,6 +32,7 @@ export interface OwnerEntityCardProps {
  */
 export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onClick, className }: OwnerEntityCardProps) {
   const interactive = Boolean(onClick);
+  const fillHeight = Boolean(className?.includes("h-full"));
 
   return (
     <article
@@ -56,11 +57,15 @@ export function OwnerEntityCard({ leading, title, subtitle, meta, actions, onCli
       )}
     >
       <div className="shrink-0 [&>svg]:size-[22px]">{leading}</div>
-      <div className="min-w-0 flex-1">
+      <div className={cn("min-w-0 flex-1", fillHeight && "flex flex-col")}>
         <div className="font-display text-base font-semibold leading-snug text-foreground">{title}</div>
         {subtitle ? <div className="mt-1 text-sm text-text-muted">{subtitle}</div> : null}
         {meta ? <div className="mt-2 flex flex-wrap items-center gap-2">{meta}</div> : null}
-        {actions ? <div className="mt-3 flex flex-wrap items-center justify-start gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className={cn("mt-3 flex flex-wrap items-center justify-start gap-2", fillHeight && "mt-auto")}>
+            {actions}
+          </div>
+        ) : null}
       </div>
     </article>
   );
