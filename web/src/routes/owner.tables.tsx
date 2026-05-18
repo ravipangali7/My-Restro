@@ -1,7 +1,12 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import type { DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useOwnerTablesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { resolveMediaUrl } from "@/lib/api";
@@ -37,9 +42,6 @@ function TablesPage() {
     void navigate({ to: "/owner/tables/$id", params: { id: String(t.id) } });
   };
 
-  const tableCardGridClass =
-    "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4";
-
   const renderTableCards = (
     rows: TableRow[],
     resetDeps: DependencyList,
@@ -48,7 +50,7 @@ function TablesPage() {
     <PaginatedList
       items={rows}
       resetDeps={resetDeps}
-      stackClassName={tableCardGridClass}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No tables for this restaurant yet.</p>}
       renderItem={(t, sel) => {
         const url = resolveMediaUrl(t.image);
@@ -123,23 +125,21 @@ function TablesPage() {
         }
       >
         {restaurantIds.length > 1 ? (
-          <div className="flex w-full flex-col gap-10">
-            {sections.map(({ restaurantId: rid, tables }) => {
+          <GroupedListSections
+            sections={sections.map(({ restaurantId: rid, tables }) => {
               const rows = tables as TableRow[];
-              return (
-                <section key={rid} className="w-full space-y-4">
-                  <h3 className="border-b border-border pb-2 font-display text-base font-semibold text-foreground">
-                    {restaurantLabel(rid)}
-                  </h3>
-                  {rows.length === 0 ? (
+              return {
+                key: rid,
+                title: restaurantLabel(rid),
+                children:
+                  rows.length === 0 ? (
                     <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
                   ) : (
                     renderTableCards(rows, [rid])
-                  )}
-                </section>
-              );
+                  ),
+              };
             })}
-          </div>
+          />
         ) : (sections[0]?.tables as TableRow[] | undefined)?.length === 0 ? (
           <p className="text-sm text-text-muted">No tables for this restaurant yet.</p>
         ) : (

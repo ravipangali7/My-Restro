@@ -2,7 +2,12 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tansta
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useRestaurants } from "@/hooks/use-rest-api";
@@ -103,6 +108,7 @@ function ProductsPage() {
     <PaginatedList
       items={sectionRows}
       resetDeps={resetDeps}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No products in this restaurant yet.</p>}
       renderItem={(p, sel) => {
         const url = resolveMediaUrl(p.image);
@@ -112,6 +118,7 @@ function ProductsPage() {
           <OwnerEntityCard
             {...(sel.selectable ? sel : {})}
             onClick={() => goToProduct(p)}
+            className="h-full"
             leading={
               url ? (
                 <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" loading="lazy" />
@@ -168,9 +175,8 @@ function ProductsPage() {
   return (
     <>
       <ListPageShell
-        fillViewport
         header={
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="font-display text-lg font-semibold text-foreground">Products</h2>
             <Link
               to="/owner/products/new"
@@ -181,28 +187,18 @@ function ProductsPage() {
           </div>
         }
       >
-        <div className="flex flex-col gap-8 min-h-0 flex-1">
-          {groupedSections.map((section) => {
-            const { rid, title, rows, catName } = section;
-            return (
-              <ListPageShell
-                key={rid}
-                header={
-                  fetchIds.length > 1 ? (
-                    <h3 className="mb-3 font-display text-base font-semibold text-foreground">{title}</h3>
-                  ) : undefined
-                }
-                className="min-h-0 flex-1 basis-64"
-              >
-                {rows.length === 0 ? (
-                  <p className="text-sm text-text-muted">No products in this restaurant yet.</p>
-                ) : (
-                  renderProductCards(rows, catName, [rid])
-                )}
-              </ListPageShell>
-            );
-          })}
-        </div>
+        <GroupedListSections
+          sections={groupedSections.map(({ rid, title, rows, catName }) => ({
+            key: rid,
+            title: fetchIds.length > 1 ? title : undefined,
+            children:
+              rows.length === 0 ? (
+                <p className="text-sm text-text-muted">No products in this restaurant yet.</p>
+              ) : (
+                renderProductCards(rows, catName, [rid])
+              ),
+          }))}
+        />
       </ListPageShell>
       {isFormRoute ? (
         <RouteFormModal title="Product form" onClose={() => navigate({ to: "/owner/products" })}>

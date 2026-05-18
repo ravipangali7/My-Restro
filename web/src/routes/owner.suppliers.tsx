@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerSuppliersByRestaurant, useRestaurants, useSuppliers } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPatchForm, apiPost, apiPostForm, resolveMediaUrl } from "@/lib/api";
@@ -159,6 +164,7 @@ function SuppliersPage() {
     <PaginatedList
       items={list}
       resetDeps={resetDeps}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>}
       renderItem={(row, sel) => {
         const url = resolveMediaUrl(row.image);
@@ -166,6 +172,7 @@ function SuppliersPage() {
         return (
           <OwnerEntityCard
             {...(sel.selectable ? sel : {})}
+            className="h-full"
             leading={
               url ? (
                 <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" />
@@ -213,9 +220,8 @@ function SuppliersPage() {
   return (
     <>
       <ListPageShell
-        fillViewport
         header={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-display font-semibold text-lg text-foreground">Suppliers</h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               {isSuper && (
@@ -243,23 +249,18 @@ function SuppliersPage() {
         {showAllFlat ? (
           renderSupplierCards(flatData as SupplierRow[], showRestaurantColInTable && showAllFlat, [showAllRestaurants])
         ) : restaurantIds.length > 1 ? (
-          <div className="flex flex-col gap-8 min-h-0 flex-1">
-            {sections.map(({ restaurantId: rid, suppliers }) => (
-              <ListPageShell
-                key={rid}
-                header={
-                  <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-                }
-                className="min-h-0 flex-1 basis-64"
-              >
-                {(suppliers as SupplierRow[]).length === 0 ? (
+          <GroupedListSections
+            sections={sections.map(({ restaurantId: rid, suppliers }) => ({
+              key: rid,
+              title: restaurantLabel(rid),
+              children:
+                (suppliers as SupplierRow[]).length === 0 ? (
                   <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
                 ) : (
                   renderSupplierCards(suppliers as SupplierRow[], false, [rid])
-                )}
-              </ListPageShell>
-            ))}
-          </div>
+                ),
+            }))}
+          />
         ) : (sections[0]?.suppliers as SupplierRow[] | undefined)?.length === 0 ? (
           <p className="text-sm text-text-muted">No suppliers for this restaurant yet.</p>
         ) : (

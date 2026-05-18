@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionDangerClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerUnitsByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -150,10 +155,12 @@ function UnitsPage() {
     <PaginatedList
       items={list}
       resetDeps={resetDeps}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No units for this restaurant yet.</p>}
       renderItem={(u, sel) => (
         <OwnerEntityCard
           {...(sel.selectable ? sel : {})}
+          className="h-full"
           leading={
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Ruler strokeWidth={2} aria-hidden />
@@ -202,9 +209,8 @@ function UnitsPage() {
   return (
     <>
       <ListPageShell
-        fillViewport
         header={
-          <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <h2 className="font-display font-semibold text-lg text-foreground">Units</h2>
               {listActionError && <p className="text-sm text-error mt-1">{listActionError}</p>}
@@ -220,23 +226,18 @@ function UnitsPage() {
         }
       >
         {restaurantIds.length > 1 ? (
-          <div className="flex flex-col gap-8 min-h-0 flex-1">
-            {sections.map(({ restaurantId: rid, units }) => (
-              <ListPageShell
-                key={rid}
-                header={
-                  <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-                }
-                className="min-h-0 flex-1 basis-64"
-              >
-                {(units as UnitRow[]).length === 0 ? (
+          <GroupedListSections
+            sections={sections.map(({ restaurantId: rid, units }) => ({
+              key: rid,
+              title: restaurantLabel(rid),
+              children:
+                (units as UnitRow[]).length === 0 ? (
                   <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
                 ) : (
                   renderUnitCards(units as UnitRow[], [rid])
-                )}
-              </ListPageShell>
-            ))}
-          </div>
+                ),
+            }))}
+          />
         ) : (sections[0]?.units as UnitRow[] | undefined)?.length === 0 ? (
           <p className="text-sm text-text-muted">No units for this restaurant yet.</p>
         ) : (

@@ -2,7 +2,12 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tansta
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { useRestaurants } from "@/hooks/use-rest-api";
 import { apiGet, resolveMediaUrl } from "@/lib/api";
@@ -83,6 +88,7 @@ function CombosPage() {
     <PaginatedList
       items={rows}
       resetDeps={resetDeps}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>}
       renderItem={(c, sel) => {
         const url = resolveMediaUrl(c.image);
@@ -93,6 +99,7 @@ function CombosPage() {
           <OwnerEntityCard
             {...(sel.selectable ? sel : {})}
             onClick={() => goToCombo(c)}
+            className="h-full"
             leading={
               url ? (
                 <img src={url} alt="" className="h-12 w-12 rounded-xl border border-border object-cover shadow-sm" loading="lazy" />
@@ -142,9 +149,8 @@ function CombosPage() {
   return (
     <>
       <ListPageShell
-        fillViewport
         header={
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="font-display font-semibold text-lg text-foreground">Combo Sets</h2>
             <Link
               to="/owner/combos/$id"
@@ -156,25 +162,18 @@ function CombosPage() {
           </div>
         }
       >
-        <div className="flex flex-col gap-8 min-h-0 flex-1">
-          {groupedSections.map(({ rid, title, rows }) => (
-            <ListPageShell
-              key={rid}
-              header={
-                fetchIds.length > 1 ? (
-                  <h3 className="mb-3 font-display text-base font-semibold text-foreground">{title}</h3>
-                ) : undefined
-              }
-              className="min-h-0 flex-1 basis-64"
-            >
-              {rows.length === 0 ? (
+        <GroupedListSections
+          sections={groupedSections.map(({ rid, title, rows }) => ({
+            key: rid,
+            title: fetchIds.length > 1 ? title : undefined,
+            children:
+              rows.length === 0 ? (
                 <p className="text-sm text-text-muted">No combo sets in this restaurant yet.</p>
               ) : (
                 renderComboCards(rows, [rid])
-              )}
-            </ListPageShell>
-          ))}
-        </div>
+              ),
+          }))}
+        />
       </ListPageShell>
       {isFormModalRoute ? (
         <RouteFormModal title="Combo set" onClose={() => navigate({ to: "/owner/combos" })}>

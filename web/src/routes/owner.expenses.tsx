@@ -2,7 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass, ownerListActionSecondaryClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useConfirmAction } from "@/hooks/use-confirm-action";
 import { useOwnerExpensesByRestaurant, useRestaurants } from "@/hooks/use-rest-api";
@@ -161,11 +166,13 @@ function ExpensesPage() {
     <PaginatedList
       items={list}
       resetDeps={resetDeps}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No expenses for this restaurant.</p>}
       renderItem={(e, sel) => (
         <OwnerEntityCard
           {...(sel.selectable ? sel : {})}
           onClick={() => goToExpense(e)}
+          className="h-full"
           leading={
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Receipt strokeWidth={2} aria-hidden />
@@ -221,9 +228,8 @@ function ExpensesPage() {
   return (
     <>
       <ListPageShell
-        fillViewport
         header={
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="font-display font-semibold text-lg text-foreground">Expenses</h2>
               <p className="text-sm text-text-muted">
@@ -237,30 +243,27 @@ function ExpensesPage() {
           </div>
         }
       >
-        <div className="flex flex-col gap-8 min-h-0 flex-1">
-          {groupByRestaurant ? (
-            sectionsOrdered.map((s) => {
-              const sectionRows = (s.expenses as ExpRow[]).slice().sort((a, b) => String(b.expense_date ?? "").localeCompare(String(a.expense_date ?? "")));
-              return (
-                <ListPageShell
-                  key={s.restaurantId}
-                  header={
-                    <h3 className="font-display font-semibold text-base text-foreground mb-3 border-b border-border pb-2">{s.restaurantName}</h3>
-                  }
-                  className="min-h-0 flex-1 basis-64"
-                >
-                  {sectionRows.length === 0 ? (
+        {groupByRestaurant ? (
+          <GroupedListSections
+            sections={sectionsOrdered.map((s) => {
+              const sectionRows = (s.expenses as ExpRow[])
+                .slice()
+                .sort((a, b) => String(b.expense_date ?? "").localeCompare(String(a.expense_date ?? "")));
+              return {
+                key: s.restaurantId,
+                title: s.restaurantName,
+                children:
+                  sectionRows.length === 0 ? (
                     <p className="text-sm text-text-muted">No expenses for this restaurant.</p>
                   ) : (
                     renderExpenseCards(sectionRows, [s.restaurantId])
-                  )}
-                </ListPageShell>
-              );
-            })
-          ) : (
-            renderExpenseCards(rows, [groupByRestaurant, restaurantIds])
-          )}
-        </div>
+                  ),
+              };
+            })}
+          />
+        ) : (
+          renderExpenseCards(rows, [groupByRestaurant, restaurantIds])
+        )}
       </ListPageShell>
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

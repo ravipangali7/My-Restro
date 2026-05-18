@@ -6,7 +6,12 @@ import { useListSelection, type ListItemId, type ListItemSelectionProps } from "
 import { ListPaginationBar } from "@/components/shared/ListPaginationBar";
 import { cn } from "@/lib/utils";
 
-export { ListPageShell } from "@/components/shared/ListPageShell";
+export {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+} from "@/components/shared/ListPageShell";
+export type { GroupedListSectionItem } from "@/components/shared/ListPageShell";
 export type { ListItemSelectionProps };
 
 export interface PaginatedListProps<T extends { id: ListItemId }> {

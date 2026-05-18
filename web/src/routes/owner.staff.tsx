@@ -1,7 +1,12 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type DependencyList } from "react";
 import { OwnerEntityCard, ownerListActionClass } from "@/components/owner/OwnerEntityCard";
-import { ListPageShell, PaginatedList } from "@/components/shared/PaginatedList";
+import {
+  GroupedListSections,
+  ListPageShell,
+  ownerEntityCardGridClass,
+  PaginatedList,
+} from "@/components/shared/PaginatedList";
 import { AppModal } from "@/components/shared/AppModal";
 import { RouteFormModal } from "@/components/shared/RouteFormModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -100,11 +105,13 @@ function StaffPage() {
     <PaginatedList
       items={list}
       resetDeps={resetDeps}
+      stackClassName={ownerEntityCardGridClass}
       empty={<p className="text-sm text-text-muted">No staff at this restaurant.</p>}
       renderItem={(s, sel) => (
         <OwnerEntityCard
           {...(sel.selectable ? sel : {})}
           onClick={() => goToStaff(s)}
+          className="h-full"
           leading={
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Users strokeWidth={2} aria-hidden />
@@ -176,9 +183,8 @@ function StaffPage() {
         <p className="text-sm text-text-muted">No restaurants assigned.</p>
       ) : (
         <ListPageShell
-          fillViewport
           header={
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display font-semibold text-lg text-foreground">Staff</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -204,23 +210,18 @@ function StaffPage() {
           }
         >
           {restaurantIds.length > 1 ? (
-            <div className="flex flex-col gap-8 min-h-0 flex-1">
-              {sections.map(({ restaurantId: rid, staff }) => (
-                <ListPageShell
-                  key={rid}
-                  header={
-                    <h3 className="font-display font-semibold text-base text-foreground mb-3">{restaurantLabel(rid)}</h3>
-                  }
-                  className="min-h-0 flex-1 basis-64"
-                >
-                  {(staff as StaffRow[]).length === 0 ? (
+            <GroupedListSections
+              sections={sections.map(({ restaurantId: rid, staff }) => ({
+                key: rid,
+                title: restaurantLabel(rid),
+                children:
+                  (staff as StaffRow[]).length === 0 ? (
                     <p className="text-sm text-text-muted">No staff at this restaurant.</p>
                   ) : (
                     renderStaffCards(staff as StaffRow[], [rid])
-                  )}
-                </ListPageShell>
-              ))}
-            </div>
+                  ),
+              }))}
+            />
           ) : (
             renderStaffCards((sections[0]?.staff as StaffRow[]) ?? [], [restaurantIds])
           )}
