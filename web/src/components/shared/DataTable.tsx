@@ -12,9 +12,11 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   onRowClick?: (row: T) => void;
+  /** Rendered inside the table container, flush below rows (e.g. pagination). */
+  footer?: ReactNode;
 }
 
-export function DataTable<T extends { id: string | number }>({ columns, data, onRowClick }: DataTableProps<T>) {
+export function DataTable<T extends { id: string | number }>({ columns, data, onRowClick, footer }: DataTableProps<T>) {
   const mobileColumns = columns.filter((c) => !c.mobileHidden);
 
   return (
@@ -83,6 +85,7 @@ export function DataTable<T extends { id: string | number }>({ columns, data, on
           <div className="p-8 text-center text-text-muted text-sm">No data found.</div>
         )}
       </div>
+      {footer}
     </div>
   );
 }

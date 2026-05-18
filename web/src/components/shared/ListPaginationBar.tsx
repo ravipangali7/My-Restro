@@ -25,8 +25,11 @@ export interface ListPaginationBarProps {
   onNext: () => void;
   onPageSizeChange: (size: number) => void;
   className?: string;
-  /** Keep pagination visible while scrolling the portal main. */
-  sticky?: boolean;
+  /**
+   * `attached` — footer flush with the list/table (default).
+   * `floating` — detached bar with spacing (legacy).
+   */
+  variant?: "attached" | "floating";
 }
 
 export function ListPaginationBar({
@@ -44,7 +47,7 @@ export function ListPaginationBar({
   onNext,
   onPageSizeChange,
   className,
-  sticky = false,
+  variant = "attached",
 }: ListPaginationBarProps) {
   if (totalCount === 0) return null;
 
@@ -52,10 +55,10 @@ export function ListPaginationBar({
     <nav
       aria-label="List pagination"
       className={cn(
-        "flex flex-col gap-3 border border-border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
-        sticky
-          ? "sticky bottom-0 z-10 mt-2 shrink-0 rounded-2xl border-t bg-card/95 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur-sm supports-[backdrop-filter]:bg-card/80"
-          : "mt-4 rounded-2xl",
+        "flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        variant === "attached"
+          ? "shrink-0 border-t border-border bg-surface/60"
+          : "mt-4 rounded-2xl border border-border bg-card",
         className,
       )}
     >

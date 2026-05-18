@@ -268,6 +268,7 @@ function NotificationsPage() {
         <PaginatedList
           items={rows}
           enablePagination
+          framedPagination={false}
           empty={<SuperAdminEmptyState>No bulk campaigns yet.</SuperAdminEmptyState>}
           renderItem={(n) => {
               const count = Array.isArray(n.receivers) ? n.receivers.length : 0;

@@ -89,29 +89,34 @@ export function PaginatedDataTable<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <DataTable columns={tableColumns} data={displayRows} onRowClick={onRowClick} />
-
-      {enablePagination ? (
-        <ListPaginationBar
-          sticky
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          totalCount={pagination.totalCount}
-          rangeStart={pagination.rangeStart}
-          rangeEnd={pagination.rangeEnd}
-          pageSize={pagination.pageSize}
-          pageNumbers={pagination.pageNumbers}
-          canPrev={pagination.canPrev}
-          canNext={pagination.canNext}
-          onPageChange={pagination.setPage}
-          onPrev={pagination.goPrev}
-          onNext={pagination.goNext}
-          onPageSizeChange={(size) => {
-            pagination.setPageSize(size);
-            pagination.setPage(1);
-          }}
-        />
-      ) : null}
+      <DataTable
+        columns={tableColumns}
+        data={displayRows}
+        onRowClick={onRowClick}
+        footer={
+          enablePagination ? (
+            <ListPaginationBar
+              variant="attached"
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalCount={pagination.totalCount}
+              rangeStart={pagination.rangeStart}
+              rangeEnd={pagination.rangeEnd}
+              pageSize={pagination.pageSize}
+              pageNumbers={pagination.pageNumbers}
+              canPrev={pagination.canPrev}
+              canNext={pagination.canNext}
+              onPageChange={pagination.setPage}
+              onPrev={pagination.goPrev}
+              onNext={pagination.goNext}
+              onPageSizeChange={(size) => {
+                pagination.setPageSize(size);
+                pagination.setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+      />
     </div>
   );
 }

@@ -22,6 +22,8 @@ export interface PaginatedListProps<T extends { id: ListItemId }> {
   className?: string;
   stackClassName?: string;
   enablePagination?: boolean;
+  /** When false, pagination attaches under cards without an extra outer border (e.g. inside a panel). Default true. */
+  framedPagination?: boolean;
   enableSelection?: boolean;
   /** Extra controls shown when items are selected (e.g. bulk delete). */
   selectionActions?: (ctx: { selectedIds: ListItemId[]; clearSelection: () => void }) => ReactNode;
@@ -35,6 +37,7 @@ export function PaginatedList<T extends { id: ListItemId }>({
   className,
   stackClassName,
   enablePagination = false,
+  framedPagination = true,
   enableSelection = false,
   selectionActions,
   renderItem,
@@ -52,8 +55,23 @@ export function PaginatedList<T extends { id: ListItemId }>({
 
   const showToolbar = enableSelection && displayItems.length > 0;
 
+  const listBody = (
+    <OwnerEntityCardStack className={stackClassName}>
+      {displayItems.map((item) => {
+        const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
+          ? {
+              selectable: true,
+              selected: selection.isSelected(item.id),
+              onSelectedChange: (checked) => selection.toggle(item.id, checked),
+            }
+          : { selectable: false };
+        return <div key={item.id}>{renderItem(item, selectionProps)}</div>;
+      })}
+    </OwnerEntityCardStack>
+  );
+
   return (
-    <div data-paginated-list-root className={cn("flex min-w-0 flex-col gap-3", className)}>
+    <div data-paginated-list-root className={cn("flex min-w-0 flex-col", !enablePagination && "gap-3", className)}>
       {showToolbar ? (
         <ListSelectionToolbar
           selectedCount={selection.selectedCount}
@@ -73,40 +91,37 @@ export function PaginatedList<T extends { id: ListItemId }>({
         />
       ) : null}
 
-      <OwnerEntityCardStack className={stackClassName}>
-        {displayItems.map((item) => {
-          const selectionProps: ListItemSelectionProps | { selectable?: false } = enableSelection
-            ? {
-                selectable: true,
-                selected: selection.isSelected(item.id),
-                onSelectedChange: (checked) => selection.toggle(item.id, checked),
-              }
-            : { selectable: false };
-          return <div key={item.id}>{renderItem(item, selectionProps)}</div>;
-        })}
-      </OwnerEntityCardStack>
-
       {enablePagination ? (
-        <ListPaginationBar
-          sticky
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          totalCount={pagination.totalCount}
-          rangeStart={pagination.rangeStart}
-          rangeEnd={pagination.rangeEnd}
-          pageSize={pagination.pageSize}
-          pageNumbers={pagination.pageNumbers}
-          canPrev={pagination.canPrev}
-          canNext={pagination.canNext}
-          onPageChange={pagination.setPage}
-          onPrev={pagination.goPrev}
-          onNext={pagination.goNext}
-          onPageSizeChange={(size) => {
-            pagination.setPageSize(size);
-            pagination.setPage(1);
-          }}
-        />
-      ) : null}
+        <div
+          className={cn(
+            "overflow-hidden border border-border bg-card",
+            framedPagination ? "rounded-2xl shadow-sm" : "-mx-4 rounded-xl sm:-mx-5",
+          )}
+        >
+          <div className={cn("flex flex-col gap-3", framedPagination ? "p-3" : "px-4 pt-1 sm:px-5")}>{listBody}</div>
+          <ListPaginationBar
+            variant="attached"
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalCount={pagination.totalCount}
+            rangeStart={pagination.rangeStart}
+            rangeEnd={pagination.rangeEnd}
+            pageSize={pagination.pageSize}
+            pageNumbers={pagination.pageNumbers}
+            canPrev={pagination.canPrev}
+            canNext={pagination.canNext}
+            onPageChange={pagination.setPage}
+            onPrev={pagination.goPrev}
+            onNext={pagination.goNext}
+            onPageSizeChange={(size) => {
+              pagination.setPageSize(size);
+              pagination.setPage(1);
+            }}
+          />
+        </div>
+      ) : (
+        listBody
+      )}
     </div>
   );
 }
